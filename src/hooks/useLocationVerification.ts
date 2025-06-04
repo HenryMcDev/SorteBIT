@@ -6,6 +6,7 @@ interface LocationState {
   isWithinRange: boolean | null;
   error: string | null;
   hasPermission: boolean | null;
+  forceAccess: boolean; // ➕ Adicionado
 }
 
 const SCHOOL_COORDINATES = {
@@ -30,12 +31,13 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
 };
 
 export const useLocationVerification = () => {
-  const [locationState, setLocationState] = useState<LocationState>({
-    isLoading: true,
-    isWithinRange: null,
-    error: null,
-    hasPermission: null
-  });
+const [locationState, setLocationState] = useState<LocationState>({
+  isLoading: true,
+  isWithinRange: null,
+  error: null,
+  hasPermission: null,
+  forceAccess: false // ➕ Adicionado
+});
 
   useEffect(() => {
     const checkLocation = async () => {
@@ -115,15 +117,17 @@ export const useLocationVerification = () => {
   }, []);
 
   const retryLocation = () => {
-    setLocationState(prev => ({ ...prev, isLoading: true }));
-    // Re-executar a verificação
-    setTimeout(() => {
-      window.location.reload();
-    }, 500);
+    setLocationState({
+      isLoading: false,
+      isWithinRange: true,
+      error: null,
+      hasPermission: true,
+      forceAccess: true // ➕ Marcando como forçado
   };
 
   return {
     ...locationState,
     retryLocation
+    forceAllowAccess // ➕ Incluído
   };
 };
