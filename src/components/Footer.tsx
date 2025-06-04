@@ -10,7 +10,7 @@ const Footer = () => {
             <div className="bg-white rounded-full p-3 mr-4">
               <GraduationCap className="text-school-blue-700 w-8 h-8" />
             </div>
-            <div className="text-2xl font-bold">Escola Digital</div>
+            <div className="text-2xl font-bold">BIT EDUCAÇÃO & NEGÓCIOS</div>
           </div>
           <p className="text-school-blue-100 text-lg">
             Educação de qualidade, futuro brilhante
@@ -32,8 +32,8 @@ const Footer = () => {
             <div>
               <h3 className="font-semibold text-school-yellow-400 mb-1">Endereço</h3>
               <p className="text-school-blue-100">
-                Rua da Educação, 123<br />
-                Centro - Cidade, MG
+                Rua Luiz Colombo, 115<br />
+                Centro - ARAXÁ, MG
               </p>
             </div>
           </div>
@@ -43,7 +43,7 @@ const Footer = () => {
             <div>
               <h3 className="font-semibold text-school-yellow-400 mb-1">Email</h3>
               <p className="text-school-blue-100">
-                contato@escoladigital.edu.br
+                contato@bitaraxa.com.br
               </p>
             </div>
           </div>
@@ -51,7 +51,7 @@ const Footer = () => {
 
         <div className="text-center mt-8 pt-8 border-t border-school-blue-600">
           <p className="text-school-blue-200 text-sm">
-            © 2024 Escola Digital. Todos os direitos reservados.
+            © 2025 bit educação & Negócios. Todos os direitos reservados.
           </p>
         </div>
       </div>
