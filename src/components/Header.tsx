@@ -6,7 +6,7 @@ const Header = () => {
     <header className="text-center py-8 px-4">
       <div className="flex justify-center items-center mb-6">
         <GraduationCap className="text-school-blue-600 w-12 h-12 mr-3" />
-        <div className="text-school-blue-600 text-2xl font-bold">BIT EDUCAÇÃO E NEGÓCIOS</div>
+        <div className="text-school-blue-600 text-2xl font-bold">BIT EDUCAÇÃO & NEGÓCIOS</div>
       </div>
       
       <h1 className="text-4xl md:text-5xl font-bold text-school-blue-700 mb-4 leading-tight">
