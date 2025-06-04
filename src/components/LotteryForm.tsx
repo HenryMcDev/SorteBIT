@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +6,8 @@ import { Card } from '@/components/ui/card';
 import { Sparkles, Phone, User, Calendar } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useLocationVerification } from '@/hooks/useLocationVerification';
+import LocationVerification from './LocationVerification';
 
 const LotteryForm = () => {
   const [name, setName] = useState('');
@@ -16,6 +17,15 @@ const LotteryForm = () => {
   const [hasParticipatedToday, setHasParticipatedToday] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  // Hook de verificação de localização
+  const {
+    isLoading: isLocationLoading,
+    isWithinRange,
+    error: locationError,
+    hasPermission,
+    retryLocation
+  } = useLocationVerification();
 
   // Verificar participação no localStorage como backup
   useEffect(() => {
@@ -161,6 +171,19 @@ const LotteryForm = () => {
       setIsLoading(false);
     }
   };
+
+  // Se ainda está verificando a localização, exibir o estado de loading
+  if (isLocationLoading || !isWithinRange) {
+    return (
+      <LocationVerification
+        isLoading={isLocationLoading}
+        isWithinRange={isWithinRange}
+        error={locationError}
+        hasPermission={hasPermission}
+        onRetry={retryLocation}
+      />
+    );
+  }
 
   if (hasParticipatedToday && !luckyNumber) {
     return (
