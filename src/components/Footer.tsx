@@ -51,7 +51,7 @@ const Footer = () => {
 
         <div className="text-center mt-8 pt-8 border-t border-school-blue-600">
           <p className="text-school-blue-200 text-sm">
-            © 2025 bit educação & Negócios. Todos os direitos reservados.
+            © 2025 bit educação & negócios. Todos os direitos reservados.
           </p>
         </div>
       </div>
