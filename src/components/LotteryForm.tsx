@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Sparkles, Phone, User, Calendar } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const LotteryForm = () => {
   const [name, setName] = useState('');
@@ -12,10 +14,12 @@ const LotteryForm = () => {
   const [luckyNumber, setLuckyNumber] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasParticipatedToday, setHasParticipatedToday] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
-  // Verificar se o usuário já participou hoje
+  // Verificar participação no localStorage como backup
   useEffect(() => {
-    const checkParticipation = () => {
+    const checkLocalParticipation = () => {
       const today = new Date().toDateString();
       const lastParticipation = localStorage.getItem('lastLotteryParticipation');
       
@@ -24,28 +28,138 @@ const LotteryForm = () => {
       }
     };
 
-    checkParticipation();
+    checkLocalParticipation();
   }, []);
 
-  const generateLuckyNumber = () => {
+  // Verificar se já participou hoje no Supabase
+  const checkParticipationInDatabase = async (name: string, phone: string) => {
+    try {
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+      
+      const { data, error } = await supabase
+        .from('lottery_participations')
+        .select('id')
+        .eq('name', name.trim())
+        .eq('phone', phone.trim())
+        .eq('participation_date', today)
+        .limit(1);
+
+      if (error) {
+        console.error('Erro ao verificar participação:', error);
+        toast({
+          title: "Erro",
+          description: "Erro ao verificar participação. Tente novamente.",
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      return data && data.length > 0;
+    } catch (error) {
+      console.error('Erro ao conectar com o banco:', error);
+      toast({
+        title: "Erro",
+        description: "Erro de conexão. Tente novamente.",
+        variant: "destructive"
+      });
+      return false;
+    }
+  };
+
+  // Salvar participação no Supabase
+  const saveParticipationToDatabase = async (name: string, phone: string, luckyNumber: string) => {
+    try {
+      const { error } = await supabase
+        .from('lottery_participations')
+        .insert({
+          name: name.trim(),
+          phone: phone.trim(),
+          lucky_number: luckyNumber,
+          participation_date: new Date().toISOString().split('T')[0]
+        });
+
+      if (error) {
+        console.error('Erro ao salvar participação:', error);
+        toast({
+          title: "Erro",
+          description: "Erro ao salvar participação. Tente novamente.",
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Erro ao salvar no banco:', error);
+      toast({
+        title: "Erro",
+        description: "Erro de conexão. Tente novamente.",
+        variant: "destructive"
+      });
+      return false;
+    }
+  };
+
+  const generateLuckyNumber = async () => {
     if (!name.trim() || !phone.trim()) {
-      alert('Por favor, preencha todos os campos!');
+      toast({
+        title: "Campos obrigatórios",
+        description: "Por favor, preencha todos os campos!",
+        variant: "destructive"
+      });
       return;
     }
 
+    setIsLoading(true);
     setIsGenerating(true);
-    
-    // Simula o tempo de geração do número
-    setTimeout(() => {
-      const number = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
-      setLuckyNumber(number);
-      setIsGenerating(false);
+
+    try {
+      // Verificar se já participou hoje
+      const alreadyParticipated = await checkParticipationInDatabase(name, phone);
       
-      // Marcar participação no localStorage
-      const today = new Date().toDateString();
-      localStorage.setItem('lastLotteryParticipation', today);
-      setHasParticipatedToday(true);
-    }, 1500);
+      if (alreadyParticipated) {
+        setHasParticipatedToday(true);
+        setIsGenerating(false);
+        setIsLoading(false);
+        toast({
+          title: "Participação já registrada",
+          description: "Você já participou hoje com esses dados. Volte amanhã para tentar novamente.",
+          variant: "default"
+        });
+        return;
+      }
+
+      // Gerar número da sorte
+      const number = Math.floor(Math.random() * 9000 + 1000).toString(); // Entre 1000 e 9999
+      
+      // Salvar no banco de dados
+      const saved = await saveParticipationToDatabase(name, phone, number);
+      
+      if (saved) {
+        setLuckyNumber(number);
+        
+        // Marcar participação no localStorage como backup
+        const today = new Date().toDateString();
+        localStorage.setItem('lastLotteryParticipation', today);
+        setHasParticipatedToday(true);
+
+        toast({
+          title: "Sucesso!",
+          description: `Seu número da sorte é ${number}. Boa sorte!`,
+          variant: "default"
+        });
+      }
+    } catch (error) {
+      console.error('Erro no processo:', error);
+      toast({
+        title: "Erro",
+        description: "Erro inesperado. Tente novamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
+      setIsLoading(false);
+    }
   };
 
   if (hasParticipatedToday && !luckyNumber) {
@@ -89,6 +203,7 @@ const LotteryForm = () => {
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 focus:border-school-blue-500 rounded-xl"
+              disabled={isLoading}
             />
           </div>
 
@@ -104,18 +219,19 @@ const LotteryForm = () => {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 focus:border-school-blue-500 rounded-xl"
+              disabled={isLoading}
             />
           </div>
 
           <Button
             onClick={generateLuckyNumber}
-            disabled={isGenerating}
-            className="w-full h-12 md:h-16 text-base md:text-lg font-bold bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+            disabled={isGenerating || isLoading}
+            className="w-full h-12 md:h-16 text-base md:text-lg font-bold bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
           >
             {isGenerating ? (
               <div className="flex items-center">
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-school-blue-800 mr-2"></div>
-                Gerando...
+                Verificando e gerando...
               </div>
             ) : (
               <div className="flex items-center">
