@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -66,13 +65,12 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
     try {
       const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
       
+      // Verificar participação por nome (case-insensitive) OU telefone
       const { data, error } = await supabase
         .from('lottery_participations')
-        .select('id')
-        .eq('name', name.trim())
-        .eq('phone', phone.trim())
+        .select('id, name')
         .eq('participation_date', today)
-        .limit(1);
+        .or(`phone.eq.${phone.trim()},name.ilike.${name.trim()}`);
 
       if (error) {
         console.error('Erro ao verificar participação:', error);
@@ -84,7 +82,30 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
         return false;
       }
 
-      return data && data.length > 0;
+      // Verificar se existe participação com mesmo nome (case-insensitive) ou mesmo telefone
+      if (data && data.length > 0) {
+        const hasNameMatch = data.some(record => 
+          record.name.toLowerCase() === name.trim().toLowerCase()
+        );
+        const hasPhoneMatch = data.some(record => record.name !== name.trim());
+        
+        if (hasNameMatch) {
+          toast({
+            title: "Participação já registrada",
+            description: "Você já participou hoje com esse nome.",
+            variant: "default"
+          });
+        } else if (hasPhoneMatch) {
+          toast({
+            title: "Participação já registrada", 
+            description: "Você já participou hoje com esses dados. Volte amanhã para tentar novamente.",
+            variant: "default"
+          });
+        }
+        return true;
+      }
+
+      return false;
     } catch (error) {
       console.error('Erro ao conectar com o banco:', error);
       toast({
@@ -151,11 +172,6 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
         setHasParticipatedToday(true);
         setIsGenerating(false);
         setIsLoading(false);
-        toast({
-          title: "Participação já registrada",
-          description: "Você já participou hoje com esses dados. Volte amanhã para tentar novamente.",
-          variant: "default"
-        });
         return;
       }
 
