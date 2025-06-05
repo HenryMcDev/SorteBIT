@@ -9,7 +9,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useLocationVerification } from '@/hooks/useLocationVerification';
 import LocationVerification from './LocationVerification';
 
-const LotteryForm = () => {
+interface LotteryFormProps {
+  isAdminMode?: boolean;
+}
+
+const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [luckyNumber, setLuckyNumber] = useState<string | null>(null);
@@ -18,7 +22,7 @@ const LotteryForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  // Hook de verificação de localização
+  // Hook de verificação de localização - só ativa se não for modo admin
   const {
     isLoading: isLocationLoading,
     isWithinRange,
@@ -26,6 +30,11 @@ const LotteryForm = () => {
     hasPermission,
     retryLocation
   } = useLocationVerification();
+
+  // Se for modo admin, sempre considerar como dentro do raio permitido
+  const shouldCheckLocation = !isAdminMode;
+  const effectiveIsWithinRange = isAdminMode ? true : isWithinRange;
+  const effectiveIsLocationLoading = isAdminMode ? false : isLocationLoading;
 
   // Verificar participação no localStorage como backup
   useEffect(() => {
@@ -172,12 +181,12 @@ const LotteryForm = () => {
     }
   };
 
-  // Se ainda está verificando a localização, exibir o estado de loading
-  if (isLocationLoading || !isWithinRange) {
+  // Se ainda está verificando a localização e não é modo admin, exibir o estado de loading
+  if (shouldCheckLocation && (effectiveIsLocationLoading || !effectiveIsWithinRange)) {
     return (
       <LocationVerification
-        isLoading={isLocationLoading}
-        isWithinRange={isWithinRange}
+        isLoading={effectiveIsLocationLoading}
+        isWithinRange={effectiveIsWithinRange}
         error={locationError}
         hasPermission={hasPermission}
         onRetry={retryLocation}

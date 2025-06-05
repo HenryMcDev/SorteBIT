@@ -5,10 +5,16 @@ import LotteryForm from '@/components/LotteryForm';
 import Footer from '@/components/Footer';
 import DesktopBlocker from '@/components/DesktopBlocker';
 import { useMobileDetection } from '@/hooks/useMobileDetection';
+import { Button } from '@/components/ui/button';
+import { LogOut } from 'lucide-react';
 
 const Index = () => {
   const isMobile = useMobileDetection();
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
+
+  const handleLogout = () => {
+    setHasAdminAccess(false);
+  };
 
   // Se não é mobile e não tem acesso admin, mostrar bloqueio
   if (!isMobile && !hasAdminAccess) {
@@ -22,19 +28,30 @@ const Index = () => {
       <div className="absolute inset-0 bg-gradient-to-br from-school-blue-50/30 via-white to-school-yellow-50/30 pointer-events-none"></div>
       
       <div className="relative z-10">
-        {/* Indicador de acesso administrativo */}
+        {/* Indicador de acesso administrativo e botão de logout */}
         {!isMobile && hasAdminAccess && (
-          <div className="bg-school-yellow-100 border-b-2 border-school-yellow-300 px-4 py-2 text-center">
-            <span className="text-school-blue-700 font-semibold text-sm">
-              🔓 Acesso Administrativo Ativo
-            </span>
+          <div className="bg-school-yellow-100 border-b-2 border-school-yellow-300 px-4 py-3">
+            <div className="flex items-center justify-between max-w-6xl mx-auto">
+              <span className="text-school-blue-700 font-semibold text-sm">
+                🔓 Acesso Administrativo Ativo
+              </span>
+              <Button
+                onClick={handleLogout}
+                variant="outline"
+                size="sm"
+                className="border-school-blue-600 text-school-blue-600 hover:bg-school-blue-50 bg-white"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Sair
+              </Button>
+            </div>
           </div>
         )}
         
         <Header />
         
         <main className="py-8">
-          <LotteryForm />
+          <LotteryForm isAdminMode={hasAdminAccess} />
         </main>
         
         <Footer />

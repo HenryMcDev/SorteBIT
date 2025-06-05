@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 
 interface LocationState {
@@ -27,15 +26,26 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 };
 
-export const useLocationVerification = () => {
+export const useLocationVerification = (skipVerification: boolean = false) => {
   const [locationState, setLocationState] = useState<LocationState>({
-    isLoading: true,
-    isWithinRange: null,
+    isLoading: !skipVerification,
+    isWithinRange: skipVerification ? true : null,
     error: null,
-    hasPermission: null
+    hasPermission: skipVerification ? true : null
   });
 
   useEffect(() => {
+    // Se deve pular a verificação, definir como permitido
+    if (skipVerification) {
+      setLocationState({
+        isLoading: false,
+        isWithinRange: true,
+        error: null,
+        hasPermission: true
+      });
+      return;
+    }
+
     const checkLocation = async () => {
       // Verificar se a geolocalização é suportada
       if (!navigator.geolocation) {
@@ -110,9 +120,11 @@ export const useLocationVerification = () => {
     };
 
     checkLocation();
-  }, []);
+  }, [skipVerification]);
 
   const retryLocation = () => {
+    if (skipVerification) return;
+    
     setLocationState(prev => ({ ...prev, isLoading: true }));
     // Re-executar a verificação
     setTimeout(() => {
