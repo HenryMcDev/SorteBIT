@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,15 +30,20 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
     error: locationError,
     hasPermission,
     retryLocation
-  } = useLocationVerification();
+  } = useLocationVerification(isAdminMode);
 
   // Se for modo admin, sempre considerar como dentro do raio permitido
   const shouldCheckLocation = !isAdminMode;
   const effectiveIsWithinRange = isAdminMode ? true : isWithinRange;
   const effectiveIsLocationLoading = isAdminMode ? false : isLocationLoading;
 
-  // Verificar participação no localStorage como backup
+  // Verificar participação no localStorage como backup - apenas se não for modo admin
   useEffect(() => {
+    if (isAdminMode) {
+      setHasParticipatedToday(false);
+      return;
+    }
+
     const checkLocalParticipation = () => {
       const today = new Date().toDateString();
       const lastParticipation = localStorage.getItem('lastLotteryParticipation');
@@ -48,10 +54,15 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
     };
 
     checkLocalParticipation();
-  }, []);
+  }, [isAdminMode]);
 
-  // Verificar se já participou hoje no Supabase
+  // Verificar se já participou hoje no Supabase - pular se for modo admin
   const checkParticipationInDatabase = async (name: string, phone: string) => {
+    // Se for modo admin, sempre permitir participação
+    if (isAdminMode) {
+      return false;
+    }
+
     try {
       const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
       
@@ -133,10 +144,10 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
     setIsGenerating(true);
 
     try {
-      // Verificar se já participou hoje
+      // Verificar se já participou hoje - pular se for modo admin
       const alreadyParticipated = await checkParticipationInDatabase(name, phone);
       
-      if (alreadyParticipated) {
+      if (alreadyParticipated && !isAdminMode) {
         setHasParticipatedToday(true);
         setIsGenerating(false);
         setIsLoading(false);
@@ -151,20 +162,26 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
       // Gerar número da sorte
       const number = Math.floor(Math.random() * 9000 + 1000).toString(); // Entre 1000 e 9999
       
-      // Salvar no banco de dados
+      // Salvar no banco de dados - sempre salvar, mesmo no modo admin
       const saved = await saveParticipationToDatabase(name, phone, number);
       
       if (saved) {
         setLuckyNumber(number);
         
-        // Marcar participação no localStorage como backup
-        const today = new Date().toDateString();
-        localStorage.setItem('lastLotteryParticipation', today);
-        setHasParticipatedToday(true);
+        // Marcar participação no localStorage como backup - apenas se não for modo admin
+        if (!isAdminMode) {
+          const today = new Date().toDateString();
+          localStorage.setItem('lastLotteryParticipation', today);
+          setHasParticipatedToday(true);
+        }
+
+        const successMessage = isAdminMode 
+          ? `Teste administrativo: Número gerado ${number}`
+          : `Seu número da sorte é ${number}. Boa sorte!`;
 
         toast({
           title: "Sucesso!",
-          description: `Seu número da sorte é ${number}. Boa sorte!`,
+          description: successMessage,
           variant: "default"
         });
       }
@@ -181,6 +198,40 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
     }
   };
 
+  // Salvar participação no Supabase
+  const saveParticipationToDatabase = async (name: string, phone: string, luckyNumber: string) => {
+    try {
+      const { error } = await supabase
+        .from('lottery_participations')
+        .insert({
+          name: name.trim(),
+          phone: phone.trim(),
+          lucky_number: luckyNumber,
+          participation_date: new Date().toISOString().split('T')[0]
+        });
+
+      if (error) {
+        console.error('Erro ao salvar participação:', error);
+        toast({
+          title: "Erro",
+          description: "Erro ao salvar participação. Tente novamente.",
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Erro ao salvar no banco:', error);
+      toast({
+        title: "Erro",
+        description: "Erro de conexão. Tente novamente.",
+        variant: "destructive"
+      });
+      return false;
+    }
+  };
+
   // Se ainda está verificando a localização e não é modo admin, exibir o estado de loading
   if (shouldCheckLocation && (effectiveIsLocationLoading || !effectiveIsWithinRange)) {
     return (
@@ -194,7 +245,8 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
     );
   }
 
-  if (hasParticipatedToday && !luckyNumber) {
+  // No modo admin, nunca mostrar a tela de "já participou hoje"
+  if (hasParticipatedToday && !luckyNumber && !isAdminMode) {
     return (
       <div className="max-w-lg mx-auto px-4">
         <Card className="p-6 md:p-8 shadow-xl border-0 bg-white rounded-2xl">
@@ -223,6 +275,15 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
     <div className="max-w-lg mx-auto px-4">
       <Card className="p-6 md:p-8 shadow-xl border-0 bg-white rounded-2xl">
         <div className="space-y-6">
+          {/* Indicador de modo administrativo */}
+          {isAdminMode && (
+            <div className="bg-school-yellow-100 border-2 border-school-yellow-300 rounded-xl p-3 text-center">
+              <p className="text-school-blue-700 font-semibold text-sm">
+                🔧 Modo Administrativo - Testes ilimitados
+              </p>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="name" className="text-school-blue-700 font-semibold flex items-center text-sm md:text-base">
               <User className="w-4 h-4 mr-2" />
@@ -263,12 +324,12 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
             {isGenerating ? (
               <div className="flex items-center">
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-school-blue-800 mr-2"></div>
-                Verificando e gerando...
+                {isAdminMode ? "Gerando teste..." : "Verificando e gerando..."}
               </div>
             ) : (
               <div className="flex items-center">
                 <Sparkles className="w-5 h-5 mr-2" />
-                Gerar meu número da sorte
+                {isAdminMode ? "Gerar número (teste)" : "Gerar meu número da sorte"}
               </div>
             )}
           </Button>
@@ -276,12 +337,15 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
           {luckyNumber && (
             <div className="text-center p-4 md:p-6 bg-gradient-to-br from-school-blue-50 to-school-yellow-50 rounded-xl border-2 border-school-yellow-200 animate-bounce-in">
               <Sparkles className="w-8 h-8 text-school-yellow-500 mx-auto mb-2" />
-              <p className="text-school-blue-700 font-semibold mb-2 text-sm md:text-base">Parabéns!</p>
+              <p className="text-school-blue-700 font-semibold mb-2 text-sm md:text-base">
+                {isAdminMode ? "Teste gerado!" : "Parabéns!"}
+              </p>
               <p className="text-xl md:text-2xl font-bold text-school-blue-800">
-                Seu número da sorte é: <span className="text-school-yellow-600">#{luckyNumber}</span>
+                {isAdminMode ? "Número de teste: " : "Seu número da sorte é: "}
+                <span className="text-school-yellow-600">#{luckyNumber}</span>
               </p>
               <p className="text-xs md:text-sm text-school-blue-600 mt-2">
-                Guarde bem este número! Boa sorte!
+                {isAdminMode ? "Teste administrativo realizado com sucesso!" : "Guarde bem este número! Boa sorte!"}
               </p>
             </div>
           )}
