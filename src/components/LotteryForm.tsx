@@ -198,40 +198,6 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
     }
   };
 
-  // Salvar participação no Supabase
-  const saveParticipationToDatabase = async (name: string, phone: string, luckyNumber: string) => {
-    try {
-      const { error } = await supabase
-        .from('lottery_participations')
-        .insert({
-          name: name.trim(),
-          phone: phone.trim(),
-          lucky_number: luckyNumber,
-          participation_date: new Date().toISOString().split('T')[0]
-        });
-
-      if (error) {
-        console.error('Erro ao salvar participação:', error);
-        toast({
-          title: "Erro",
-          description: "Erro ao salvar participação. Tente novamente.",
-          variant: "destructive"
-        });
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Erro ao salvar no banco:', error);
-      toast({
-        title: "Erro",
-        description: "Erro de conexão. Tente novamente.",
-        variant: "destructive"
-      });
-      return false;
-    }
-  };
-
   // Se ainda está verificando a localização e não é modo admin, exibir o estado de loading
   if (shouldCheckLocation && (effectiveIsLocationLoading || !effectiveIsWithinRange)) {
     return (
