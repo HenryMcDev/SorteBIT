@@ -4,8 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { User, Lock, GraduationCap, Key, LogOut, UserPlus } from 'lucide-react';
+import { User, Lock, GraduationCap, Key, LogOut } from 'lucide-react';
 import { useTeacherAuth } from '@/hooks/useTeacherAuth';
 import TeacherCodeManager from './TeacherCodeManager';
 
@@ -27,8 +26,7 @@ const CLASS_OPTIONS = [
 ];
 
 const TeacherPortal = () => {
-  const { teacher, isLoading, register, login, logout } = useTeacherAuth();
-  const [isRegistering, setIsRegistering] = useState(false);
+  const { teacher, isLoading, login, logout } = useTeacherAuth();
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
 
@@ -37,9 +35,7 @@ const TeacherPortal = () => {
       return;
     }
 
-    const success = isRegistering 
-      ? await register(name, password)
-      : await login(name, password);
+    const success = await login(name, password);
 
     if (success) {
       setName('');
@@ -90,7 +86,7 @@ const TeacherPortal = () => {
     );
   }
 
-  // Login/Register form
+  // Login form only (removed registration option)
   return (
     <div className="max-w-lg mx-auto px-4">
       <Card className="p-6 md:p-8 shadow-xl border-0 bg-white rounded-2xl">
@@ -98,13 +94,10 @@ const TeacherPortal = () => {
           <div className="text-center space-y-2">
             <GraduationCap className="w-12 h-12 text-school-blue-600 mx-auto" />
             <h2 className="text-xl md:text-2xl font-bold text-school-blue-700">
-              {isRegistering ? "Cadastro de Professor" : "Login do Professor"}
+              Login do Professor
             </h2>
             <p className="text-school-blue-600">
-              {isRegistering 
-                ? "Cadastre-se para gerenciar códigos das turmas" 
-                : "Acesse o painel de gerenciamento"
-              }
+              Acesse o painel de gerenciamento
             </p>
           </div>
 
@@ -112,12 +105,12 @@ const TeacherPortal = () => {
             <div className="space-y-2">
               <Label htmlFor="name" className="text-school-blue-700 font-semibold flex items-center text-sm md:text-base">
                 <User className="w-4 h-4 mr-2" />
-                Nome completo
+                Usuário
               </Label>
               <Input
                 id="name"
                 type="text"
-                placeholder="Digite seu nome completo"
+                placeholder="Digite seu usuário"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 focus:border-school-blue-500 rounded-xl"
@@ -150,27 +143,20 @@ const TeacherPortal = () => {
               {isLoading ? (
                 <div className="flex items-center">
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-school-blue-800 mr-2"></div>
-                  {isRegistering ? "Cadastrando..." : "Entrando..."}
+                  Entrando...
                 </div>
               ) : (
                 <div className="flex items-center">
-                  {isRegistering ? <UserPlus className="w-5 h-5 mr-2" /> : <Key className="w-5 h-5 mr-2" />}
-                  {isRegistering ? "Cadastrar" : "Entrar"}
+                  <Key className="w-5 h-5 mr-2" />
+                  Entrar
                 </div>
               )}
             </Button>
 
-            <div className="text-center">
-              <Button
-                variant="ghost"
-                onClick={() => setIsRegistering(!isRegistering)}
-                className="text-school-blue-600 hover:text-school-blue-700 hover:bg-school-blue-50"
-              >
-                {isRegistering 
-                  ? "Já tem conta? Fazer login" 
-                  : "Não tem conta? Cadastrar-se"
-                }
-              </Button>
+            <div className="text-center pt-2">
+              <p className="text-sm text-gray-600">
+                Apenas professores autorizados podem acessar o sistema.
+              </p>
             </div>
           </div>
 

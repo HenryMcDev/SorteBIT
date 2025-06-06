@@ -18,63 +18,6 @@ export const useTeacherAuth = () => {
     return btoa(password); // Basic base64 encoding - replace with proper hashing in production
   };
 
-  const register = async (name: string, password: string) => {
-    setIsLoading(true);
-    try {
-      // Check if teacher already exists
-      const { data: existingTeacher } = await supabase
-        .from('teachers')
-        .select('id')
-        .eq('name', name.trim())
-        .maybeSingle();
-
-      if (existingTeacher) {
-        toast({
-          title: "Erro",
-          description: "Já existe um professor com este nome.",
-          variant: "destructive"
-        });
-        return false;
-      }
-
-      const { data, error } = await supabase
-        .from('teachers')
-        .insert({
-          name: name.trim(),
-          password_hash: hashPassword(password)
-        })
-        .select('id, name')
-        .single();
-
-      if (error) {
-        toast({
-          title: "Erro",
-          description: "Erro ao cadastrar professor.",
-          variant: "destructive"
-        });
-        return false;
-      }
-
-      setTeacher(data);
-      toast({
-        title: "Sucesso",
-        description: "Professor cadastrado com sucesso!",
-        variant: "default"
-      });
-      return true;
-    } catch (error) {
-      console.error('Error registering teacher:', error);
-      toast({
-        title: "Erro",
-        description: "Erro inesperado ao cadastrar.",
-        variant: "destructive"
-      });
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const login = async (name: string, password: string) => {
     setIsLoading(true);
     try {
@@ -129,7 +72,6 @@ export const useTeacherAuth = () => {
   return {
     teacher,
     isLoading,
-    register,
     login,
     logout
   };
