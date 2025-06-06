@@ -37,7 +37,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [selectedClass, setSelectedClass] = useState('');
-  const [teacherCode, setTeacherCode] = useState('');
+  const [studentCode, setStudentCode] = useState('');
   const [luckyNumber, setLuckyNumber] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasParticipatedToday, setHasParticipatedToday] = useState(false);
@@ -139,8 +139,8 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
     }
   };
 
-  // Verificar se o código do professor é válido para a turma hoje
-  const validateTeacherCode = async (className: string, code: string) => {
+  // Verificar e validar código do aluno
+  const validateStudentCode = async (name: string, className: string, code: string) => {
     if (isAdminMode) {
       return true; // No modo admin, não validar código
     }
@@ -149,8 +149,9 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
       const today = new Date().toISOString().split('T')[0];
       
       const { data, error } = await supabase
-        .from('class_codes')
-        .select('code')
+        .from('student_codes')
+        .select('id, student_name, is_used')
+        .eq('code', code.trim())
         .eq('class_name', className)
         .eq('date', today)
         .maybeSingle();
@@ -159,7 +160,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
         console.error('Erro ao verificar código:', error);
         toast({
           title: "Erro",
-          description: "Erro ao verificar código do professor. Tente novamente.",
+          description: "Erro ao verificar código do aluno. Tente novamente.",
           variant: "destructive"
         });
         return false;
@@ -167,17 +168,27 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
 
       if (!data) {
         toast({
-          title: "Código não encontrado",
-          description: "Não há código cadastrado para esta turma hoje. Consulte seu professor.",
+          title: "Código inválido",
+          description: "O código informado não é válido para esta turma hoje.",
           variant: "destructive"
         });
         return false;
       }
 
-      if (data.code !== code.trim()) {
+      // Verificar se o nome do aluno confere (case-insensitive)
+      if (data.student_name.toLowerCase() !== name.trim().toLowerCase()) {
         toast({
-          title: "Código inválido",
-          description: "O código informado não é válido para esta turma hoje.",
+          title: "Nome não confere",
+          description: "O código não foi gerado para este aluno.",
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      if (data.is_used) {
+        toast({
+          title: "Código já utilizado",
+          description: "Este código já foi usado hoje.",
           variant: "destructive"
         });
         return false;
@@ -195,8 +206,33 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
     }
   };
 
+  // Marcar código como usado
+  const markCodeAsUsed = async (code: string) => {
+    if (isAdminMode) return true; // No modo admin, não marcar como usado
+
+    try {
+      const { error } = await supabase
+        .from('student_codes')
+        .update({ 
+          is_used: true, 
+          used_at: new Date().toISOString() 
+        })
+        .eq('code', code.trim());
+
+      if (error) {
+        console.error('Erro ao marcar código como usado:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Erro ao marcar código como usado:', error);
+      return false;
+    }
+  };
+
   // Salvar participação no Supabase
-  const saveParticipationToDatabase = async (name: string, phone: string, className: string, teacherCode: string, luckyNumber: string) => {
+  const saveParticipationToDatabase = async (name: string, phone: string, className: string, studentCode: string, luckyNumber: string) => {
     try {
       const { error } = await supabase
         .from('lottery_participations')
@@ -204,7 +240,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
           name: name.trim(),
           phone: phone.trim(),
           class_name: className,
-          teacher_code: teacherCode.trim(),
+          teacher_code: studentCode.trim(), // Using the same field for now
           lucky_number: luckyNumber,
           participation_date: new Date().toISOString().split('T')[0]
         });
@@ -232,7 +268,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   };
 
   const generateLuckyNumber = async () => {
-    if (!name.trim() || !phone.trim() || !selectedClass || !teacherCode.trim()) {
+    if (!name.trim() || !phone.trim() || !selectedClass || !studentCode.trim()) {
       toast({
         title: "Campos obrigatórios",
         description: "Por favor, preencha todos os campos!",
@@ -255,8 +291,8 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
         return;
       }
 
-      // Validar código do professor - pular se for modo admin
-      const isCodeValid = await validateTeacherCode(selectedClass, teacherCode);
+      // Validar código do aluno - pular se for modo admin
+      const isCodeValid = await validateStudentCode(name, selectedClass, studentCode);
       
       if (!isCodeValid && !isAdminMode) {
         setIsGenerating(false);
@@ -268,9 +304,14 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
       const number = Math.floor(Math.random() * 9000 + 1000).toString(); // Entre 1000 e 9999
       
       // Salvar no banco de dados - sempre salvar, mesmo no modo admin
-      const saved = await saveParticipationToDatabase(name, phone, selectedClass, teacherCode, number);
+      const saved = await saveParticipationToDatabase(name, phone, selectedClass, studentCode, number);
       
       if (saved) {
+        // Marcar código como usado - apenas se não for modo admin
+        if (!isAdminMode) {
+          await markCodeAsUsed(studentCode);
+        }
+
         setLuckyNumber(number);
         
         // Marcar participação no localStorage como backup - apenas se não for modo admin
@@ -410,16 +451,16 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="teacherCode" className="text-school-blue-700 font-semibold flex items-center text-sm md:text-base">
+            <Label htmlFor="studentCode" className="text-school-blue-700 font-semibold flex items-center text-sm md:text-base">
               <Key className="w-4 h-4 mr-2" />
-              Código do professor
+              Código do aluno
             </Label>
             <Input
-              id="teacherCode"
+              id="studentCode"
               type="text"
               placeholder="Digite o código fornecido pelo professor"
-              value={teacherCode}
-              onChange={(e) => setTeacherCode(e.target.value)}
+              value={studentCode}
+              onChange={(e) => setStudentCode(e.target.value)}
               className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 focus:border-school-blue-500 rounded-xl"
               disabled={isLoading}
             />

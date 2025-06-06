@@ -1,0 +1,191 @@
+
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { User, Lock, GraduationCap, Key, LogOut, UserPlus } from 'lucide-react';
+import { useTeacherAuth } from '@/hooks/useTeacherAuth';
+import TeacherCodeManager from './TeacherCodeManager';
+
+const CLASS_OPTIONS = [
+  { value: 'TM11', label: 'TM11 - Técnico em Meio Ambiente' },
+  { value: 'TM12', label: 'TM12 - Técnico em Meio Ambiente' },
+  { value: 'TM13', label: 'TM13 - Técnico em Meio Ambiente' },
+  { value: 'TI25', label: 'TI25 - Técnico em Informática' },
+  { value: 'TI26', label: 'TI26 - Técnico em Informática' },
+  { value: 'TI27', label: 'TI27 - Técnico em Informática' },
+  { value: 'TI28', label: 'TI28 - Técnico em Informática' },
+  { value: 'TL16', label: 'TL16 - Técnico em Logística' },
+  { value: 'TL17', label: 'TL17 - Técnico em Logística' },
+  { value: 'TL18', label: 'TL18 - Técnico em Logística' },
+  { value: 'TL19', label: 'TL19 - Técnico em Logística' },
+  { value: 'TL20', label: 'TL20 - Técnico em Logística' },
+  { value: 'TL21', label: 'TL21 - Técnico em Logística' },
+  { value: 'TS', label: 'TS - Técnico em Segurança' }
+];
+
+const TeacherPortal = () => {
+  const { teacher, isLoading, register, login, logout } = useTeacherAuth();
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleSubmit = async () => {
+    if (!name.trim() || !password.trim()) {
+      return;
+    }
+
+    const success = isRegistering 
+      ? await register(name, password)
+      : await login(name, password);
+
+    if (success) {
+      setName('');
+      setPassword('');
+    }
+  };
+
+  // If teacher is logged in, show the dashboard
+  if (teacher) {
+    return (
+      <div className="max-w-4xl mx-auto px-4">
+        <Card className="p-6 md:p-8 shadow-xl border-0 bg-white rounded-2xl">
+          <div className="space-y-6">
+            {/* Header with teacher info and logout */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-gray-200">
+              <div>
+                <h2 className="text-xl md:text-2xl font-bold text-school-blue-700">
+                  Painel do Professor
+                </h2>
+                <p className="text-school-blue-600">
+                  Bem-vindo, {teacher.name}
+                </p>
+              </div>
+              <Button
+                onClick={logout}
+                variant="outline"
+                className="border-school-blue-600 text-school-blue-600 hover:bg-school-blue-50"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Deslogar
+              </Button>
+            </div>
+
+            {/* Teacher Code Manager Component */}
+            <TeacherCodeManager teacher={teacher} classOptions={CLASS_OPTIONS} />
+
+            {/* Logo da escola */}
+            <div className="text-center pt-4">
+              <img 
+                src="https://i.imgur.com/RONu0Cc.png" 
+                alt="Logo da Escola" 
+                className="mx-auto h-16 md:h-20 w-auto object-contain"
+              />
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // Login/Register form
+  return (
+    <div className="max-w-lg mx-auto px-4">
+      <Card className="p-6 md:p-8 shadow-xl border-0 bg-white rounded-2xl">
+        <div className="space-y-6">
+          <div className="text-center space-y-2">
+            <GraduationCap className="w-12 h-12 text-school-blue-600 mx-auto" />
+            <h2 className="text-xl md:text-2xl font-bold text-school-blue-700">
+              {isRegistering ? "Cadastro de Professor" : "Login do Professor"}
+            </h2>
+            <p className="text-school-blue-600">
+              {isRegistering 
+                ? "Cadastre-se para gerenciar códigos das turmas" 
+                : "Acesse o painel de gerenciamento"
+              }
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name" className="text-school-blue-700 font-semibold flex items-center text-sm md:text-base">
+                <User className="w-4 h-4 mr-2" />
+                Nome completo
+              </Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="Digite seu nome completo"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 focus:border-school-blue-500 rounded-xl"
+                disabled={isLoading}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-school-blue-700 font-semibold flex items-center text-sm md:text-base">
+                <Lock className="w-4 h-4 mr-2" />
+                Senha
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Digite sua senha"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 focus:border-school-blue-500 rounded-xl"
+                disabled={isLoading}
+                onKeyPress={(e) => e.key === 'Enter' && handleSubmit()}
+              />
+            </div>
+
+            <Button
+              onClick={handleSubmit}
+              disabled={isLoading || !name.trim() || !password.trim()}
+              className="w-full h-12 md:h-16 text-base md:text-lg font-bold bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            >
+              {isLoading ? (
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-school-blue-800 mr-2"></div>
+                  {isRegistering ? "Cadastrando..." : "Entrando..."}
+                </div>
+              ) : (
+                <div className="flex items-center">
+                  {isRegistering ? <UserPlus className="w-5 h-5 mr-2" /> : <Key className="w-5 h-5 mr-2" />}
+                  {isRegistering ? "Cadastrar" : "Entrar"}
+                </div>
+              )}
+            </Button>
+
+            <div className="text-center">
+              <Button
+                variant="ghost"
+                onClick={() => setIsRegistering(!isRegistering)}
+                className="text-school-blue-600 hover:text-school-blue-700 hover:bg-school-blue-50"
+              >
+                {isRegistering 
+                  ? "Já tem conta? Fazer login" 
+                  : "Não tem conta? Cadastrar-se"
+                }
+              </Button>
+            </div>
+          </div>
+
+          {/* Logo da escola */}
+          <div className="text-center pt-4">
+            <img 
+              src="https://i.imgur.com/RONu0Cc.png" 
+              alt="Logo da Escola" 
+              className="mx-auto h-16 md:h-20 w-auto object-contain"
+            />
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+};
+
+export default TeacherPortal;

@@ -69,6 +69,77 @@ export type Database = {
         }
         Relationships: []
       }
+      student_codes: {
+        Row: {
+          class_name: string
+          code: string
+          created_at: string
+          date: string
+          id: string
+          is_used: boolean
+          student_name: string
+          teacher_id: string
+          teacher_name: string
+          used_at: string | null
+        }
+        Insert: {
+          class_name: string
+          code: string
+          created_at?: string
+          date?: string
+          id?: string
+          is_used?: boolean
+          student_name: string
+          teacher_id: string
+          teacher_name: string
+          used_at?: string | null
+        }
+        Update: {
+          class_name?: string
+          code?: string
+          created_at?: string
+          date?: string
+          id?: string
+          is_used?: boolean
+          student_name?: string
+          teacher_id?: string
+          teacher_name?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_codes_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teachers: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          password_hash: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          password_hash: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          password_hash?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
