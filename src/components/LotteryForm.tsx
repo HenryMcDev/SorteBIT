@@ -494,12 +494,12 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
 
             <div className="space-y-2">
               <Label htmlFor="studentCode" className="text-school-blue-700 font-semibold">
-                Código do Professor *
+                Digite o código fornecido pelo professor *
               </Label>
               <Input
                 id="studentCode"
                 type="text"
-                placeholder="Digite o código fornecido pelo professor"
+                placeholder="Digite o código"
                 value={studentCode}
                 onChange={(e) => setStudentCode(e.target.value.toUpperCase())}
                 className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 focus:border-school-blue-500 rounded-xl font-mono"
