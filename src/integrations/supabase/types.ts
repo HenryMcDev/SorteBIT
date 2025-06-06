@@ -9,30 +9,63 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      class_codes: {
+        Row: {
+          class_name: string
+          code: string
+          created_at: string
+          date: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          class_name: string
+          code: string
+          created_at?: string
+          date?: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          class_name?: string
+          code?: string
+          created_at?: string
+          date?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lottery_participations: {
         Row: {
+          class_name: string | null
           created_at: string
           id: string
           lucky_number: string
           name: string
           participation_date: string
           phone: string
+          teacher_code: string | null
         }
         Insert: {
+          class_name?: string | null
           created_at?: string
           id?: string
           lucky_number: string
           name: string
           participation_date?: string
           phone: string
+          teacher_code?: string | null
         }
         Update: {
+          class_name?: string | null
           created_at?: string
           id?: string
           lucky_number?: string
           name?: string
           participation_date?: string
           phone?: string
+          teacher_code?: string | null
         }
         Relationships: []
       }

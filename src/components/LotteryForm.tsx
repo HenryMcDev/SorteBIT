@@ -1,21 +1,43 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
-import { Sparkles, Phone, User, Calendar } from 'lucide-react';
+import { Sparkles, Phone, User, Calendar, GraduationCap, Key } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useLocationVerification } from '@/hooks/useLocationVerification';
 import LocationVerification from './LocationVerification';
+import ClassCodeManager from './ClassCodeManager';
 
 interface LotteryFormProps {
   isAdminMode?: boolean;
 }
 
+const CLASS_OPTIONS = [
+  { value: 'TM11', label: 'TM11 - Técnico em Meio Ambiente' },
+  { value: 'TM12', label: 'TM12 - Técnico em Meio Ambiente' },
+  { value: 'TM13', label: 'TM13 - Técnico em Meio Ambiente' },
+  { value: 'TI25', label: 'TI25 - Técnico em Informática' },
+  { value: 'TI26', label: 'TI26 - Técnico em Informática' },
+  { value: 'TI27', label: 'TI27 - Técnico em Informática' },
+  { value: 'TI28', label: 'TI28 - Técnico em Informática' },
+  { value: 'TL16', label: 'TL16 - Técnico em Logística' },
+  { value: 'TL17', label: 'TL17 - Técnico em Logística' },
+  { value: 'TL18', label: 'TL18 - Técnico em Logística' },
+  { value: 'TL19', label: 'TL19 - Técnico em Logística' },
+  { value: 'TL20', label: 'TL20 - Técnico em Logística' },
+  { value: 'TL21', label: 'TL21 - Técnico em Logística' },
+  { value: 'TS', label: 'TS - Técnico em Segurança' }
+];
+
 const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [selectedClass, setSelectedClass] = useState('');
+  const [teacherCode, setTeacherCode] = useState('');
   const [luckyNumber, setLuckyNumber] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasParticipatedToday, setHasParticipatedToday] = useState(false);
@@ -117,14 +139,72 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
     }
   };
 
+  // Verificar se o código do professor é válido para a turma hoje
+  const validateTeacherCode = async (className: string, code: string) => {
+    if (isAdminMode) {
+      return true; // No modo admin, não validar código
+    }
+
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      
+      const { data, error } = await supabase
+        .from('class_codes')
+        .select('code')
+        .eq('class_name', className)
+        .eq('date', today)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Erro ao verificar código:', error);
+        toast({
+          title: "Erro",
+          description: "Erro ao verificar código do professor. Tente novamente.",
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      if (!data) {
+        toast({
+          title: "Código não encontrado",
+          description: "Não há código cadastrado para esta turma hoje. Consulte seu professor.",
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      if (data.code !== code.trim()) {
+        toast({
+          title: "Código inválido",
+          description: "O código informado não é válido para esta turma hoje.",
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Erro ao validar código:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao validar código. Tente novamente.",
+        variant: "destructive"
+      });
+      return false;
+    }
+  };
+
   // Salvar participação no Supabase
-  const saveParticipationToDatabase = async (name: string, phone: string, luckyNumber: string) => {
+  const saveParticipationToDatabase = async (name: string, phone: string, className: string, teacherCode: string, luckyNumber: string) => {
     try {
       const { error } = await supabase
         .from('lottery_participations')
         .insert({
           name: name.trim(),
           phone: phone.trim(),
+          class_name: className,
+          teacher_code: teacherCode.trim(),
           lucky_number: luckyNumber,
           participation_date: new Date().toISOString().split('T')[0]
         });
@@ -152,7 +232,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   };
 
   const generateLuckyNumber = async () => {
-    if (!name.trim() || !phone.trim()) {
+    if (!name.trim() || !phone.trim() || !selectedClass || !teacherCode.trim()) {
       toast({
         title: "Campos obrigatórios",
         description: "Por favor, preencha todos os campos!",
@@ -175,11 +255,20 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
         return;
       }
 
+      // Validar código do professor - pular se for modo admin
+      const isCodeValid = await validateTeacherCode(selectedClass, teacherCode);
+      
+      if (!isCodeValid && !isAdminMode) {
+        setIsGenerating(false);
+        setIsLoading(false);
+        return;
+      }
+
       // Gerar número da sorte
       const number = Math.floor(Math.random() * 9000 + 1000).toString(); // Entre 1000 e 9999
       
       // Salvar no banco de dados - sempre salvar, mesmo no modo admin
-      const saved = await saveParticipationToDatabase(name, phone, number);
+      const saved = await saveParticipationToDatabase(name, phone, selectedClass, teacherCode, number);
       
       if (saved) {
         setLuckyNumber(number);
@@ -255,6 +344,9 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
 
   return (
     <div className="max-w-lg mx-auto px-4">
+      {/* Painel de gerenciamento de códigos (apenas no modo admin) */}
+      {isAdminMode && <ClassCodeManager />}
+
       <Card className="p-6 md:p-8 shadow-xl border-0 bg-white rounded-2xl">
         <div className="space-y-6">
           {/* Indicador de modo administrativo */}
@@ -293,6 +385,41 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
               placeholder="(00) 00000-0000"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
+              className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 focus:border-school-blue-500 rounded-xl"
+              disabled={isLoading}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-school-blue-700 font-semibold flex items-center text-sm md:text-base">
+              <GraduationCap className="w-4 h-4 mr-2" />
+              Turma
+            </Label>
+            <Select value={selectedClass} onValueChange={setSelectedClass} disabled={isLoading}>
+              <SelectTrigger className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 focus:border-school-blue-500 rounded-xl">
+                <SelectValue placeholder="Selecione sua turma" />
+              </SelectTrigger>
+              <SelectContent>
+                {CLASS_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="teacherCode" className="text-school-blue-700 font-semibold flex items-center text-sm md:text-base">
+              <Key className="w-4 h-4 mr-2" />
+              Código do professor
+            </Label>
+            <Input
+              id="teacherCode"
+              type="text"
+              placeholder="Digite o código fornecido pelo professor"
+              value={teacherCode}
+              onChange={(e) => setTeacherCode(e.target.value)}
               className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 focus:border-school-blue-500 rounded-xl"
               disabled={isLoading}
             />

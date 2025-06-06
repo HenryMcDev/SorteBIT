@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 
 interface LocationState {
@@ -8,8 +9,8 @@ interface LocationState {
 }
 
 const SCHOOL_COORDINATES = {
-  latitude: -19.59865739787571,
-  longitude: -46.9366400441273
+  latitude: -19.741150,
+  longitude: -47.931570
 };
 const ALLOWED_RADIUS_METERS = 100;
 
