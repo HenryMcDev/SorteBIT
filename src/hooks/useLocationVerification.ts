@@ -9,8 +9,8 @@ interface LocationState {
 }
 
 const SCHOOL_COORDINATES = {
-  latitude: -19.741150,
-  longitude: -47.931570
+  latitude: -19.59874726883596,
+  longitude: -46.93667584055779
 };
 const ALLOWED_RADIUS_METERS = 200;
 
