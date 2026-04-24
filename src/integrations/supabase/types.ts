@@ -143,6 +143,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      mark_student_code_used: {
+        Args: { _code: string; _date: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "teacher" | "user"
