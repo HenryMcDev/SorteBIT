@@ -24,15 +24,24 @@ const DesktopBlocker = ({ onAdminAccess }: DesktopBlockerProps) => {
     setIsLoading(true);
     setError('');
 
-    // Simular um pequeno delay para parecer mais real
+    // Credenciais fixas do administrador master (henrydev / 123321@)
     setTimeout(() => {
-      if (password === 'admin753951') {
+      if (username.trim() === 'henrydev' && password === '123321@') {
+        // Persiste a sessão de admin para que o useTeacherAuth também a reconheça
+        try {
+          sessionStorage.setItem(
+            'school_teacher_session',
+            JSON.stringify({ id: 'admin-henrydev', name: 'henrydev', isAdmin: true })
+          );
+        } catch {
+          // ignore
+        }
         onAdminAccess();
       } else {
         setError('Usuário ou senha incorretos');
       }
       setIsLoading(false);
-    }, 1000);
+    }, 600);
   };
 
   return (
