@@ -59,7 +59,7 @@ const TeacherCodeManager = ({ teacher, classOptions }: TeacherCodeManagerProps) 
       const { data, error } = await supabase
         .from('student_codes')
         .select('id, student_name, class_name, code, is_used, used_at')
-        .eq('teacher_id', teacher.id)
+        .eq('teacher_name', teacher.name)
         .eq('date', today)
         .order('created_at', { ascending: false });
 
@@ -117,7 +117,6 @@ const TeacherCodeManager = ({ teacher, classOptions }: TeacherCodeManagerProps) 
       const { error } = await supabase
         .from('student_codes')
         .insert({
-          teacher_id: teacher.id,
           teacher_name: teacher.name,
           student_name: studentName.trim(),
           class_name: selectedClass,

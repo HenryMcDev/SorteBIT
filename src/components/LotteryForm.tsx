@@ -45,8 +45,8 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   const { isLoading: locationLoading, isWithinRange, error: locationError, retryLocation } = 
     useLocationVerification(isAdminMode);
 
-  const generateLuckyNumber = (): string => {
-    return String(Math.floor(Math.random() * 9000) + 1000);
+  const generateLuckyNumber = (): number => {
+    return Math.floor(Math.random() * 9000) + 1000;
   };
 
   const formatPhone = (value: string): string => {
@@ -176,7 +176,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
         teacherCode = codeValidation.codeData?.teacher_name || null;
       }
 
-      const luckyNumber = generateLuckyNumber();
+      const luckyNumber = Number(generateLuckyNumber());
       const cleanPhone = phone.replace(/\D/g, '');
 
       // Insert participation
@@ -187,7 +187,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
           phone: cleanPhone,
           class_name: className,
           lucky_number: luckyNumber,
-          teacher_code: teacherCode
+          teacher_code: teacherCode ?? ''
         });
 
       if (insertError) {
@@ -200,19 +200,15 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
         return;
       }
 
-      // Mark student code as used (only for non-admin mode)
+      // Mark student code as used (only for non-admin mode) via secure RPC
       if (!isAdminMode) {
-        const { error: updateError } = await supabase
-          .from('student_codes')
-          .update({ 
-            is_used: true, 
-            used_at: new Date().toISOString() 
-          })
-          .eq('code', studentCode.trim())
-          .eq('date', new Date().toISOString().split('T')[0]);
+        const { error: rpcError } = await supabase.rpc('mark_student_code_used', {
+          _code: studentCode.trim(),
+          _date: new Date().toISOString().split('T')[0],
+        });
 
-        if (updateError) {
-          console.error('Error updating code status:', updateError);
+        if (rpcError) {
+          console.error('Error updating code status:', rpcError);
         }
       }
 
