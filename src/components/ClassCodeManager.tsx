@@ -3,41 +3,57 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Settings, RefreshCw, Trash2 } from 'lucide-react';
+import { Settings, RefreshCw, PlusCircle } from 'lucide-react';
 
-interface StudentCodeRow {
+
+interface DailyCode {
   id: string;
   code: string;
-  student_name: string;
-  class_name: string;
-  teacher_name: string;
-  is_used: boolean;
-  used_at: string | null;
   created_at: string;
 }
 
 const ClassCodeManager = () => {
-  const [codes, setCodes] = useState<StudentCodeRow[]>([]);
+  const [currentCode, setCurrentCode] = useState<DailyCode | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
 
-  const loadCodes = async () => {
+  const formatToBrazilTime = (dateString: string) => {
+    try {
+      // Remove o "Z" e qualquer offset de fuso horário (+00:00, -03:00) 
+      // para forçar o construtor Date a assumir o fuso local da máquina,
+      // evitando assim aplicar a subtração de horas duplamente.
+      const localDateString = dateString.replace(/(Z|[+-]\d{2}(?::?\d{2})?)$/, '');
+      const d = new Date(localDateString);
+
+      const formatted = new Intl.DateTimeFormat('pt-BR', {
+        dateStyle: 'short',
+        timeStyle: 'short'
+      }).format(d);
+      
+      return formatted.replace(/,?\s+/, ' às ');
+    } catch (e) {
+      return dateString;
+    }
+  };
+
+  const loadCurrentCode = async () => {
     setIsLoading(true);
     try {
-      const today = new Date().toISOString().split('T')[0];
       const { data, error } = await supabase
-        .from('student_codes')
-        .select('id, code, student_name, class_name, teacher_name, is_used, used_at, created_at')
-        .eq('date', today)
-        .order('created_at', { ascending: false });
+        .from('daily_codes')
+        .select('id, code, created_at')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (error) throw error;
-      setCodes(data || []);
+      setCurrentCode(data);
     } catch (error) {
-      console.error('Erro ao carregar códigos:', error);
+      console.error('Erro ao carregar código do dia:', error);
       toast({
         title: 'Erro',
-        description: 'Não foi possível carregar os códigos.',
+        description: 'Não foi possível carregar o código do dia.',
         variant: 'destructive',
       });
     } finally {
@@ -46,83 +62,90 @@ const ClassCodeManager = () => {
   };
 
   useEffect(() => {
-    loadCodes();
+    loadCurrentCode();
   }, []);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este código?')) return;
-    const { error } = await supabase.from('student_codes').delete().eq('id', id);
-    if (error) {
-      toast({ title: 'Erro', description: 'Erro ao excluir código.', variant: 'destructive' });
-      return;
+  const generateNewCode = async () => {
+    setIsGenerating(true);
+    try {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let newCode = '';
+      for (let i = 0; i < 6; i++) {
+        newCode += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      
+      const { error } = await supabase.from('daily_codes').insert({
+        code: newCode
+      });
+
+      if (error) throw error;
+      
+      toast({ title: 'Novo código gerado com sucesso!' });
+      loadCurrentCode();
+    } catch (error) {
+      console.error('Erro ao gerar novo código:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao gerar o código do dia.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsGenerating(false);
     }
-    toast({ title: 'Código excluído.' });
-    loadCodes();
   };
 
   return (
     <Card className="p-6 mb-6 bg-school-blue-50 border-2 border-school-blue-200">
-      <div className="space-y-4">
+      <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Settings className="w-5 h-5 text-school-blue-700" />
-            <h3 className="text-lg font-bold text-school-blue-700">
-              Códigos de Alunos (Hoje)
+            <Settings className="w-6 h-6 text-school-blue-700" />
+            <h3 className="text-xl font-bold text-school-blue-700">
+              Gerador de Código do Dia
             </h3>
           </div>
           <Button
-            onClick={loadCodes}
+            onClick={loadCurrentCode}
             variant="outline"
             size="sm"
             disabled={isLoading}
             className="border-school-blue-300 text-school-blue-700"
           >
-            <RefreshCw className={`w-4 h-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Atualizar
           </Button>
         </div>
 
-        {codes.length === 0 ? (
-          <p className="text-center text-school-blue-600 py-6">
-            Nenhum código gerado hoje.
-          </p>
-        ) : (
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {codes.map((c) => (
-              <div
-                key={c.id}
-                className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-lg border-2 ${
-                  c.is_used ? 'bg-gray-50 border-gray-200' : 'bg-white border-school-yellow-200'
-                }`}
-              >
-                <div className="flex-1">
-                  <p className="font-semibold text-school-blue-700">{c.student_name}</p>
-                  <p className="text-xs text-gray-600">
-                    {c.class_name} • Prof. {c.teacher_name}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`px-2 py-1 rounded text-xs font-mono ${
-                    c.is_used ? 'bg-gray-200 text-gray-600' : 'bg-school-yellow-100 text-school-blue-700'
-                  }`}>
-                    {c.code}
-                  </span>
-                  <span className={`text-xs ${c.is_used ? 'text-gray-500' : 'text-green-600'}`}>
-                    {c.is_used ? 'Usado' : 'Disponível'}
-                  </span>
-                  <Button
-                    onClick={() => handleDelete(c.id)}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0 border-red-300 text-red-600 hover:bg-red-50"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
-                </div>
+        <div className="flex flex-col items-center justify-center p-8 bg-white rounded-xl border-2 border-school-blue-100 shadow-inner">
+          {currentCode ? (
+            <div className="text-center space-y-4">
+              <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Código Atual</p>
+              <div className="text-5xl font-mono font-bold text-school-blue-800 tracking-widest bg-school-yellow-100 py-4 px-8 rounded-lg border-2 border-school-yellow-300">
+                {currentCode.code}
               </div>
-            ))}
-          </div>
-        )}
+              <p className="text-sm text-gray-500">
+                Gerado em: {formatToBrazilTime(currentCode.created_at)}
+              </p>
+            </div>
+          ) : (
+            <p className="text-center text-gray-500 py-6">
+              Nenhum código gerado para hoje ainda.
+            </p>
+          )}
+        </div>
+
+        <Button
+          onClick={generateNewCode}
+          disabled={isGenerating}
+          className="w-full h-14 text-lg font-bold bg-school-blue-600 hover:bg-school-blue-700 text-white rounded-xl shadow-md transition-transform hover:scale-[1.02]"
+        >
+          {isGenerating ? (
+            <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
+          ) : (
+            <PlusCircle className="w-5 h-5 mr-2" />
+          )}
+          Gerar Novo Código
+        </Button>
       </div>
     </Card>
   );

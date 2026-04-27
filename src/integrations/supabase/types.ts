@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      daily_codes: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
       lottery_participations: {
         Row: {
           class_name: string

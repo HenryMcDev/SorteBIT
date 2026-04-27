@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
-import { Dice1, MapPin, AlertCircle, Crown, Camera, RefreshCw } from 'lucide-react';
+import { Dice1, MapPin, AlertCircle, Crown, Camera, RefreshCw, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useLocationVerification } from '@/hooks/useLocationVerification';
@@ -23,6 +23,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [photo, setPhoto] = useState<string | null>(null);
   const [isValidatingPhoto, setIsValidatingPhoto] = useState(false);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
   const webcamRef = useRef<Webcam>(null);
   const { toast } = useToast();
 
@@ -467,7 +468,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
 
             <div className="space-y-2">
               <Label htmlFor="studentCode" className="text-school-blue-700 font-semibold">
-                Digite o código fornecido pelo professor *
+                Digite o código do dia *
               </Label>
               <Input
                 id="studentCode"
@@ -485,28 +486,16 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                 Foto com o Uniforme *
               </Label>
               {!photo ? (
-                <div className="flex flex-col items-center gap-3">
-                  <div className="overflow-hidden rounded-xl border-2 border-gray-200 w-full max-w-sm aspect-video relative bg-black">
-                    <Webcam
-                      audio={false}
-                      ref={webcamRef}
-                      screenshotFormat="image/jpeg"
-                      videoConstraints={{ facingMode: "user" }}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <Button 
-                    type="button" 
-                    onClick={capturePhoto}
-                    className="w-full bg-school-blue-600 hover:bg-school-blue-700 text-white"
-                  >
-                    <Camera className="w-4 h-4 mr-2" />
-                    Tirar Foto
-                  </Button>
-                </div>
+                <Button 
+                  type="button" 
+                  onClick={() => setIsCameraOpen(true)}
+                  className="w-full h-16 md:h-20 bg-school-blue-600 hover:bg-school-blue-700 text-white rounded-xl flex items-center justify-center"
+                >
+                  <Camera className="w-8 h-8" />
+                </Button>
               ) : (
                 <div className="flex flex-col items-center gap-3">
-                  <div className="overflow-hidden rounded-xl border-2 border-school-blue-500 w-full max-w-sm aspect-video relative">
+                  <div className="overflow-hidden rounded-xl border-2 border-school-blue-500 w-full max-w-sm aspect-[3/4] relative">
                     <img src={photo} alt="Selfie capturada" className="w-full h-full object-cover" />
                   </div>
                   <Button 
@@ -550,6 +539,45 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
           </div>
         </div>
       </Card>
+
+      {/* Camera Overlay */}
+      {isCameraOpen && (
+        <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center">
+          <div className="relative w-full h-full max-w-md mx-auto flex flex-col bg-black">
+            <Webcam
+              audio={false}
+              ref={webcamRef}
+              screenshotFormat="image/jpeg"
+              videoConstraints={{ facingMode: "user", aspectRatio: 9/16 }}
+              className="w-full h-full object-cover"
+            />
+            
+            {/* Overlay controls */}
+            <div className="absolute top-4 right-4">
+              <Button
+                type="button"
+                onClick={() => setIsCameraOpen(false)}
+                className="w-10 h-10 rounded-full bg-black/50 hover:bg-black/80 text-white border-2 border-white flex items-center justify-center p-0"
+              >
+                <X className="w-6 h-6" />
+              </Button>
+            </div>
+            
+            <div className="absolute bottom-8 left-0 right-0 flex justify-center px-4">
+              <Button
+                type="button"
+                onClick={() => {
+                  capturePhoto();
+                  setIsCameraOpen(false);
+                }}
+                className="rounded-full w-20 h-20 flex items-center justify-center bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 shadow-[0_0_15px_rgba(0,0,0,0.5)] border-4 border-white transition-transform hover:scale-105"
+              >
+                <Camera className="w-10 h-10" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
