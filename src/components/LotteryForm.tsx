@@ -1,45 +1,41 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
+import Webcam from 'react-webcam';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dice1, MapPin, AlertCircle, Crown, Users } from 'lucide-react';
+import { Dice1, MapPin, AlertCircle, Crown, Camera, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useLocationVerification } from '@/hooks/useLocationVerification';
 import ClassCodeManager from './ClassCodeManager';
-import AdminTeacherPanel from './AdminTeacherPanel';
 
-const CLASS_OPTIONS = [
-  { value: 'TM11', label: 'TM11 - Técnico em Meio Ambiente' },
-  { value: 'TM12', label: 'TM12 - Técnico em Meio Ambiente' },
-  { value: 'TM13', label: 'TM13 - Técnico em Meio Ambiente' },
-  { value: 'TI25', label: 'TI25 - Técnico em Informática' },
-  { value: 'TI26', label: 'TI26 - Técnico em Informática' },
-  { value: 'TI27', label: 'TI27 - Técnico em Informática' },
-  { value: 'TI28', label: 'TI28 - Técnico em Informática' },
-  { value: 'TL16', label: 'TL16 - Técnico em Logística' },
-  { value: 'TL17', label: 'TL17 - Técnico em Logística' },
-  { value: 'TL18', label: 'TL18 - Técnico em Logística' },
-  { value: 'TL19', label: 'TL19 - Técnico em Logística' },
-  { value: 'TL20', label: 'TL20 - Técnico em Logística' },
-  { value: 'TL21', label: 'TL21 - Técnico em Logística' },
-  { value: 'TS', label: 'TS - Técnico em Segurança' }
-];
 
 interface LotteryFormProps {
   isAdminMode?: boolean;
 }
 
 const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
-  const [activeTab, setActiveTab] = useState<'lottery' | 'codes' | 'teachers'>('lottery');
+  const [activeTab, setActiveTab] = useState<'lottery' | 'codes'>('lottery');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [className, setClassName] = useState('');
   const [studentCode, setStudentCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [isValidatingPhoto, setIsValidatingPhoto] = useState(false);
+  const webcamRef = useRef<Webcam>(null);
   const { toast } = useToast();
+
+  const capturePhoto = useCallback(() => {
+    const imageSrc = webcamRef.current?.getScreenshot();
+    if (imageSrc) {
+      setPhoto(imageSrc);
+    }
+  }, [webcamRef]);
+
+  const retakePhoto = () => {
+    setPhoto(null);
+  };
 
   // Use location verification only for non-admin mode
   const { isLoading: locationLoading, isWithinRange, error: locationError, retryLocation } = 
@@ -62,7 +58,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
     setPhone(formatted);
   };
 
-  const validateStudentCode = async (name: string, code: string, className: string) => {
+  const validateStudentCode = async (name: string, code: string) => {
     try {
       // Normalize name for comparison (remove extra spaces, convert to lowercase)
       const normalizedInputName = name.trim().toLowerCase();
@@ -91,11 +87,6 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
       // Check if names match (case insensitive)
       if (normalizedInputName !== normalizedStoredName) {
         return { valid: false, message: 'Nome não confere com o código fornecido.' };
-      }
-
-      // Check if class matches
-      if (className !== codeData.class_name) {
-        return { valid: false, message: 'Turma não confere com o código fornecido.' };
       }
 
       return { valid: true, message: 'Código válido!', codeData };
@@ -137,7 +128,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!name.trim() || !phone.trim() || !className || (!isAdminMode && !studentCode.trim())) {
+    if (!name.trim() || !phone.trim() || (!isAdminMode && (!studentCode.trim() || !photo))) {
       toast({
         title: "Erro",
         description: "Por favor, preencha todos os campos obrigatórios.",
@@ -162,9 +153,8 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
 
       let teacherCode = null;
 
-      // Validate student code for non-admin mode
       if (!isAdminMode) {
-        const codeValidation = await validateStudentCode(name, studentCode, className);
+        const codeValidation = await validateStudentCode(name, studentCode);
         if (!codeValidation.valid) {
           toast({
             title: "Erro",
@@ -174,6 +164,43 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
           return;
         }
         teacherCode = codeValidation.codeData?.teacher_name || null;
+
+        setIsValidatingPhoto(true);
+        try {
+          const webhookResponse = await fetch('https://automacao-n8n.dczbc9.easypanel.host/webhook/sortebit', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              name: name.trim(),
+              phone: phone.replace(/\D/g, ''),
+              photoBase64: photo,
+            }),
+          });
+
+          if (!webhookResponse.ok) {
+            toast({
+              title: "Erro",
+              description: "O uniforme não foi validado.",
+              variant: "destructive"
+            });
+            setIsValidatingPhoto(false);
+            setIsSubmitting(false);
+            return;
+          }
+        } catch (webhookError) {
+          console.error("Webhook error:", webhookError);
+          toast({
+            title: "Erro",
+            description: "Falha ao validar a foto. Tente novamente.",
+            variant: "destructive"
+          });
+          setIsValidatingPhoto(false);
+          setIsSubmitting(false);
+          return;
+        }
+        setIsValidatingPhoto(false);
       }
 
       const luckyNumber = Number(generateLuckyNumber());
@@ -185,10 +212,9 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
         .insert({
           name: name.trim(),
           phone: cleanPhone,
-          class_name: className,
           lucky_number: luckyNumber,
           teacher_code: teacherCode ?? ''
-        });
+        } as any);
 
       if (insertError) {
         console.error('Error inserting participation:', insertError);
@@ -215,8 +241,8 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
       // Clear form
       setName('');
       setPhone('');
-      setClassName('');
       setStudentCode('');
+      setPhoto(null);
 
       toast({
         title: "🎉 Participação registrada!",
@@ -307,22 +333,9 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
               <Crown className="w-4 h-4 mr-2" />
               Códigos
             </Button>
-            <Button
-              onClick={() => setActiveTab('teachers')}
-              variant={activeTab === 'teachers' ? 'default' : 'outline'}
-              className={`flex-1 min-w-32 ${
-                activeTab === 'teachers' 
-                  ? 'bg-school-blue-600 text-white' 
-                  : 'border-school-blue-600 text-school-blue-600 hover:bg-school-blue-50'
-              }`}
-            >
-              <Users className="w-4 h-4 mr-2" />
-              Professores
-            </Button>
           </div>
         </div>
 
-        {activeTab === 'teachers' && <AdminTeacherPanel />}
         {activeTab === 'codes' && <ClassCodeManager />}
         {activeTab === 'lottery' && (
           <Card className="p-6 md:p-8 shadow-xl border-0 bg-white rounded-2xl">
@@ -370,24 +383,6 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                     maxLength={15}
                     required
                   />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="class" className="text-school-blue-700 font-semibold">
-                    Turma *
-                  </Label>
-                  <Select value={className} onValueChange={setClassName} required>
-                    <SelectTrigger className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 focus:border-school-blue-500 rounded-xl">
-                      <SelectValue placeholder="Selecione sua turma" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CLASS_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </div>
 
                 <Button
@@ -471,24 +466,6 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="class" className="text-school-blue-700 font-semibold">
-                Turma *
-              </Label>
-              <Select value={className} onValueChange={setClassName} required>
-                <SelectTrigger className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 focus:border-school-blue-500 rounded-xl">
-                  <SelectValue placeholder="Selecione sua turma" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CLASS_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="studentCode" className="text-school-blue-700 font-semibold">
                 Digite o código fornecido pelo professor *
               </Label>
@@ -503,15 +480,57 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
               />
             </div>
 
+            <div className="space-y-3">
+              <Label className="text-school-blue-700 font-semibold">
+                Foto com o Uniforme *
+              </Label>
+              {!photo ? (
+                <div className="flex flex-col items-center gap-3">
+                  <div className="overflow-hidden rounded-xl border-2 border-gray-200 w-full max-w-sm aspect-video relative bg-black">
+                    <Webcam
+                      audio={false}
+                      ref={webcamRef}
+                      screenshotFormat="image/jpeg"
+                      videoConstraints={{ facingMode: "user" }}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <Button 
+                    type="button" 
+                    onClick={capturePhoto}
+                    className="w-full bg-school-blue-600 hover:bg-school-blue-700 text-white"
+                  >
+                    <Camera className="w-4 h-4 mr-2" />
+                    Tirar Foto
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-3">
+                  <div className="overflow-hidden rounded-xl border-2 border-school-blue-500 w-full max-w-sm aspect-video relative">
+                    <img src={photo} alt="Selfie capturada" className="w-full h-full object-cover" />
+                  </div>
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    onClick={retakePhoto}
+                    className="w-full border-school-blue-600 text-school-blue-600 bg-white hover:bg-school-blue-50"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Tirar Novamente
+                  </Button>
+                </div>
+              )}
+            </div>
+
             <Button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isValidatingPhoto || !photo}
               className="w-full h-12 md:h-16 text-base md:text-lg font-bold bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
-              {isSubmitting ? (
+              {isSubmitting || isValidatingPhoto ? (
                 <div className="flex items-center">
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-school-blue-800 mr-2"></div>
-                  Processando...
+                  {isValidatingPhoto ? 'Validando uniforme...' : 'Processando...'}
                 </div>
               ) : (
                 <div className="flex items-center">

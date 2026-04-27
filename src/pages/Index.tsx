@@ -7,7 +7,7 @@ import Footer from '@/components/Footer';
 import DesktopBlocker from '@/components/DesktopBlocker';
 import { useMobileDetection } from '@/hooks/useMobileDetection';
 import { Button } from '@/components/ui/button';
-import { LogOut, GraduationCap } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 
 const Index = () => {
   const isMobile = useMobileDetection();
@@ -37,16 +37,6 @@ const Index = () => {
                 🔓 Acesso Administrativo Ativo
               </span>
               <div className="flex items-center gap-3">
-                <Link to="/teacher">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-school-blue-600 text-school-blue-600 hover:bg-school-blue-50 bg-white"
-                  >
-                    <GraduationCap className="w-4 h-4 mr-2" />
-                    Área do Professor
-                  </Button>
-                </Link>
                 <Button
                   onClick={handleLogout}
                   variant="outline"
@@ -61,24 +51,6 @@ const Index = () => {
           </div>
         )}
 
-        {/* Link para área do professor em dispositivos móveis */}
-        {isMobile && (
-          <div className="bg-school-blue-50 border-b border-school-blue-200 px-4 py-3">
-            <div className="text-center">
-              <Link to="/teacher">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-school-blue-600 text-school-blue-600 hover:bg-school-blue-100 bg-white"
-                >
-                  <GraduationCap className="w-4 h-4 mr-2" />
-                  Área do Professor
-                </Button>
-              </Link>
-            </div>
-          </div>
-        )}
-        
         <Header />
         
         <main className="py-8">
