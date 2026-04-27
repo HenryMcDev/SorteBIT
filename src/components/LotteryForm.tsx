@@ -24,6 +24,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   const [photo, setPhoto] = useState<string | null>(null);
   const [isValidatingPhoto, setIsValidatingPhoto] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [zoom, setZoom] = useState(1);
   const webcamRef = useRef<Webcam>(null);
   const { toast } = useToast();
 
@@ -488,25 +489,25 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
               {!photo ? (
                 <Button 
                   type="button" 
-                  onClick={() => setIsCameraOpen(true)}
-                  className="w-full h-16 md:h-20 bg-school-blue-600 hover:bg-school-blue-700 text-white rounded-xl flex items-center justify-center"
+                  onClick={() => { setZoom(1); setIsCameraOpen(true); }}
+                  className="w-full h-16 md:h-20 bg-school-blue-600 hover:bg-school-blue-700 text-white rounded-xl flex items-center justify-center shadow-md transition-transform hover:scale-[1.02]"
                 >
-                  <Camera className="w-8 h-8" />
+                  <Camera className="w-8 h-8 mr-3" />
+                  <span className="text-lg font-bold">Abrir Câmera</span>
                 </Button>
               ) : (
                 <div className="flex flex-col items-center gap-3">
-                  <div className="overflow-hidden rounded-xl border-2 border-school-blue-500 w-full max-w-sm aspect-[3/4] relative">
+                  <div className="overflow-hidden rounded-xl border-4 border-school-blue-500 w-full max-w-sm aspect-[3/4] relative group shadow-lg">
                     <img src={photo} alt="Selfie capturada" className="w-full h-full object-cover" />
+                    <Button
+                      type="button"
+                      onClick={retakePhoto}
+                      className="absolute top-3 right-3 w-10 h-10 p-0 rounded-full bg-red-500 hover:bg-red-600 text-white shadow-[0_0_10px_rgba(0,0,0,0.5)] border-2 border-white flex items-center justify-center opacity-90 hover:opacity-100 transition-all hover:scale-110"
+                      title="Excluir foto"
+                    >
+                      <X className="w-6 h-6" />
+                    </Button>
                   </div>
-                  <Button 
-                    type="button" 
-                    variant="outline"
-                    onClick={retakePhoto}
-                    className="w-full border-school-blue-600 text-school-blue-600 bg-white hover:bg-school-blue-50"
-                  >
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Tirar Novamente
-                  </Button>
                 </div>
               )}
             </div>
@@ -543,17 +544,18 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
       {/* Camera Overlay */}
       {isCameraOpen && (
         <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center">
-          <div className="relative w-full h-full max-w-md mx-auto flex flex-col bg-black">
+          <div className="relative w-full h-full max-w-md mx-auto flex flex-col bg-black overflow-hidden">
             <Webcam
               audio={false}
               ref={webcamRef}
               screenshotFormat="image/jpeg"
               videoConstraints={{ facingMode: "user", aspectRatio: 9/16 }}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover origin-center transition-transform duration-200"
+              style={{ transform: `scale(${zoom})` }}
             />
             
             {/* Overlay controls */}
-            <div className="absolute top-4 right-4">
+            <div className="absolute top-4 right-4 z-10">
               <Button
                 type="button"
                 onClick={() => setIsCameraOpen(false)}
@@ -563,7 +565,22 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
               </Button>
             </div>
             
-            <div className="absolute bottom-8 left-0 right-0 flex justify-center px-4">
+            {/* Zoom Control */}
+            <div className="absolute bottom-32 left-8 right-8 flex items-center gap-4 bg-black/50 p-4 rounded-2xl backdrop-blur-sm z-10">
+              <span className="text-white font-bold text-xl">-</span>
+              <input 
+                type="range" 
+                min="1" 
+                max="3" 
+                step="0.1" 
+                value={zoom} 
+                onChange={(e) => setZoom(parseFloat(e.target.value))}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-school-yellow-500"
+              />
+              <span className="text-white font-bold text-xl">+</span>
+            </div>
+
+            <div className="absolute bottom-8 left-0 right-0 flex justify-center px-4 z-10">
               <Button
                 type="button"
                 onClick={() => {
