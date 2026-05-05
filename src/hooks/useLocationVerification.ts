@@ -47,7 +47,9 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
       return;
     }
 
-    const checkLocation = async () => {
+    let watchId: number;
+
+    const checkLocation = () => {
       // Verificar se a geolocalização é suportada
       if (!navigator.geolocation) {
         setLocationState({
@@ -59,68 +61,77 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
         return;
       }
 
-      try {
-        // Solicitar permissão de localização
-        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(
-            resolve,
-            reject,
-            {
-              enableHighAccuracy: true,
-              timeout: 10000,
-              maximumAge: 300000 // 5 minutos
-            }
+      const geoErrorMessage = 'A validação falhou por falta de precisão geográfica. Sugerimos que você se aproxime de janelas ou áreas abertas da escola para facilitar a leitura do sinal.';
+
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const userLat = position.coords.latitude;
+          const userLon = position.coords.longitude;
+
+          // Calcular distância
+          const distance = calculateDistance(
+            userLat,
+            userLon,
+            SCHOOL_COORDINATES.latitude,
+            SCHOOL_COORDINATES.longitude
           );
-        });
 
-        const userLat = position.coords.latitude;
-        const userLon = position.coords.longitude;
+          console.log(`Distância da escola: ${distance.toFixed(2)} metros`);
 
-        // Calcular distância
-        const distance = calculateDistance(
-          userLat,
-          userLon,
-          SCHOOL_COORDINATES.latitude,
-          SCHOOL_COORDINATES.longitude
-        );
-
-        console.log(`Distância da escola: ${distance.toFixed(2)} metros`);
-
-        setLocationState({
-          isLoading: false,
-          isWithinRange: distance <= ALLOWED_RADIUS_METERS,
-          error: null,
-          hasPermission: true
-        });
-
-      } catch (error) {
-        console.error('Erro ao obter localização:', error);
-        let errorMessage = 'Erro ao verificar localização.';
-
-        if (error instanceof GeolocationPositionError) {
-          switch (error.code) {
-            case GeolocationPositionError.PERMISSION_DENIED:
-              errorMessage = 'Permissão de localização negada. É necessário permitir o acesso à localização para participar.';
-              break;
-            case GeolocationPositionError.POSITION_UNAVAILABLE:
-              errorMessage = 'Localização não disponível. Verifique se o GPS está ativado.';
-              break;
-            case GeolocationPositionError.TIMEOUT:
-              errorMessage = 'Tempo limite para obter localização. Tente novamente.';
-              break;
+          if (distance <= ALLOWED_RADIUS_METERS) {
+            navigator.geolocation.clearWatch(watchId);
+            setLocationState({
+              isLoading: false,
+              isWithinRange: true,
+              error: null,
+              hasPermission: true
+            });
+          } else {
+            setLocationState({
+              isLoading: false,
+              isWithinRange: false,
+              error: geoErrorMessage,
+              hasPermission: true
+            });
           }
-        }
+        },
+        (error) => {
+          console.error('Erro ao obter localização:', error);
+          let errorMessage = geoErrorMessage;
 
-        setLocationState({
-          isLoading: false,
-          isWithinRange: false,
-          error: errorMessage,
-          hasPermission: false
-        });
-      }
+          if (error.code === GeolocationPositionError.PERMISSION_DENIED) {
+            errorMessage = 'Permissão de localização negada. É necessário permitir o acesso à localização para participar.';
+            setLocationState({
+              isLoading: false,
+              isWithinRange: false,
+              error: errorMessage,
+              hasPermission: false
+            });
+            navigator.geolocation.clearWatch(watchId);
+          } else {
+            setLocationState({
+              isLoading: false,
+              isWithinRange: false,
+              error: errorMessage,
+              hasPermission: true
+            });
+          }
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 20000,
+          maximumAge: 0
+        }
+      );
     };
 
     checkLocation();
+
+    return () => {
+      if (watchId !== undefined) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
   }, [skipVerification]);
 
   const retryLocation = () => {
