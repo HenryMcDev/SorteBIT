@@ -23,6 +23,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   const [photo, setPhoto] = useState<string | null>(null);
   const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [photoValidationError, setPhotoValidationError] = useState<string | null>(null);
   const [generatedTicket, setGeneratedTicket] = useState<string | null>(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [zoom, setZoom] = useState(1.0);
@@ -137,6 +138,9 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
           if (responseData.sucesso === true) {
             isSuccess = true;
             ticketFromServer = responseData.ticket || 'SORTEBIT#VALIDADO';
+          } else if (responseData.sucesso === false) {
+            setPhotoValidationError(responseData.erro || "A análise detectou um problema na sua foto.");
+            return;
           } else {
             setAnalysisError(responseData.erro || responseData.mensagem || "A análise detectou um problema na sua foto.");
             return;
@@ -483,6 +487,28 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {photoValidationError && (
+              <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-start justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
+                <div className="flex gap-3">
+                  <AlertCircle className="w-6 h-6 text-red-500 shrink-0" />
+                  <div>
+                    <h4 className="font-bold text-red-800">Atenção</h4>
+                    <p className="text-red-600 text-sm mt-1">{photoValidationError}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPhotoValidationError(null);
+                    setPhoto(null);
+                  }}
+                  className="text-red-500 hover:text-red-700 transition-colors p-1"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="name" className="text-school-blue-700 font-semibold">
                 Nome completo *
@@ -561,7 +587,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
 
             <Button
               type="submit"
-              disabled={isSubmitting || isAnalyzingPhoto || !photo}
+              disabled={isSubmitting || isAnalyzingPhoto || !photo || photoValidationError !== null}
               className="w-full h-12 md:h-16 text-base md:text-lg font-bold bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
               {isSubmitting || isAnalyzingPhoto ? (
