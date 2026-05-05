@@ -6,6 +6,7 @@ interface LocationState {
   isWithinRange: boolean | null;
   error: string | null;
   hasPermission: boolean | null;
+  locationProgress: number;
 }
 
 const SCHOOL_COORDINATES = {
@@ -32,7 +33,8 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
     isLoading: !skipVerification,
     isWithinRange: skipVerification ? true : null,
     error: null,
-    hasPermission: skipVerification ? true : null
+    hasPermission: skipVerification ? true : null,
+    locationProgress: skipVerification ? 100 : 0
   });
 
   useEffect(() => {
@@ -42,10 +44,13 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
         isLoading: false,
         isWithinRange: true,
         error: null,
-        hasPermission: true
+        hasPermission: true,
+        locationProgress: 100
       });
       return;
     }
+
+    let watchId: number;
 
     const checkLocation = () => {
       // Verificar se a geolocalização é suportada
@@ -54,14 +59,15 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
           isLoading: false,
           isWithinRange: false,
           error: 'Geolocalização não é suportada neste dispositivo.',
-          hasPermission: false
+          hasPermission: false,
+          locationProgress: 0
         });
         return;
       }
 
-      const geoErrorMessage = 'Não foi possível confirmar a presença física. Verifique se o serviço de localização do seu dispositivo está ativo.';
+      setLocationState(prev => ({ ...prev, isLoading: true, locationProgress: 25 }));
 
-      navigator.geolocation.getCurrentPosition(
+      watchId = navigator.geolocation.watchPosition(
         (position) => {
           const userLat = position.coords.latitude;
           const userLon = position.coords.longitude;
@@ -77,57 +83,67 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
           console.log(`Distância da escola: ${distance.toFixed(2)} metros`);
 
           if (distance <= ALLOWED_RADIUS_METERS) {
+            navigator.geolocation.clearWatch(watchId);
             setLocationState({
               isLoading: false,
               isWithinRange: true,
               error: null,
-              hasPermission: true
+              hasPermission: true,
+              locationProgress: 100
             });
           } else {
-            setLocationState({
-              isLoading: false,
+            // Mantém carregando e atualiza progresso visual simulando busca
+            setLocationState(prev => ({
+              ...prev,
+              isLoading: true,
               isWithinRange: false,
-              error: geoErrorMessage,
-              hasPermission: true
-            });
+              error: null,
+              hasPermission: true,
+              locationProgress: prev.locationProgress < 85 ? prev.locationProgress + 15 : 85
+            }));
           }
         },
         (error) => {
           console.error('Erro ao obter localização:', error);
-          let errorMessage = geoErrorMessage;
 
           if (error.code === GeolocationPositionError.PERMISSION_DENIED) {
-            errorMessage = 'Permissão de localização negada. É necessário permitir o acesso à localização para participar.';
             setLocationState({
               isLoading: false,
               isWithinRange: false,
-              error: errorMessage,
-              hasPermission: false
+              error: 'Permissão de localização negada.',
+              hasPermission: false,
+              locationProgress: 0
             });
+            navigator.geolocation.clearWatch(watchId);
           } else {
-            setLocationState({
-              isLoading: false,
-              isWithinRange: false,
-              error: errorMessage,
-              hasPermission: true
-            });
+            // Continua monitorando com watchPosition apesar de pequenos erros de rede ou timeout
+            setLocationState(prev => ({
+              ...prev,
+              locationProgress: prev.locationProgress < 60 ? prev.locationProgress + 10 : prev.locationProgress
+            }));
           }
         },
         {
           enableHighAccuracy: false,
-          timeout: 8000,
+          timeout: 15000,
           maximumAge: 0
         }
       );
     };
 
     checkLocation();
+
+    return () => {
+      if (watchId !== undefined) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
   }, [skipVerification]);
 
   const retryLocation = () => {
     if (skipVerification) return;
 
-    setLocationState(prev => ({ ...prev, isLoading: true }));
+    setLocationState(prev => ({ ...prev, isLoading: true, locationProgress: 10 }));
     // Re-executar a verificação
     setTimeout(() => {
       window.location.reload();

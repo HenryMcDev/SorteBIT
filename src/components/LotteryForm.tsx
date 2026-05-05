@@ -79,8 +79,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   };
 
   // Use location verification only for non-admin mode
-  const { isLoading: locationLoading, isWithinRange, error: locationError, retryLocation } =
-    useLocationVerification(isAdminMode);
+  const { isWithinRange, locationProgress } = useLocationVerification(isAdminMode);
 
   const generateLuckyNumber = (): number => {
     return Math.floor(Math.random() * 9000) + 1000;
@@ -218,46 +217,6 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
     }
   };
 
-  // Show location loading for non-admin users
-  if (!isAdminMode && locationLoading) {
-    return (
-      <div className="max-w-lg mx-auto px-4">
-        <Card className="p-6 md:p-8 shadow-xl border-0 bg-white rounded-2xl">
-          <div className="text-center space-y-4">
-            <MapPin className="w-12 h-12 text-school-blue-600 mx-auto animate-pulse" />
-            <h2 className="text-xl font-bold text-school-blue-700">Verificando localização...</h2>
-            <p className="text-school-blue-600">
-              Por favor, permita o acesso à sua localização para participar do sorteio.
-            </p>
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-school-blue-600 mx-auto"></div>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
-  // Show location error for non-admin users
-  if (!isAdminMode && (locationError || isWithinRange === false)) {
-    return (
-      <div className="max-w-lg mx-auto px-4">
-        <Card className="p-6 md:p-8 shadow-xl border-0 bg-white rounded-2xl">
-          <div className="text-center space-y-4">
-            <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
-            <h2 className="text-xl font-bold text-red-700">Acesso Negado</h2>
-            <p className="text-red-600">
-              {locationError || "Você precisa estar dentro da escola para participar do sorteio."}
-            </p>
-            <Button
-              onClick={retryLocation}
-              className="bg-school-blue-600 hover:bg-school-blue-700 text-white"
-            >
-              Tentar Novamente
-            </Button>
-          </div>
-        </Card>
-      </div>
-    );
-  }
 
   // Admin mode interface
   if (isAdminMode) {
@@ -510,9 +469,17 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
         <div className="space-y-6">
           <div className="text-center space-y-2">
             <Dice1 className="w-12 h-12 text-school-blue-600 mx-auto" />
-            <h2 className="text-xl md:text-2xl font-bold text-school-blue-700">
-              Participe do Sorteio!
-            </h2>
+            <div className="flex items-center justify-center gap-2">
+              <h2 className="text-xl md:text-2xl font-bold text-school-blue-700">
+                Participe do Sorteio!
+              </h2>
+              {!isAdminMode && isWithinRange && (
+                <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-full uppercase flex items-center shadow-sm">
+                  <MapPin className="w-3 h-3 mr-1" />
+                  Check-in
+                </span>
+              )}
+            </div>
             <p className="text-school-blue-600">
               Preencha os dados e insira o código fornecido pelo seu professor
             </p>
@@ -538,6 +505,30 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                 >
                   <X className="w-5 h-5" />
                 </button>
+              </div>
+            )}
+
+            {!isAdminMode && (
+              <div className="space-y-2 mb-6">
+                <div className="flex justify-between items-end mb-1">
+                  <span className="text-xs font-semibold text-school-blue-600 uppercase tracking-wider">Status de Localização</span>
+                  {isWithinRange && (
+                    <span className="text-sm font-bold text-green-600 animate-in fade-in zoom-in duration-300">
+                      Você está na BIT
+                    </span>
+                  )}
+                </div>
+                <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full transition-all duration-1000 ease-in-out ${isWithinRange ? 'bg-green-500' : 'bg-school-yellow-500'}`}
+                    style={{ width: `${locationProgress}%` }}
+                  />
+                </div>
+                {!isWithinRange && (
+                  <p className="text-xs text-school-blue-600 text-center animate-pulse">
+                    Buscando sinal para confirmar presença...
+                  </p>
+                )}
               </div>
             )}
 
@@ -619,7 +610,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
 
             <Button
               type="submit"
-              disabled={isSubmitting || isAnalyzingPhoto || !photo || photoValidationError !== null}
+              disabled={isSubmitting || isAnalyzingPhoto || !photo || photoValidationError !== null || (!isAdminMode && !isWithinRange)}
               className="w-full h-12 md:h-16 text-base md:text-lg font-bold bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
               {isSubmitting || isAnalyzingPhoto ? (
@@ -630,7 +621,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
               ) : (
                 <div className="flex items-center">
                   <Dice1 className="w-5 h-5 mr-2" />
-                  Participar do Sorteio
+                  {(!isAdminMode && !isWithinRange) ? 'Aguardando confirmação de presença...' : 'Participar do Sorteio'}
                 </div>
               )}
             </Button>
