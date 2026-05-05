@@ -47,8 +47,6 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
       return;
     }
 
-    let watchId: number;
-
     const checkLocation = () => {
       // Verificar se a geolocalização é suportada
       if (!navigator.geolocation) {
@@ -61,9 +59,9 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
         return;
       }
 
-      const geoErrorMessage = 'A validação falhou por falta de precisão geográfica. Sugerimos que você se aproxime de janelas ou áreas abertas da escola para facilitar a leitura do sinal.';
+      const geoErrorMessage = 'Não foi possível confirmar a presença física. Verifique se o serviço de localização do seu dispositivo está ativo.';
 
-      watchId = navigator.geolocation.watchPosition(
+      navigator.geolocation.getCurrentPosition(
         (position) => {
           const userLat = position.coords.latitude;
           const userLon = position.coords.longitude;
@@ -79,7 +77,6 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
           console.log(`Distância da escola: ${distance.toFixed(2)} metros`);
 
           if (distance <= ALLOWED_RADIUS_METERS) {
-            navigator.geolocation.clearWatch(watchId);
             setLocationState({
               isLoading: false,
               isWithinRange: true,
@@ -107,7 +104,6 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
               error: errorMessage,
               hasPermission: false
             });
-            navigator.geolocation.clearWatch(watchId);
           } else {
             setLocationState({
               isLoading: false,
@@ -118,20 +114,14 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
           }
         },
         {
-          enableHighAccuracy: true,
-          timeout: 20000,
+          enableHighAccuracy: false,
+          timeout: 8000,
           maximumAge: 0
         }
       );
     };
 
     checkLocation();
-
-    return () => {
-      if (watchId !== undefined) {
-        navigator.geolocation.clearWatch(watchId);
-      }
-    };
   }, [skipVerification]);
 
   const retryLocation = () => {
