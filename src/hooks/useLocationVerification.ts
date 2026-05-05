@@ -12,18 +12,18 @@ const SCHOOL_COORDINATES = {
   latitude: -19.59876692284,
   longitude: -46.93668532359792
 };
-const ALLOWED_RADIUS_METERS = 100;
+const ALLOWED_RADIUS_METERS = 200;
 
 // Função para calcular a distância entre duas coordenadas usando a fórmula de Haversine
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
   const R = 6371000; // Raio da Terra em metros
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 };
 
@@ -96,7 +96,7 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
       } catch (error) {
         console.error('Erro ao obter localização:', error);
         let errorMessage = 'Erro ao verificar localização.';
-        
+
         if (error instanceof GeolocationPositionError) {
           switch (error.code) {
             case GeolocationPositionError.PERMISSION_DENIED:
@@ -125,7 +125,7 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
 
   const retryLocation = () => {
     if (skipVerification) return;
-    
+
     setLocationState(prev => ({ ...prev, isLoading: true }));
     // Re-executar a verificação
     setTimeout(() => {
