@@ -102,7 +102,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name.trim() || !phone.trim() || (!isAdminMode && (!studentCode.trim() || !photo))) {
+    if (!name.trim() || !phone.trim() || (!isAdminMode && !studentCode.trim())) {
       toast({
         title: "Erro",
         description: "Por favor, preencha todos os campos obrigatórios.",
@@ -111,7 +111,17 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
       return;
     }
 
+    // Verificação de segurança da memória para dispositivos móveis
+    if (!isAdminMode) {
+      if (!photo || typeof photo !== 'string' || photo.length < 50) {
+        setPhotoValidationError("Sua foto não foi carregada corretamente. O navegador pode ter descartado o arquivo por falta de memória. Por favor, capture a foto novamente.");
+        setPhoto(null);
+        return;
+      }
+    }
+
     setIsSubmitting(true);
+    setPhotoValidationError(null); // Limpa alertas anteriores
 
     try {
       let isSuccess = false;
@@ -120,17 +130,20 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
       if (!isAdminMode) {
         setIsAnalyzingPhoto(true);
         try {
+          // Envolvemos toda a lógica de serialização e fetch em um try-catch robusto
+          const payload = JSON.stringify({
+            nome: name.trim(),
+            telefone: phone.replace(/\D/g, ''),
+            codigo: studentCode.trim(),
+            fotoBase64: photo,
+          });
+
           const webhookResponse = await fetch('https://bitn8n.infinityflowapp.com/webhook/sortebit', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-              nome: name.trim(),
-              telefone: phone.replace(/\D/g, ''),
-              codigo: studentCode.trim(),
-              fotoBase64: photo,
-            }),
+            body: payload,
           });
 
           const responseData = await webhookResponse.json();
@@ -139,15 +152,34 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
             isSuccess = true;
             ticketFromServer = responseData.ticket || 'SORTEBIT#VALIDADO';
           } else if (responseData.sucesso === false) {
-            setPhotoValidationError(responseData.erro || "A análise detectou um problema na sua foto.");
+            // Captura o texto exato da API e evita crash no React com tipos inesperados
+            const erroMensagem = typeof responseData.erro === 'string' 
+              ? responseData.erro 
+              : (responseData.erro ? JSON.stringify(responseData.erro) : "A validação falhou.");
+            
+            // Mantém a compatibilidade com a trava diária do sistema
+            if (erroMensagem.includes('já registrou a participação')) {
+              setAnalysisError(erroMensagem);
+            } else {
+              setPhotoValidationError(erroMensagem);
+            }
             return;
           } else {
-            setAnalysisError(responseData.erro || responseData.mensagem || "A análise detectou um problema na sua foto.");
+            const erroGenerico = typeof responseData.erro === 'string' 
+              ? responseData.erro 
+              : (responseData.mensagem || "A análise detectou um problema na sua foto.");
+            
+            if (String(erroGenerico).includes('já registrou a participação')) {
+              setAnalysisError(String(erroGenerico));
+            } else {
+              setPhotoValidationError(String(erroGenerico));
+            }
             return;
           }
         } catch (error: any) {
           console.error("Webhook error:", error);
-          setAnalysisError("Não foi possível conectar ao servidor. Verifique sua internet ou tente novamente mais tarde.");
+          // Atualiza estado de erro ao invés de manipular o DOM
+          setPhotoValidationError("Não foi possível conectar ao servidor. Verifique sua internet ou tente novamente mais tarde.");
           return;
         } finally {
           setIsAnalyzingPhoto(false);
