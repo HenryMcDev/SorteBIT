@@ -68,7 +68,7 @@ const ClassCodeManager = () => {
   const generateNewCode = async () => {
     setIsGenerating(true);
     try {
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      const chars = '0123456789';
       let newCode = '';
       for (let i = 0; i < 6; i++) {
         newCode += chars.charAt(Math.floor(Math.random() * chars.length));
