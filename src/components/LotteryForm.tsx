@@ -107,7 +107,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   };
 
   // Use location verification only for non-admin mode
-  const { isWithinRange, locationProgress, showContingency } = useLocationVerification(isAdminMode);
+  const { isWithinRange, locationProgress, showContingency, latitude, longitude, distance } = useLocationVerification(isAdminMode);
 
   const generateLuckyNumber = (): number => {
     return Math.floor(Math.random() * 9000) + 1000;
@@ -541,6 +541,21 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                     />
                   </div>
                 )}
+
+                <div className="flex items-center justify-center gap-2 text-xs text-school-blue-600/70 mb-2 font-mono bg-school-blue-50/50 py-1.5 px-3 rounded-md w-fit mx-auto">
+                  <MapPin className="w-3.5 h-3.5" />
+                  <span className="font-semibold">Localização:</span>
+                  {latitude !== null && longitude !== null ? (
+                    <span>{latitude.toFixed(5)}, {longitude.toFixed(5)}</span>
+                  ) : (
+                    <span>Buscando...</span>
+                  )}
+                  {distance !== null && (
+                    <span className="ml-1 border-l border-school-blue-200/50 pl-2">
+                      {distance.toFixed(1)}m
+                    </span>
+                  )}
+                </div>
 
                 {isWithinRange && (
                   <div className="text-center animate-in fade-in zoom-in duration-300 mb-2">

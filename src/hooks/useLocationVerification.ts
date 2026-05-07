@@ -8,6 +8,9 @@ interface LocationState {
   hasPermission: boolean | null;
   locationProgress: number;
   showContingency: boolean;
+  latitude: number | null;
+  longitude: number | null;
+  distance: number | null;
 }
 
 const SCHOOL_COORDINATES = {
@@ -36,7 +39,10 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
     error: null,
     hasPermission: skipVerification ? true : null,
     locationProgress: skipVerification ? 100 : 0,
-    showContingency: false
+    showContingency: false,
+    latitude: null,
+    longitude: null,
+    distance: null
   });
 
   useEffect(() => {
@@ -48,7 +54,10 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
         error: null,
         hasPermission: true,
         locationProgress: 100,
-        showContingency: false
+        showContingency: false,
+        latitude: null,
+        longitude: null,
+        distance: null
       });
       return;
     }
@@ -66,7 +75,10 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
           error: 'Geolocalização não é suportada neste dispositivo.',
           hasPermission: false,
           locationProgress: 0,
-          showContingency: true
+          showContingency: true,
+          latitude: null,
+          longitude: null,
+          distance: null
         });
         return;
       }
@@ -98,7 +110,10 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
               error: null,
               hasPermission: true,
               locationProgress: 100,
-              showContingency: false
+              showContingency: false,
+              latitude: userLat,
+              longitude: userLon,
+              distance: distance
             });
           } else {
             // Mantém carregando e atualiza progresso visual simulando busca
@@ -108,7 +123,10 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
               isWithinRange: false,
               error: null,
               hasPermission: true,
-              locationProgress: prev.locationProgress < 85 ? prev.locationProgress + (highAccuracy ? 5 : 10) : 85
+              locationProgress: prev.locationProgress < 85 ? prev.locationProgress + (highAccuracy ? 5 : 10) : 85,
+              latitude: userLat,
+              longitude: userLon,
+              distance: distance
             }));
           }
         },
@@ -122,7 +140,10 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
               error: 'Permissão de localização negada.',
               hasPermission: false,
               locationProgress: 0,
-              showContingency: true
+              showContingency: true,
+              latitude: null,
+              longitude: null,
+              distance: null
             });
             if (watchId !== null) navigator.geolocation.clearWatch(watchId);
             clearTimeout(fallbackTimeout);
