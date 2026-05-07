@@ -11,12 +11,12 @@ interface LocationVerificationProps {
   onRetry: () => void;
 }
 
-const LocationVerification = ({ 
-  isLoading, 
-  isWithinRange, 
-  error, 
-  hasPermission, 
-  onRetry 
+const LocationVerification = ({
+  isLoading,
+  isWithinRange,
+  error,
+  hasPermission,
+  onRetry
 }: LocationVerificationProps) => {
   // Loading state
   if (isLoading) {
@@ -35,9 +35,9 @@ const LocationVerification = ({
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-school-blue-600"></div>
             </div>
             <div className="mt-6">
-              <img 
-                src="https://i.imgur.com/RONu0Cc.png" 
-                alt="Logo da Escola" 
+              <img
+                src="/img/logo.png"
+                alt="Logo da Escola"
                 className="mx-auto h-16 md:h-20 w-auto object-contain"
               />
             </div>
@@ -68,9 +68,9 @@ const LocationVerification = ({
               Tentar novamente
             </Button>
             <div className="mt-6">
-              <img 
-                src="https://i.imgur.com/RONu0Cc.png" 
-                alt="Logo da Escola" 
+              <img
+                src="/img/logo.png"
+                alt="Logo da Escola"
                 className="mx-auto h-16 md:h-20 w-auto object-contain"
               />
             </div>
@@ -109,9 +109,9 @@ const LocationVerification = ({
               Verificar novamente
             </Button>
             <div className="mt-6">
-              <img 
-                src="https://i.imgur.com/RONu0Cc.png" 
-                alt="Logo da Escola" 
+              <img
+                src="/img/logo.png"
+                alt="Logo da Escola"
                 className="mx-auto h-16 md:h-20 w-auto object-contain"
               />
             </div>

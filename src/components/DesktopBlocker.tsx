@@ -160,7 +160,7 @@ const DesktopBlocker = ({ onAdminAccess }: DesktopBlockerProps) => {
             {/* Logo da escola */}
             <div className="pt-6">
               <img 
-                src="https://i.imgur.com/RONu0Cc.png" 
+                src="/img/logo.png" 
                 alt="Logo da Escola" 
                 className="mx-auto h-16 w-auto object-contain"
               />

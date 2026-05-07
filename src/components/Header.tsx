@@ -14,8 +14,8 @@ const Header = () => {
       </h1>
       
       <p className="text-sm md:text-lg lg:text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed px-2">
-        Preencha seu nome e número de telefone para gerar automaticamente seu número da sorte. 
-        O sorteio será realizado no final do mês!
+        Preencha seu nome, número de telefone e o codigo do sorteio para gerar automaticamente seu número da sorte. 
+        O sorteio será realizado todo final de mês na BIT!
       </p>
     </header>
   );

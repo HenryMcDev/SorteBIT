@@ -25,6 +25,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   const [errorType, setErrorType] = useState<string | null>(null);
   const [photoValidationError, setPhotoValidationError] = useState<string | null>(null);
   const [tentativasRestantes, setTentativasRestantes] = useState(3);
+  const [tentativasCodigo, setTentativasCodigo] = useState(3);
   const [generatedTicket, setGeneratedTicket] = useState<string | null>(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [zoom, setZoom] = useState(1.0);
@@ -65,7 +66,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
           setSubmissionState('idle');
         }
       }
-      
+
       const calcularTempoAteMeiaNoite = () => {
         const agora = new Date();
         const meiaNoite = new Date();
@@ -185,19 +186,22 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
             ticketFromServer = responseData.ticket || 'SORTEBIT#VALIDADO';
           } else if (responseData.sucesso === false) {
             // Captura o texto exato da API e evita crash no React com tipos inesperados
-            const erroMensagem = typeof responseData.erro === 'string' 
-              ? responseData.erro 
+            const erroMensagem = typeof responseData.erro === 'string'
+              ? responseData.erro
               : (responseData.erro ? JSON.stringify(responseData.erro) : "A validação falhou.");
-            
+
             const serverErrorType = responseData.tipoErro || null;
             setErrorType(serverErrorType);
-            
+
             // Mantém a compatibilidade com a trava diária do sistema
             if (serverErrorType === 'erroParticipacao') {
               setAnalysisError(erroMensagem);
               localStorage.setItem('bit_participacao_concluida', new Date().toDateString());
             } else if (serverErrorType === 'erroUniforme') {
               setTentativasRestantes(prev => prev > 0 ? prev - 1 : 0);
+              setAnalysisError(erroMensagem);
+            } else if (serverErrorType === 'erroCode') {
+              setTentativasCodigo(prev => prev > 0 ? prev - 1 : 0);
               setAnalysisError(erroMensagem);
             } else if (serverErrorType === 'erroSeguranca') {
               setAnalysisError(erroMensagem);
@@ -207,18 +211,21 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
             setSubmissionState('erro');
             return;
           } else {
-            const erroGenerico = typeof responseData.erro === 'string' 
-              ? responseData.erro 
+            const erroGenerico = typeof responseData.erro === 'string'
+              ? responseData.erro
               : (responseData.mensagem || "A análise detectou um problema na sua foto.");
-            
+
             const serverErrorType = responseData.tipoErro || null;
             setErrorType(serverErrorType);
-            
+
             if (serverErrorType === 'erroParticipacao') {
               setAnalysisError(String(erroGenerico));
               localStorage.setItem('bit_participacao_concluida', new Date().toDateString());
             } else if (serverErrorType === 'erroUniforme') {
               setTentativasRestantes(prev => prev > 0 ? prev - 1 : 0);
+              setAnalysisError(String(erroGenerico));
+            } else if (serverErrorType === 'erroCode') {
+              setTentativasCodigo(prev => prev > 0 ? prev - 1 : 0);
               setAnalysisError(String(erroGenerico));
             } else if (serverErrorType === 'erroSeguranca') {
               setAnalysisError(String(erroGenerico));
@@ -244,7 +251,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
         setSubmissionState('sucesso');
         const formattedTicket = ticketFromServer;
         setGeneratedTicket(formattedTicket);
-        
+
         toast({
           title: "🎉 Participação registrada!",
           description: `Seu ticket é: ${formattedTicket}`,
@@ -371,7 +378,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
 
               <div className="text-center pt-4">
                 <img
-                  src="https://i.imgur.com/RONu0Cc.png"
+                  src="/img/logo.png"
                   alt="Logo da Escola"
                   className="mx-auto h-16 md:h-20 w-auto object-contain"
                 />
@@ -392,7 +399,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
             <div className="mx-auto w-24 h-24 bg-red-50 rounded-full flex items-center justify-center">
               <Camera className="w-12 h-12 text-red-500" />
             </div>
-            
+
             <div className="flex flex-col items-center justify-center gap-3">
               <div className="flex items-center justify-center gap-2">
                 <AlertTriangle className="w-6 h-6 text-school-yellow-500 fill-current" />
@@ -404,25 +411,25 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                 Você tem mais {tentativasRestantes} tentativa{tentativasRestantes !== 1 ? 's' : ''} de 3
               </span>
             </div>
-            
+
             <p className="text-gray-600 px-2">
-              {tentativasRestantes > 0 
-                ? 'A análise detectou um problema. Vamos resolver isso para você!' 
+              {tentativasRestantes > 0
+                ? 'A análise detectou um problema. Vamos resolver isso para você!'
                 : 'Você atingiu o limite de envios. Por favor, procure um instrutor para validação manual.'}
             </p>
-            
+
             {tentativasRestantes > 0 ? (
               <>
                 <div className="bg-red-50 border border-red-100 rounded-lg p-4 max-w-sm mx-auto">
                   <p className="text-sm font-medium text-red-600">{analysisError}</p>
                 </div>
-                
+
                 <ul className="text-left text-sm md:text-base text-gray-500 space-y-2 max-w-sm mx-auto list-disc pl-5">
                   <li>Certifique-se de que o logo da BIT na sua roupa está visível</li>
                   <li>Mostre seu rosto claramente</li>
                   <li>Evite fundos com reflexos de telas</li>
                 </ul>
-                
+
                 <div className="border-2 border-yellow-200 rounded-2xl p-4 md:p-6 my-6 max-w-sm mx-auto">
                   <Button
                     onClick={() => {
@@ -450,10 +457,10 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                 </Button>
               </div>
             )}
-            
+
             <div className="text-center pt-4 border-t border-gray-100 mt-6">
               <img
-                src="https://i.imgur.com/RONu0Cc.png"
+                src="/img/logo.png"
                 alt="Logo da Escola"
                 className="mx-auto h-12 md:h-16 w-auto object-contain"
               />
@@ -472,7 +479,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
             <div className="mx-auto w-24 h-24 bg-red-50 rounded-full flex items-center justify-center">
               <Camera className="w-12 h-12 text-red-500" />
             </div>
-            
+
             <div className="flex flex-col items-center justify-center gap-3">
               <div className="flex items-center justify-center gap-2">
                 <AlertTriangle className="w-6 h-6 text-school-yellow-500 fill-current" />
@@ -481,21 +488,21 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                 </h2>
               </div>
             </div>
-            
+
             <p className="text-gray-600 px-2">
               Não foi possível validar sua foto. Por favor, certifique-se de tirar uma foto real neste momento.
             </p>
-            
+
             <div className="bg-red-50 border border-red-100 rounded-lg p-4 max-w-sm mx-auto">
               <p className="text-sm font-medium text-red-600">{analysisError}</p>
             </div>
-            
+
             <ul className="text-left text-sm md:text-base text-gray-500 space-y-2 max-w-sm mx-auto list-disc pl-5">
               <li>Tire uma foto sua agora (selfie)</li>
               <li>Não tire fotos de outras telas ou monitores</li>
               <li>Não utilize fotos impressas ou de documentos</li>
             </ul>
-            
+
             <div className="border-2 border-yellow-200 rounded-2xl p-4 md:p-6 my-6 max-w-sm mx-auto">
               <Button
                 onClick={() => {
@@ -512,10 +519,10 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                 Tentar Novamente
               </Button>
             </div>
-            
+
             <div className="text-center pt-4 border-t border-gray-100 mt-6">
               <img
-                src="https://i.imgur.com/RONu0Cc.png"
+                src="/img/logo.png"
                 alt="Logo da Escola"
                 className="mx-auto h-12 md:h-16 w-auto object-contain"
               />
@@ -535,26 +542,26 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
             <div className="mx-auto w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
               <Crown className="w-10 h-10 text-green-600" />
             </div>
-            
+
             <div>
               <div className="bg-green-100 text-green-700 px-4 py-1 rounded-full text-sm font-bold uppercase mb-4 inline-block">
                 Participação Confirmada!
               </div>
               <p className="text-gray-600 text-sm mb-2">Seu número da sorte é:</p>
-              
+
               <div className="p-6 bg-white border-2 border-dashed border-green-500 rounded-2xl shadow-lg my-4">
                 <h2 className="text-4xl md:text-5xl font-mono font-black text-green-600 tracking-tighter break-words">
                   {generatedTicket}
                 </h2>
               </div>
-              
+
               <p className="mt-4 text-xs md:text-sm text-gray-500 italic">
                 Boa sorte! O sorteio ocorre conforme o regulamento oficial da BIT.
                 <br />
                 Tire um print desta tela para guardar o seu código.
               </p>
             </div>
-            
+
             <Button
               onClick={() => {
                 setGeneratedTicket(null);
@@ -611,156 +618,192 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
             <form onSubmit={handleSubmit} className="space-y-4">
               {photoValidationError && (
                 <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-start justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
-                <div className="flex gap-3">
-                  <AlertCircle className="w-6 h-6 text-red-500 shrink-0" />
-                  <div>
-                    <h4 className="font-bold text-red-800">Atenção</h4>
-                    <p className="text-red-600 text-sm mt-1">{photoValidationError}</p>
+                  <div className="flex gap-3">
+                    <AlertCircle className="w-6 h-6 text-red-500 shrink-0" />
+                    <div>
+                      <h4 className="font-bold text-red-800">Atenção</h4>
+                      <p className="text-red-600 text-sm mt-1">{photoValidationError}</p>
+                    </div>
                   </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPhotoValidationError(null);
-                    setSubmissionState('idle');
-                    setPhoto(null);
-                  }}
-                  className="text-red-500 hover:text-red-700 transition-colors p-1"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            )}
-
-            {!isAdminMode && (showContingency || useQRContingency) && (
-              <div className="mb-6">
-                {!isWithinRange && showContingency && !useQRContingency && (
-                  <div className="text-center animate-in fade-in slide-in-from-bottom-2">
-                    <Button 
-                      type="button" 
-                      onClick={() => setUseQRContingency(true)} 
-                      variant="outline" 
-                      className="w-full text-school-blue-700 border-school-blue-300 hover:bg-school-blue-50"
-                    >
-                      <QrCode className="w-5 h-5 mr-2" />
-                      Utilizar Contingência por QR Code
-                    </Button>
-                  </div>
-                )}
-
-                {useQRContingency && (
-                  <div className="flex flex-col items-center justify-center p-3 bg-school-blue-50 border border-school-blue-200 rounded-lg mt-2">
-                    <QrCode className="w-6 h-6 text-school-blue-600 mb-1" />
-                    <span className="text-sm font-bold text-school-blue-700">
-                      Modo Contingência Ativo
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="name" className="text-school-blue-700 font-semibold">
-                Nome completo *
-              </Label>
-              <Input
-                id="name"
-                type="text"
-                placeholder="Digite seu nome completo"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 focus:border-school-blue-500 rounded-xl"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="phone" className="text-school-blue-700 font-semibold">
-                Telefone *
-              </Label>
-              <Input
-                id="phone"
-                type="tel"
-                placeholder="(00) 00000-0000"
-                value={phone}
-                onChange={handlePhoneChange}
-                className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 focus:border-school-blue-500 rounded-xl"
-                maxLength={15}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="studentCode" className="text-school-blue-700 font-semibold">
-                Digite o código do dia *
-              </Label>
-              <Input
-                id="studentCode"
-                type="text"
-                placeholder="Digite o código"
-                value={studentCode}
-                onChange={(e) => setStudentCode(e.target.value.toUpperCase())}
-                className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 focus:border-school-blue-500 rounded-xl font-mono"
-                required
-              />
-            </div>
-
-            <div className="space-y-3">
-              <Label className="text-school-blue-700 font-semibold">
-                Foto com o Uniforme *
-              </Label>
-              {!photo ? (
-                <Button
-                  type="button"
-                  onClick={() => { setZoom(1); setIsCameraOpen(true); }}
-                  className="w-full h-16 md:h-20 bg-school-blue-600 hover:bg-school-blue-700 text-white rounded-xl flex items-center justify-center shadow-md transition-transform hover:scale-[1.02]"
-                >
-                  <Camera className="w-8 h-8 mr-3" />
-                  <span className="text-lg font-bold">Abrir Câmera</span>
-                </Button>
-              ) : (
-                <div className="flex flex-col items-center gap-3">
-                  <div className="overflow-hidden rounded-xl border-4 border-school-blue-500 w-full max-w-sm aspect-[3/4] relative group shadow-lg bg-black flex items-center justify-center">
-                    <img src={photo} alt="Selfie capturada" className="w-full h-full object-contain" />
-                    <Button
-                      type="button"
-                      onClick={retakePhoto}
-                      className="absolute top-3 right-3 w-10 h-10 p-0 rounded-full bg-red-500 hover:bg-red-600 text-white shadow-[0_0_10px_rgba(0,0,0,0.5)] border-2 border-white flex items-center justify-center opacity-90 hover:opacity-100 transition-all hover:scale-110"
-                      title="Excluir foto"
-                    >
-                      <X className="w-6 h-6" />
-                    </Button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPhotoValidationError(null);
+                      setSubmissionState('idle');
+                      setPhoto(null);
+                    }}
+                    className="text-red-500 hover:text-red-700 transition-colors p-1"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
               )}
-            </div>
 
-            <Button
-              type="submit"
-              disabled={submissionState === 'enviando' || submissionState === 'processando' || !photo || photoValidationError !== null || isLocationInvalid}
-              className={`w-full h-auto py-5 text-base md:text-lg font-bold rounded-2xl shadow-sm transition-all duration-500 disabled:cursor-not-allowed ${
-                showRedButton
+              {!isAdminMode && (showContingency || useQRContingency) && (
+                <div className="mb-6">
+                  {!isWithinRange && showContingency && !useQRContingency && (
+                    <div className="text-center animate-in fade-in slide-in-from-bottom-2">
+                      <Button
+                        type="button"
+                        onClick={() => setUseQRContingency(true)}
+                        variant="outline"
+                        className="w-full text-school-blue-700 border-school-blue-300 hover:bg-school-blue-50"
+                      >
+                        <QrCode className="w-5 h-5 mr-2" />
+                        Utilizar Contingência por QR Code
+                      </Button>
+                    </div>
+                  )}
+
+                  {useQRContingency && (
+                    <div className="flex flex-col items-center justify-center p-3 bg-school-blue-50 border border-school-blue-200 rounded-lg mt-2">
+                      <QrCode className="w-6 h-6 text-school-blue-600 mb-1" />
+                      <span className="text-sm font-bold text-school-blue-700">
+                        Modo Contingência Ativo
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-school-blue-700 font-semibold">
+                  Nome completo *
+                </Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Digite seu nome completo"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 focus:border-school-blue-500 rounded-xl"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="text-school-blue-700 font-semibold">
+                  Telefone *
+                </Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="(00) 00000-0000"
+                  value={phone}
+                  onChange={handlePhoneChange}
+                  className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 focus:border-school-blue-500 rounded-xl"
+                  maxLength={15}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="studentCode" className="text-school-blue-700 font-semibold">
+                  Digite o código do dia *
+                </Label>
+                <Input
+                  id="studentCode"
+                  type="text"
+                  placeholder="Digite o código"
+                  value={studentCode}
+                  onChange={(e) => setStudentCode(e.target.value.toUpperCase())}
+                  className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 focus:border-school-blue-500 rounded-xl font-mono"
+                  required
+                  disabled={tentativasCodigo === 0}
+                />
+                {errorType === 'erroCode' && analysisError && (
+                  <div className="mt-3 bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-start justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
+                    <div className="flex gap-3">
+                      <AlertCircle className="w-6 h-6 text-red-500 shrink-0 mt-0.5" />
+                      <div>
+                        <h4 className="font-bold text-red-800 text-sm md:text-base">
+                          {tentativasCodigo > 0 ? 'Código Incorreto' : 'Tentativas Esgotadas'}
+                        </h4>
+                        <p className="text-red-600 text-xs md:text-sm mt-1">{analysisError}</p>
+                        {tentativasCodigo > 0 ? (
+                          <p className="text-red-700 text-xs md:text-sm font-medium mt-2">
+                            Você tem mais {tentativasCodigo} tentativa{tentativasCodigo !== 1 ? 's' : ''} de 3. Tente novamente ou solicite o código oficial na secretaria da BIT.
+                          </p>
+                        ) : (
+                          <p className="text-red-700 text-sm font-bold mt-2 uppercase tracking-wide">
+                            Procure o atendimento na secretaria.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    {tentativasCodigo > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAnalysisError(null);
+                          setErrorType(null);
+                          setSubmissionState('idle');
+                          setStudentCode(''); // Opcional: limpa o campo
+                        }}
+                        className="text-red-500 hover:text-red-700 transition-colors p-1"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <Label className="text-school-blue-700 font-semibold">
+                  Foto com o Uniforme *
+                </Label>
+                {!photo ? (
+                  <Button
+                    type="button"
+                    onClick={() => { setZoom(1); setIsCameraOpen(true); }}
+                    className="w-full h-16 md:h-20 bg-school-blue-600 hover:bg-school-blue-700 text-white rounded-xl flex items-center justify-center shadow-md transition-transform hover:scale-[1.02]"
+                  >
+                    <Camera className="w-8 h-8 mr-3" />
+                    <span className="text-lg font-bold">Abrir Câmera</span>
+                  </Button>
+                ) : (
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="overflow-hidden rounded-xl border-4 border-school-blue-500 w-full max-w-sm aspect-[3/4] relative group shadow-lg bg-black flex items-center justify-center">
+                      <img src={photo} alt="Selfie capturada" className="w-full h-full object-contain" />
+                      <Button
+                        type="button"
+                        onClick={retakePhoto}
+                        className="absolute top-3 right-3 w-10 h-10 p-0 rounded-full bg-red-500 hover:bg-red-600 text-white shadow-[0_0_10px_rgba(0,0,0,0.5)] border-2 border-white flex items-center justify-center opacity-90 hover:opacity-100 transition-all hover:scale-110"
+                        title="Excluir foto"
+                      >
+                        <X className="w-6 h-6" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <Button
+                type="submit"
+                disabled={submissionState === 'enviando' || submissionState === 'processando' || !photo || photoValidationError !== null || isLocationInvalid || tentativasCodigo === 0}
+                className={`w-full h-auto py-5 text-base md:text-lg font-bold rounded-2xl shadow-sm transition-all duration-500 disabled:cursor-not-allowed ${showRedButton
                   ? "bg-red-500 text-white disabled:opacity-100"
                   : "bg-school-blue-600 hover:bg-school-blue-700 text-white animate-pulse-subtle disabled:opacity-70 disabled:animate-none hover:shadow-md"
-              }`}
-            >
-              {(submissionState === 'enviando' || submissionState === 'processando') ? (
-                <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                  {submissionState === 'processando' ? 'Analisando foto, aguarde...' : 'Processando...'}
-                </div>
-              ) : (
-                <div className="flex items-center justify-center">
-                  {showRedButton ? 'Você não está na BIT' : 'Participar do sorteio'}
-                </div>
-              )}
-            </Button>
-          </form>
+                  }`}
+              >
+                {(submissionState === 'enviando' || submissionState === 'processando') ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                    {submissionState === 'processando' ? 'Analisando foto, aguarde...' : 'Processando...'}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center">
+                    {showRedButton ? 'Você não está na BIT' : 'Participar do sorteio'}
+                  </div>
+                )}
+              </Button>
+            </form>
           )}
 
           <div className="text-center pt-4">
             <img
-              src="https://i.imgur.com/RONu0Cc.png"
+              src="/img/logo.png"
               alt="Logo da Escola"
               className="mx-auto h-16 md:h-20 w-auto object-contain"
             />

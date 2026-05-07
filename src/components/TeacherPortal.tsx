@@ -75,7 +75,7 @@ const TeacherPortal = () => {
             {/* Logo da escola */}
             <div className="text-center pt-4">
               <img 
-                src="https://i.imgur.com/RONu0Cc.png" 
+                src="/img/logo.png" 
                 alt="Logo da Escola" 
                 className="mx-auto h-16 md:h-20 w-auto object-contain"
               />
@@ -163,7 +163,7 @@ const TeacherPortal = () => {
           {/* Logo da escola */}
           <div className="text-center pt-4">
             <img 
-              src="https://i.imgur.com/RONu0Cc.png" 
+              src="/img/logo.png" 
               alt="Logo da Escola" 
               className="mx-auto h-16 md:h-20 w-auto object-contain"
             />
