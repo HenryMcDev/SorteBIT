@@ -22,13 +22,16 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   const [submissionState, setSubmissionState] = useState<'idle' | 'enviando' | 'processando' | 'erro' | 'sucesso'>('idle');
   const [photo, setPhoto] = useState<string | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [errorType, setErrorType] = useState<string | null>(null);
   const [photoValidationError, setPhotoValidationError] = useState<string | null>(null);
+  const [tentativasRestantes, setTentativasRestantes] = useState(3);
   const [generatedTicket, setGeneratedTicket] = useState<string | null>(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [zoom, setZoom] = useState(1.0);
   const [tempoRestante, setTempoRestante] = useState<string>('');
   const [alreadyParticipated, setAlreadyParticipated] = useState(false);
   const [useQRContingency, setUseQRContingency] = useState(false);
+  const [isGracePeriod, setIsGracePeriod] = useState(true);
   const webcamRef = useRef<Webcam>(null);
   const { toast } = useToast();
 
@@ -41,13 +44,14 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   }, []);
 
   useEffect(() => {
-    const checkErrorForLock = (error: string | null) => {
-      if (!error) return false;
-      const lowerError = error.toLowerCase();
-      return lowerError.includes('participação') || lowerError.includes('registrada');
-    };
+    const timer = setTimeout(() => {
+      setIsGracePeriod(false);
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, []);
 
-    const isLockedError = checkErrorForLock(analysisError);
+  useEffect(() => {
+    const isLockedError = errorType === 'erroParticipacao';
 
     // Ativa o timer se o localStorage flaggar a presença ou se o webhook devolver o erro
     if (alreadyParticipated || isLockedError) {
@@ -57,6 +61,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
         // Remove do analysisError para não renderizar o modal de erro de foto
         if (isLockedError) {
           setAnalysisError(null);
+          setErrorType(null);
           setSubmissionState('idle');
         }
       }
@@ -93,7 +98,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
     } else {
       setTempoRestante('');
     }
-  }, [analysisError, alreadyParticipated]);
+  }, [errorType, alreadyParticipated]);
 
   const capturePhoto = useCallback(() => {
     const imageSrc = webcamRef.current?.getScreenshot();
@@ -184,13 +189,18 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
               ? responseData.erro 
               : (responseData.erro ? JSON.stringify(responseData.erro) : "A validação falhou.");
             
-            const lowerError = erroMensagem.toLowerCase();
-            const isLockError = lowerError.includes('participação') || lowerError.includes('registrada');
+            const serverErrorType = responseData.tipoErro || null;
+            setErrorType(serverErrorType);
             
             // Mantém a compatibilidade com a trava diária do sistema
-            if (isLockError) {
+            if (serverErrorType === 'erroParticipacao') {
               setAnalysisError(erroMensagem);
               localStorage.setItem('bit_participacao_concluida', new Date().toDateString());
+            } else if (serverErrorType === 'erroUniforme') {
+              setTentativasRestantes(prev => prev > 0 ? prev - 1 : 0);
+              setAnalysisError(erroMensagem);
+            } else if (serverErrorType === 'erroSeguranca') {
+              setAnalysisError(erroMensagem);
             } else {
               setPhotoValidationError(erroMensagem);
             }
@@ -201,12 +211,17 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
               ? responseData.erro 
               : (responseData.mensagem || "A análise detectou um problema na sua foto.");
             
-            const lowerErrorGen = String(erroGenerico).toLowerCase();
-            const isLockErrorGen = lowerErrorGen.includes('participação') || lowerErrorGen.includes('registrada');
+            const serverErrorType = responseData.tipoErro || null;
+            setErrorType(serverErrorType);
             
-            if (isLockErrorGen) {
+            if (serverErrorType === 'erroParticipacao') {
               setAnalysisError(String(erroGenerico));
               localStorage.setItem('bit_participacao_concluida', new Date().toDateString());
+            } else if (serverErrorType === 'erroUniforme') {
+              setTentativasRestantes(prev => prev > 0 ? prev - 1 : 0);
+              setAnalysisError(String(erroGenerico));
+            } else if (serverErrorType === 'erroSeguranca') {
+              setAnalysisError(String(erroGenerico));
             } else {
               setPhotoValidationError(String(erroGenerico));
             }
@@ -369,24 +384,106 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   }
 
   // Show error UI if photo validation fails
-  if (analysisError && !(analysisError.toLowerCase().includes('participação') || analysisError.toLowerCase().includes('registrada'))) {
+  if (analysisError && errorType === 'erroUniforme') {
     return (
       <div className="max-w-lg mx-auto px-4">
         <Card className="p-6 md:p-8 shadow-xl border-0 bg-white rounded-2xl">
           <div className="text-center space-y-6">
-            <div className="mx-auto w-24 h-24 bg-school-blue-50 rounded-full flex items-center justify-center">
-              <Camera className="w-12 h-12 text-school-blue-600" />
+            <div className="mx-auto w-24 h-24 bg-red-50 rounded-full flex items-center justify-center">
+              <Camera className="w-12 h-12 text-red-500" />
             </div>
             
-            <div className="flex items-center justify-center gap-2">
-              <AlertTriangle className="w-6 h-6 text-school-yellow-500 fill-current" />
-              <h2 className="text-xl md:text-2xl font-bold text-school-blue-700">
-                Sua foto precisa de um ajuste
-              </h2>
+            <div className="flex flex-col items-center justify-center gap-3">
+              <div className="flex items-center justify-center gap-2">
+                <AlertTriangle className="w-6 h-6 text-school-yellow-500 fill-current" />
+                <h2 className="text-xl md:text-2xl font-bold text-school-blue-700">
+                  {tentativasRestantes > 0 ? 'Sua foto precisa de um ajuste' : 'Tentativas Esgotadas'}
+                </h2>
+              </div>
+              <span className="text-sm font-bold px-4 py-1.5 bg-red-100 text-red-700 rounded-full border border-red-200">
+                Você tem mais {tentativasRestantes} tentativa{tentativasRestantes !== 1 ? 's' : ''} de 3
+              </span>
             </div>
             
-            <p className="text-gray-600">
-              A análise detectou um problema. Vamos resolver isso para você!
+            <p className="text-gray-600 px-2">
+              {tentativasRestantes > 0 
+                ? 'A análise detectou um problema. Vamos resolver isso para você!' 
+                : 'Você atingiu o limite de envios. Por favor, procure um instrutor para validação manual.'}
+            </p>
+            
+            {tentativasRestantes > 0 ? (
+              <>
+                <div className="bg-red-50 border border-red-100 rounded-lg p-4 max-w-sm mx-auto">
+                  <p className="text-sm font-medium text-red-600">{analysisError}</p>
+                </div>
+                
+                <ul className="text-left text-sm md:text-base text-gray-500 space-y-2 max-w-sm mx-auto list-disc pl-5">
+                  <li>Certifique-se de que o logo da BIT na sua roupa está visível</li>
+                  <li>Mostre seu rosto claramente</li>
+                  <li>Evite fundos com reflexos de telas</li>
+                </ul>
+                
+                <div className="border-2 border-yellow-200 rounded-2xl p-4 md:p-6 my-6 max-w-sm mx-auto">
+                  <Button
+                    onClick={() => {
+                      setAnalysisError(null);
+                      setErrorType(null);
+                      setSubmissionState('idle');
+                      setPhoto(null);
+                      setZoom(1);
+                      setIsCameraOpen(true);
+                    }}
+                    className="w-full h-14 md:h-16 text-base md:text-lg font-bold bg-[#FFF9D6] hover:bg-[#FFF4B3] text-school-blue-800 rounded-xl shadow-sm transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2"
+                  >
+                    <RefreshCw className="w-5 h-5 md:w-6 md:h-6" />
+                    Tentar Novamente
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="border-2 border-red-200 bg-red-50 rounded-2xl p-4 md:p-6 my-6 max-w-sm mx-auto">
+                <Button
+                  disabled
+                  className="w-full h-14 md:h-16 text-base md:text-lg font-bold bg-red-500 text-white rounded-xl shadow-sm opacity-100 flex items-center justify-center gap-2"
+                >
+                  Envio Bloqueado
+                </Button>
+              </div>
+            )}
+            
+            <div className="text-center pt-4 border-t border-gray-100 mt-6">
+              <img
+                src="https://i.imgur.com/RONu0Cc.png"
+                alt="Logo da Escola"
+                className="mx-auto h-12 md:h-16 w-auto object-contain"
+              />
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  if (analysisError && errorType === 'erroSeguranca') {
+    return (
+      <div className="max-w-lg mx-auto px-4">
+        <Card className="p-6 md:p-8 shadow-xl border-0 bg-white rounded-2xl">
+          <div className="text-center space-y-6">
+            <div className="mx-auto w-24 h-24 bg-red-50 rounded-full flex items-center justify-center">
+              <Camera className="w-12 h-12 text-red-500" />
+            </div>
+            
+            <div className="flex flex-col items-center justify-center gap-3">
+              <div className="flex items-center justify-center gap-2">
+                <AlertTriangle className="w-6 h-6 text-school-yellow-500 fill-current" />
+                <h2 className="text-xl md:text-2xl font-bold text-school-blue-700">
+                  Validação de Segurança
+                </h2>
+              </div>
+            </div>
+            
+            <p className="text-gray-600 px-2">
+              Não foi possível validar sua foto. Por favor, certifique-se de tirar uma foto real neste momento.
             </p>
             
             <div className="bg-red-50 border border-red-100 rounded-lg p-4 max-w-sm mx-auto">
@@ -394,15 +491,16 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
             </div>
             
             <ul className="text-left text-sm md:text-base text-gray-500 space-y-2 max-w-sm mx-auto list-disc pl-5">
-              <li>Certifique-se de que o logo da BIT na sua roupa está visível</li>
-              <li>Mostre seu rosto claramente</li>
-              <li>Evite fundos com reflexos de telas</li>
+              <li>Tire uma foto sua agora (selfie)</li>
+              <li>Não tire fotos de outras telas ou monitores</li>
+              <li>Não utilize fotos impressas ou de documentos</li>
             </ul>
             
             <div className="border-2 border-yellow-200 rounded-2xl p-4 md:p-6 my-6 max-w-sm mx-auto">
               <Button
                 onClick={() => {
                   setAnalysisError(null);
+                  setErrorType(null);
                   setSubmissionState('idle');
                   setPhoto(null);
                   setZoom(1);
@@ -472,6 +570,9 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
     );
   }
 
+  const isLocationInvalid = !isAdminMode && !isWithinRange && !useQRContingency;
+  const showRedButton = isLocationInvalid && !isGracePeriod;
+
   // Standard user interface
   return (
     <div className="max-w-lg mx-auto px-4">
@@ -531,43 +632,10 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
               </div>
             )}
 
-            {!isAdminMode && (
+            {!isAdminMode && (showContingency || useQRContingency) && (
               <div className="mb-6">
-                {!isWithinRange && !useQRContingency && (
-                  <div className="h-1 w-full bg-gray-100 rounded-full overflow-hidden mb-2">
-                    <div 
-                      className="h-full bg-school-blue-400 transition-all duration-1000 ease-in-out"
-                      style={{ width: `${locationProgress}%` }}
-                    />
-                  </div>
-                )}
-
-                <div className="flex items-center justify-center gap-2 text-xs text-school-blue-600/70 mb-2 font-mono bg-school-blue-50/50 py-1.5 px-3 rounded-md w-fit mx-auto">
-                  <MapPin className="w-3.5 h-3.5" />
-                  <span className="font-semibold">Localização:</span>
-                  {latitude !== null && longitude !== null ? (
-                    <span>{latitude.toFixed(5)}, {longitude.toFixed(5)}</span>
-                  ) : (
-                    <span>Buscando...</span>
-                  )}
-                  {distance !== null && (
-                    <span className="ml-1 border-l border-school-blue-200/50 pl-2">
-                      {distance.toFixed(1)}m
-                    </span>
-                  )}
-                </div>
-
-                {isWithinRange && (
-                  <div className="text-center animate-in fade-in zoom-in duration-300 mb-2">
-                    <span className="text-sm font-bold text-green-600 uppercase tracking-widest flex items-center justify-center gap-1">
-                      <CheckCircle2 className="w-4 h-4" />
-                      Você está na BIT
-                    </span>
-                  </div>
-                )}
-
                 {!isWithinRange && showContingency && !useQRContingency && (
-                  <div className="text-center mt-4 animate-in fade-in slide-in-from-bottom-2">
+                  <div className="text-center animate-in fade-in slide-in-from-bottom-2">
                     <Button 
                       type="button" 
                       onClick={() => setUseQRContingency(true)} 
@@ -669,17 +737,21 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
 
             <Button
               type="submit"
-              disabled={submissionState === 'enviando' || submissionState === 'processando' || !photo || photoValidationError !== null || (!isAdminMode && !isWithinRange && !useQRContingency)}
-              className="w-full h-auto py-5 text-base md:text-lg font-bold bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={submissionState === 'enviando' || submissionState === 'processando' || !photo || photoValidationError !== null || isLocationInvalid}
+              className={`w-full h-auto py-5 text-base md:text-lg font-bold rounded-2xl shadow-sm transition-all duration-500 disabled:cursor-not-allowed ${
+                showRedButton
+                  ? "bg-red-500 text-white disabled:opacity-100"
+                  : "bg-school-blue-600 hover:bg-school-blue-700 text-white animate-pulse-subtle disabled:opacity-70 disabled:animate-none hover:shadow-md"
+              }`}
             >
               {(submissionState === 'enviando' || submissionState === 'processando') ? (
                 <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-school-blue-800 mr-2"></div>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
                   {submissionState === 'processando' ? 'Analisando foto, aguarde...' : 'Processando...'}
                 </div>
               ) : (
                 <div className="flex items-center justify-center">
-                  {(!isAdminMode && !isWithinRange && !useQRContingency) ? 'Aguardando confirmação de presença...' : 'Participar do Sorteio'}
+                  {showRedButton ? 'Você não está na BIT' : 'Participar do sorteio'}
                 </div>
               )}
             </Button>
