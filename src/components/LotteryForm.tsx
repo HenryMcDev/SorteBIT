@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
-import { Dice1, MapPin, AlertCircle, Crown, Camera, RefreshCw, X, AlertTriangle } from 'lucide-react';
+import { Dice1, MapPin, AlertCircle, Crown, Camera, RefreshCw, X, AlertTriangle, QrCode, CheckCircle2, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useLocationVerification } from '@/hooks/useLocationVerification';
 import ClassCodeManager from './ClassCodeManager';
@@ -19,21 +19,47 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [studentCode, setStudentCode] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionState, setSubmissionState] = useState<'idle' | 'enviando' | 'processando' | 'erro' | 'sucesso'>('idle');
   const [photo, setPhoto] = useState<string | null>(null);
-  const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [photoValidationError, setPhotoValidationError] = useState<string | null>(null);
   const [generatedTicket, setGeneratedTicket] = useState<string | null>(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [zoom, setZoom] = useState(1.0);
   const [tempoRestante, setTempoRestante] = useState<string>('');
+  const [alreadyParticipated, setAlreadyParticipated] = useState(false);
+  const [useQRContingency, setUseQRContingency] = useState(false);
   const webcamRef = useRef<Webcam>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    // Verifica se a resposta do n8n contém o erro específico da trava diária
-    if (analysisError?.includes('já registrou a participação do sorteio hoje')) {
+    // Carrega o estado de persistência do localStorage
+    const today = new Date().toDateString();
+    if (localStorage.getItem('bit_participacao_concluida') === today) {
+      setAlreadyParticipated(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    const checkErrorForLock = (error: string | null) => {
+      if (!error) return false;
+      const lowerError = error.toLowerCase();
+      return lowerError.includes('participação') || lowerError.includes('registrada');
+    };
+
+    const isLockedError = checkErrorForLock(analysisError);
+
+    // Ativa o timer se o localStorage flaggar a presença ou se o webhook devolver o erro
+    if (alreadyParticipated || isLockedError) {
+      if (!alreadyParticipated) {
+        setAlreadyParticipated(true);
+        localStorage.setItem('bit_participacao_concluida', new Date().toDateString());
+        // Remove do analysisError para não renderizar o modal de erro de foto
+        if (isLockedError) {
+          setAnalysisError(null);
+          setSubmissionState('idle');
+        }
+      }
       
       const calcularTempoAteMeiaNoite = () => {
         const agora = new Date();
@@ -54,6 +80,8 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
           );
         } else {
           setTempoRestante('00:00:00');
+          localStorage.removeItem('bit_participacao_concluida');
+          setAlreadyParticipated(false);
         }
       };
 
@@ -65,7 +93,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
     } else {
       setTempoRestante('');
     }
-  }, [analysisError]);
+  }, [analysisError, alreadyParticipated]);
 
   const capturePhoto = useCallback(() => {
     const imageSrc = webcamRef.current?.getScreenshot();
@@ -79,7 +107,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   };
 
   // Use location verification only for non-admin mode
-  const { isWithinRange, locationProgress } = useLocationVerification(isAdminMode);
+  const { isWithinRange, locationProgress, showContingency } = useLocationVerification(isAdminMode);
 
   const generateLuckyNumber = (): number => {
     return Math.floor(Math.random() * 9000) + 1000;
@@ -119,7 +147,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
       }
     }
 
-    setIsSubmitting(true);
+    setSubmissionState('enviando');
     setPhotoValidationError(null); // Limpa alertas anteriores
 
     try {
@@ -127,7 +155,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
       let ticketFromServer = '';
 
       if (!isAdminMode) {
-        setIsAnalyzingPhoto(true);
+        setSubmissionState('processando');
         try {
           // Envolvemos toda a lógica de serialização e fetch em um try-catch robusto
           const payload = JSON.stringify({
@@ -156,32 +184,41 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
               ? responseData.erro 
               : (responseData.erro ? JSON.stringify(responseData.erro) : "A validação falhou.");
             
+            const lowerError = erroMensagem.toLowerCase();
+            const isLockError = lowerError.includes('participação') || lowerError.includes('registrada');
+            
             // Mantém a compatibilidade com a trava diária do sistema
-            if (erroMensagem.includes('já registrou a participação')) {
+            if (isLockError) {
               setAnalysisError(erroMensagem);
+              localStorage.setItem('bit_participacao_concluida', new Date().toDateString());
             } else {
               setPhotoValidationError(erroMensagem);
             }
+            setSubmissionState('erro');
             return;
           } else {
             const erroGenerico = typeof responseData.erro === 'string' 
               ? responseData.erro 
               : (responseData.mensagem || "A análise detectou um problema na sua foto.");
             
-            if (String(erroGenerico).includes('já registrou a participação')) {
+            const lowerErrorGen = String(erroGenerico).toLowerCase();
+            const isLockErrorGen = lowerErrorGen.includes('participação') || lowerErrorGen.includes('registrada');
+            
+            if (isLockErrorGen) {
               setAnalysisError(String(erroGenerico));
+              localStorage.setItem('bit_participacao_concluida', new Date().toDateString());
             } else {
               setPhotoValidationError(String(erroGenerico));
             }
+            setSubmissionState('erro');
             return;
           }
         } catch (error: any) {
           console.error("Webhook error:", error);
           // Atualiza estado de erro ao invés de manipular o DOM
           setPhotoValidationError("Não foi possível conectar ao servidor. Verifique sua internet ou tente novamente mais tarde.");
+          setSubmissionState('erro');
           return;
-        } finally {
-          setIsAnalyzingPhoto(false);
         }
       } else {
         isSuccess = true;
@@ -189,6 +226,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
       }
 
       if (isSuccess) {
+        setSubmissionState('sucesso');
         const formattedTicket = ticketFromServer;
         setGeneratedTicket(formattedTicket);
         
@@ -207,13 +245,12 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
 
     } catch (error) {
       console.error('Error submitting form:', error);
+      setSubmissionState('erro');
       toast({
         title: "Erro",
         description: "Erro inesperado. Tente novamente.",
         variant: "destructive"
       });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -300,10 +337,10 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
 
                 <Button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={submissionState === 'enviando' || submissionState === 'processando'}
                   className="w-full h-12 md:h-16 text-base md:text-lg font-bold bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                 >
-                  {isSubmitting ? (
+                  {(submissionState === 'enviando' || submissionState === 'processando') ? (
                     <div className="flex items-center">
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-school-blue-800 mr-2"></div>
                       Processando...
@@ -332,79 +369,49 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   }
 
   // Show error UI if photo validation fails
-  if (analysisError) {
+  if (analysisError && !(analysisError.toLowerCase().includes('participação') || analysisError.toLowerCase().includes('registrada'))) {
     return (
       <div className="max-w-lg mx-auto px-4">
         <Card className="p-6 md:p-8 shadow-xl border-0 bg-white rounded-2xl">
           <div className="text-center space-y-6">
             <div className="mx-auto w-24 h-24 bg-school-blue-50 rounded-full flex items-center justify-center">
-              {tempoRestante ? (
-                <AlertCircle className="w-12 h-12 text-school-blue-600" />
-              ) : (
-                <Camera className="w-12 h-12 text-school-blue-600" />
-              )}
+              <Camera className="w-12 h-12 text-school-blue-600" />
             </div>
             
             <div className="flex items-center justify-center gap-2">
               <AlertTriangle className="w-6 h-6 text-school-yellow-500 fill-current" />
               <h2 className="text-xl md:text-2xl font-bold text-school-blue-700">
-                {tempoRestante ? "Limite Diário Atingido" : "Sua foto precisa de um ajuste"}
+                Sua foto precisa de um ajuste
               </h2>
             </div>
             
             <p className="text-gray-600">
-              {tempoRestante 
-                ? "Você já participou do sorteio hoje." 
-                : "A análise detectou um problema. Vamos resolver isso para você!"}
+              A análise detectou um problema. Vamos resolver isso para você!
             </p>
             
             <div className="bg-red-50 border border-red-100 rounded-lg p-4 max-w-sm mx-auto">
               <p className="text-sm font-medium text-red-600">{analysisError}</p>
             </div>
             
-            {/* Renderiza o timer apenas se o erro for o de participação duplicada */}
-            {tempoRestante && (
-              <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg shadow-sm">
-                <p className="text-red-800 text-sm mb-2 uppercase tracking-wide font-medium">
-                  Nova tentativa liberada em:
-                </p>
-                <p className="text-4xl font-mono font-bold text-red-600 tracking-widest">
-                  {tempoRestante}
-                </p>
-              </div>
-            )}
-            
-            {!tempoRestante && (
-              <ul className="text-left text-sm md:text-base text-gray-500 space-y-2 max-w-sm mx-auto list-disc pl-5">
-                <li>Certifique-se de que o logo da BIT na sua roupa está visível</li>
-                <li>Mostre seu rosto claramente</li>
-                <li>Evite fundos com reflexos de telas</li>
-              </ul>
-            )}
+            <ul className="text-left text-sm md:text-base text-gray-500 space-y-2 max-w-sm mx-auto list-disc pl-5">
+              <li>Certifique-se de que o logo da BIT na sua roupa está visível</li>
+              <li>Mostre seu rosto claramente</li>
+              <li>Evite fundos com reflexos de telas</li>
+            </ul>
             
             <div className="border-2 border-yellow-200 rounded-2xl p-4 md:p-6 my-6 max-w-sm mx-auto">
               <Button
                 onClick={() => {
                   setAnalysisError(null);
-                  if (!tempoRestante) {
-                    setPhoto(null);
-                    setZoom(1);
-                    setIsCameraOpen(true);
-                  }
+                  setSubmissionState('idle');
+                  setPhoto(null);
+                  setZoom(1);
+                  setIsCameraOpen(true);
                 }}
                 className="w-full h-14 md:h-16 text-base md:text-lg font-bold bg-[#FFF9D6] hover:bg-[#FFF4B3] text-school-blue-800 rounded-xl shadow-sm transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2"
               >
-                {tempoRestante ? (
-                  <>
-                    <X className="w-5 h-5 md:w-6 md:h-6" />
-                    Fechar
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="w-5 h-5 md:w-6 md:h-6" />
-                    Tentar Novamente
-                  </>
-                )}
+                <RefreshCw className="w-5 h-5 md:w-6 md:h-6" />
+                Tentar Novamente
               </Button>
             </div>
             
@@ -451,7 +458,10 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
             </div>
             
             <Button
-              onClick={() => setGeneratedTicket(null)}
+              onClick={() => {
+                setGeneratedTicket(null);
+                setSubmissionState('idle');
+              }}
               className="w-full h-12 md:h-16 text-base md:text-lg font-bold bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 mt-4"
             >
               Fazer novo sorteio
@@ -468,26 +478,38 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
       <Card className="p-6 md:p-8 shadow-xl border-0 bg-white rounded-2xl">
         <div className="space-y-6">
           <div className="text-center space-y-2">
-            <Dice1 className="w-12 h-12 text-school-blue-600 mx-auto" />
-            <div className="flex items-center justify-center gap-2">
-              <h2 className="text-xl md:text-2xl font-bold text-school-blue-700">
-                Participe do Sorteio!
-              </h2>
-              {!isAdminMode && isWithinRange && (
-                <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-full uppercase flex items-center shadow-sm">
-                  <MapPin className="w-3 h-3 mr-1" />
-                  Check-in
-                </span>
-              )}
-            </div>
+            <h2 className="text-2xl md:text-3xl font-black text-school-blue-700">
+              Participe do Sorteio!
+            </h2>
             <p className="text-school-blue-600">
               Preencha os dados e insira o código fornecido pelo seu professor
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {photoValidationError && (
-              <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-start justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
+          {alreadyParticipated ? (
+            <div className="bg-school-blue-50 border border-school-blue-100 rounded-2xl p-6 shadow-sm animate-in fade-in slide-in-from-top-4 mt-6">
+              <div className="flex flex-col items-center text-center space-y-4">
+                <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-sm text-school-blue-600 mb-2">
+                  <Clock className="w-7 h-7" />
+                </div>
+                <h3 className="text-xl font-bold text-school-blue-800">Participação Concluída</h3>
+                <p className="text-school-blue-600 font-medium">
+                  Você já registrou sua participação no sorteio de hoje.
+                </p>
+                <div className="pt-6 border-t border-school-blue-200/50 w-full mt-2">
+                  <p className="text-xs font-bold text-school-blue-700 uppercase tracking-widest mb-3">
+                    Sua próxima chance de ganhar renova em
+                  </p>
+                  <div className="text-4xl font-mono font-black text-school-blue-800 tracking-wider">
+                    {tempoRestante}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {photoValidationError && (
+                <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-start justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
                 <div className="flex gap-3">
                   <AlertCircle className="w-6 h-6 text-red-500 shrink-0" />
                   <div>
@@ -499,6 +521,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                   type="button"
                   onClick={() => {
                     setPhotoValidationError(null);
+                    setSubmissionState('idle');
                     setPhoto(null);
                   }}
                   className="text-red-500 hover:text-red-700 transition-colors p-1"
@@ -509,25 +532,46 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
             )}
 
             {!isAdminMode && (
-              <div className="space-y-2 mb-6">
-                <div className="flex justify-between items-end mb-1">
-                  <span className="text-xs font-semibold text-school-blue-600 uppercase tracking-wider">Status de Localização</span>
-                  {isWithinRange && (
-                    <span className="text-sm font-bold text-green-600 animate-in fade-in zoom-in duration-300">
+              <div className="mb-6">
+                {!isWithinRange && !useQRContingency && (
+                  <div className="h-1 w-full bg-gray-100 rounded-full overflow-hidden mb-2">
+                    <div 
+                      className="h-full bg-school-blue-400 transition-all duration-1000 ease-in-out"
+                      style={{ width: `${locationProgress}%` }}
+                    />
+                  </div>
+                )}
+
+                {isWithinRange && (
+                  <div className="text-center animate-in fade-in zoom-in duration-300 mb-2">
+                    <span className="text-sm font-bold text-green-600 uppercase tracking-widest flex items-center justify-center gap-1">
+                      <CheckCircle2 className="w-4 h-4" />
                       Você está na BIT
                     </span>
-                  )}
-                </div>
-                <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full transition-all duration-1000 ease-in-out ${isWithinRange ? 'bg-green-500' : 'bg-school-yellow-500'}`}
-                    style={{ width: `${locationProgress}%` }}
-                  />
-                </div>
-                {!isWithinRange && (
-                  <p className="text-xs text-school-blue-600 text-center animate-pulse">
-                    Buscando sinal para confirmar presença...
-                  </p>
+                  </div>
+                )}
+
+                {!isWithinRange && showContingency && !useQRContingency && (
+                  <div className="text-center mt-4 animate-in fade-in slide-in-from-bottom-2">
+                    <Button 
+                      type="button" 
+                      onClick={() => setUseQRContingency(true)} 
+                      variant="outline" 
+                      className="w-full text-school-blue-700 border-school-blue-300 hover:bg-school-blue-50"
+                    >
+                      <QrCode className="w-5 h-5 mr-2" />
+                      Utilizar Contingência por QR Code
+                    </Button>
+                  </div>
+                )}
+
+                {useQRContingency && (
+                  <div className="flex flex-col items-center justify-center p-3 bg-school-blue-50 border border-school-blue-200 rounded-lg mt-2">
+                    <QrCode className="w-6 h-6 text-school-blue-600 mb-1" />
+                    <span className="text-sm font-bold text-school-blue-700">
+                      Modo Contingência Ativo
+                    </span>
+                  </div>
                 )}
               </div>
             )}
@@ -610,22 +654,22 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
 
             <Button
               type="submit"
-              disabled={isSubmitting || isAnalyzingPhoto || !photo || photoValidationError !== null || (!isAdminMode && !isWithinRange)}
-              className="w-full h-12 md:h-16 text-base md:text-lg font-bold bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              disabled={submissionState === 'enviando' || submissionState === 'processando' || !photo || photoValidationError !== null || (!isAdminMode && !isWithinRange && !useQRContingency)}
+              className="w-full h-auto py-5 text-base md:text-lg font-bold bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting || isAnalyzingPhoto ? (
-                <div className="flex items-center">
+              {(submissionState === 'enviando' || submissionState === 'processando') ? (
+                <div className="flex items-center justify-center">
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-school-blue-800 mr-2"></div>
-                  {isAnalyzingPhoto ? 'Analisando foto, aguarde...' : 'Processando...'}
+                  {submissionState === 'processando' ? 'Analisando foto, aguarde...' : 'Processando...'}
                 </div>
               ) : (
-                <div className="flex items-center">
-                  <Dice1 className="w-5 h-5 mr-2" />
-                  {(!isAdminMode && !isWithinRange) ? 'Aguardando confirmação de presença...' : 'Participar do Sorteio'}
+                <div className="flex items-center justify-center">
+                  {(!isAdminMode && !isWithinRange && !useQRContingency) ? 'Aguardando confirmação de presença...' : 'Participar do Sorteio'}
                 </div>
               )}
             </Button>
           </form>
+          )}
 
           <div className="text-center pt-4">
             <img
