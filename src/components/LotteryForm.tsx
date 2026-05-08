@@ -8,6 +8,7 @@ import { Dice1, MapPin, AlertCircle, Crown, Camera, RefreshCw, X, AlertTriangle,
 import { useToast } from '@/hooks/use-toast';
 import { useLocationVerification } from '@/hooks/useLocationVerification';
 import ClassCodeManager from './ClassCodeManager';
+import Celebration from './Celebration';
 
 
 interface LotteryFormProps {
@@ -212,13 +213,13 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                 meiaNoite.setHours(23, 59, 59, 999);
                 remainingMs = meiaNoite.getTime() - agora.getTime();
               }
-              
+
               localStorage.setItem('bit_expiration_time', (Date.now() + remainingMs).toString());
               localStorage.setItem('bit_participacao_concluida', new Date().toDateString()); // Fallback visual antigo
-              
+
               setTerminoFixo(performance.now() + remainingMs);
               setAlreadyParticipated(true);
-              
+
               setAnalysisError(null);
               setErrorType(null);
               setSubmissionState('idle');
@@ -255,13 +256,13 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                 meiaNoite.setHours(23, 59, 59, 999);
                 remainingMs = meiaNoite.getTime() - agora.getTime();
               }
-              
+
               localStorage.setItem('bit_expiration_time', (Date.now() + remainingMs).toString());
               localStorage.setItem('bit_participacao_concluida', new Date().toDateString()); // Fallback visual antigo
-              
+
               setTerminoFixo(performance.now() + remainingMs);
               setAlreadyParticipated(true);
-              
+
               setAnalysisError(null);
               setErrorType(null);
               setSubmissionState('idle');
@@ -303,11 +304,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
           variant: "default"
         });
 
-        // Clear form
-        setName('');
-        setPhone('');
-        setStudentCode('');
-        setPhoto(null);
+        // Mantém os dados no formulário para exibir o nome na tela de sucesso (Celebration)
       }
 
     } catch (error) {
@@ -581,44 +578,17 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   // Show success UI if ticket is generated
   if (generatedTicket) {
     return (
-      <div className="max-w-lg mx-auto px-4">
-        <Card className="p-6 md:p-8 shadow-xl border-0 bg-white rounded-2xl">
-          <div className="text-center space-y-6 animate-in fade-in zoom-in duration-300">
-            <div className="mx-auto w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
-              <Crown className="w-10 h-10 text-green-600" />
-            </div>
-
-            <div>
-              <div className="bg-green-100 text-green-700 px-4 py-1 rounded-full text-sm font-bold uppercase mb-4 inline-block">
-                Participação Confirmada!
-              </div>
-              <p className="text-gray-600 text-sm mb-2">Seu número da sorte é:</p>
-
-              <div className="p-6 bg-white border-2 border-dashed border-green-500 rounded-2xl shadow-lg my-4">
-                <h2 className="text-4xl md:text-5xl font-mono font-black text-green-600 tracking-tighter break-words">
-                  {generatedTicket}
-                </h2>
-              </div>
-
-              <p className="mt-4 text-xs md:text-sm text-gray-500 italic">
-                Boa sorte! O sorteio ocorre conforme o regulamento oficial da BIT.
-                <br />
-                Tire um print desta tela para guardar o seu código.
-              </p>
-            </div>
-
-            <Button
-              onClick={() => {
-                setGeneratedTicket(null);
-                setSubmissionState('idle');
-              }}
-              className="w-full h-12 md:h-16 text-base md:text-lg font-bold bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 mt-4"
-            >
-              Fazer novo sorteio
-            </Button>
-          </div>
-        </Card>
-      </div>
+      <Celebration
+        nome={name || 'Aluno'}
+        onClose={() => {
+          setGeneratedTicket(null);
+          setSubmissionState('idle');
+          setName('');
+          setPhone('');
+          setStudentCode('');
+          setPhoto(null);
+        }}
+      />
     );
   }
 
@@ -858,70 +828,98 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
 
       {/* Camera Overlay */}
       {isCameraOpen && (
-        <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center">
-          <div className="relative w-full h-full max-w-md mx-auto flex flex-col bg-black overflow-hidden justify-center items-center">
-            <Webcam
-              audio={false}
-              ref={webcamRef}
-              screenshotFormat="image/jpeg"
-              screenshotQuality={0.5}
-              videoConstraints={{ facingMode: "user" }}
-              onUserMedia={(stream) => {
-                const track = stream.getVideoTracks()[0];
-                if (track && typeof track.getCapabilities === 'function') {
-                  const capabilities = track.getCapabilities();
-                  // @ts-expect-error - zoom might not be typed in all environments
-                  if (capabilities && capabilities.zoom) {
-                    track.applyConstraints({
-                      // @ts-expect-error - zoom might not be typed in all environments
-                      advanced: [{ zoom: capabilities.zoom.min || 1 }]
-                    }).catch(e => console.error("Erro ao configurar zoom:", e));
-                  }
-                }
-              }}
-              className="w-full h-full object-contain origin-center transition-transform duration-200"
-              style={{ transform: `scale(${zoom})` }}
-            />
-
-            {/* Overlay controls */}
-            <div className="absolute top-4 right-4 z-10">
+        <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center sm:p-6 backdrop-blur-md">
+          <Card className="w-full h-full sm:h-auto max-w-md bg-black border-0 sm:border sm:border-gray-800 sm:rounded-[2rem] overflow-hidden shadow-2xl relative flex flex-col">
+            
+            {/* Header */}
+            <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-20 bg-gradient-to-b from-black/80 to-transparent">
+              <div className="flex items-center gap-2 px-4 py-2 bg-black/50 rounded-full border border-white/10 backdrop-blur-md">
+                <Camera className="w-4 h-4 text-school-yellow-500" />
+                <span className="text-white font-medium text-sm">Validar Uniforme</span>
+              </div>
               <Button
                 type="button"
                 onClick={() => setIsCameraOpen(false)}
-                className="w-10 h-10 rounded-full bg-black/50 hover:bg-black/80 text-white border-2 border-white flex items-center justify-center p-0"
+                className="w-10 h-10 rounded-full bg-black/50 hover:bg-black/80 text-white border border-white/20 flex items-center justify-center p-0 backdrop-blur-md transition-colors"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5" />
               </Button>
             </div>
 
-            {/* Zoom Control */}
-            <div className="absolute bottom-32 left-8 right-8 flex items-center gap-4 bg-black/50 p-4 rounded-2xl backdrop-blur-sm z-10">
-              <span className="text-white font-bold text-xl">-</span>
-              <input
-                type="range"
-                min="1"
-                max="3"
-                step="0.1"
-                value={zoom}
-                onChange={(e) => setZoom(parseFloat(e.target.value))}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-school-yellow-500"
+            {/* Viewfinder */}
+            <div 
+              className="relative w-full bg-[#050505] flex items-center justify-center mt-auto mb-auto"
+              style={{ aspectRatio: '9 / 16', maxHeight: '100vh' }}
+            >
+              <Webcam
+                audio={false}
+                ref={webcamRef}
+                mirrored={false}
+                screenshotFormat="image/jpeg"
+                screenshotQuality={0.5}
+                videoConstraints={{ facingMode: "user" }}
+                onUserMedia={(stream) => {
+                  const track = stream.getVideoTracks()[0];
+                  if (track && typeof track.getCapabilities === 'function') {
+                    const capabilities = track.getCapabilities();
+                    // @ts-expect-error - zoom might not be typed in all environments
+                    if (capabilities && capabilities.zoom) {
+                      track.applyConstraints({
+                        // @ts-expect-error - zoom might not be typed in all environments
+                        advanced: [{ zoom: capabilities.zoom.min || 1 }]
+                      }).catch(e => console.error("Erro ao configurar zoom:", e));
+                    }
+                  }
+                }}
+                className="w-full h-full object-contain origin-center transition-transform duration-200"
+                style={{ transform: `scale(${zoom}) scaleX(1)` }}
               />
-              <span className="text-white font-bold text-xl">+</span>
+
+              {/* Linhas de Grade de Composição (Grid) */}
+              <div className="absolute inset-0 pointer-events-none opacity-[0.15]">
+                <div className="w-full h-full border border-white/50 flex flex-col justify-between">
+                  <div className="w-full h-[33.33%] border-b border-white/50"></div>
+                  <div className="w-full h-[33.33%] border-b border-white/50"></div>
+                </div>
+                <div className="absolute inset-0 w-full h-full border border-transparent flex justify-between">
+                  <div className="h-full w-[33.33%] border-r border-white/50"></div>
+                  <div className="h-full w-[33.33%] border-r border-white/50"></div>
+                </div>
+              </div>
             </div>
 
-            <div className="absolute bottom-8 left-0 right-0 flex justify-center px-4 z-10">
+            {/* Bottom Controls */}
+            <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center pb-8 pt-20 px-6 bg-gradient-to-t from-black via-black/90 to-transparent z-20">
+              
+              {/* Zoom Control */}
+              <div className="flex items-center gap-4 w-full max-w-[280px] mb-8 bg-black/60 p-4 rounded-2xl backdrop-blur-md border border-white/10 shadow-lg">
+                <span className="text-white font-bold text-xl select-none">-</span>
+                <input
+                  type="range"
+                  min="1"
+                  max="3"
+                  step="0.1"
+                  value={zoom}
+                  onChange={(e) => setZoom(parseFloat(e.target.value))}
+                  className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-school-yellow-500"
+                />
+                <span className="text-white font-bold text-xl select-none">+</span>
+              </div>
+
+              {/* Capture Button */}
               <Button
                 type="button"
                 onClick={() => {
                   capturePhoto();
                   setIsCameraOpen(false);
                 }}
-                className="rounded-full w-20 h-20 flex items-center justify-center bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 shadow-[0_0_15px_rgba(0,0,0,0.5)] border-4 border-white transition-transform hover:scale-105"
+                className="rounded-full w-20 h-20 flex items-center justify-center bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 shadow-[0_0_20px_rgba(250,204,21,0.4)] border-4 border-white transition-all transform hover:scale-105 active:scale-95"
               >
                 <Camera className="w-10 h-10" />
               </Button>
             </div>
-          </div>
+            
+          </Card>
         </div>
       )}
     </div>
