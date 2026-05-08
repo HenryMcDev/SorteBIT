@@ -31,16 +31,38 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   const [zoom, setZoom] = useState(1.0);
   const [tempoRestante, setTempoRestante] = useState<string>('');
   const [alreadyParticipated, setAlreadyParticipated] = useState(false);
+  const [terminoFixo, setTerminoFixo] = useState<number | null>(null);
   const [useQRContingency, setUseQRContingency] = useState(false);
   const [isGracePeriod, setIsGracePeriod] = useState(true);
   const webcamRef = useRef<Webcam>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    // Carrega o estado de persistência do localStorage
-    const today = new Date().toDateString();
-    if (localStorage.getItem('bit_participacao_concluida') === today) {
-      setAlreadyParticipated(true);
+    // Única consulta de sincronia ao banco de dados local na inicialização
+    const savedExpiration = localStorage.getItem('bit_expiration_time');
+    if (savedExpiration) {
+      const expirationTime = parseInt(savedExpiration, 10);
+      const remainingMs = expirationTime - Date.now();
+      if (remainingMs > 0) {
+        setTerminoFixo(performance.now() + remainingMs);
+        setAlreadyParticipated(true);
+      } else {
+        localStorage.removeItem('bit_expiration_time');
+      }
+    } else {
+      // Fallback para manter compatibilidade com usuários que possuam o localStorage antigo
+      const today = new Date().toDateString();
+      if (localStorage.getItem('bit_participacao_concluida') === today) {
+        const agora = new Date();
+        const meiaNoite = new Date();
+        meiaNoite.setHours(23, 59, 59, 999);
+        const remainingMs = meiaNoite.getTime() - agora.getTime();
+        if (remainingMs > 0) {
+          setTerminoFixo(performance.now() + remainingMs);
+          setAlreadyParticipated(true);
+          localStorage.setItem('bit_expiration_time', (Date.now() + remainingMs).toString());
+        }
+      }
     }
   }, []);
 
@@ -52,54 +74,39 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   }, []);
 
   useEffect(() => {
-    const isLockedError = errorType === 'erroParticipacao';
-
-    // Ativa o timer se o localStorage flaggar a presença ou se o webhook devolver o erro
-    if (alreadyParticipated || isLockedError) {
-      if (!alreadyParticipated) {
-        setAlreadyParticipated(true);
-        localStorage.setItem('bit_participacao_concluida', new Date().toDateString());
-        // Remove do analysisError para não renderizar o modal de erro de foto
-        if (isLockedError) {
-          setAnalysisError(null);
-          setErrorType(null);
-          setSubmissionState('idle');
-        }
-      }
-
-      const calcularTempoAteMeiaNoite = () => {
-        const agora = new Date();
-        const meiaNoite = new Date();
-        // Define o alvo para 23:59:59 do dia atual
-        meiaNoite.setHours(23, 59, 59, 999);
-
-        const diferenca = meiaNoite.getTime() - agora.getTime();
-
-        if (diferenca > 0) {
-          const horas = Math.floor((diferenca / (1000 * 60 * 60)) % 24);
-          const minutos = Math.floor((diferenca / 1000 / 60) % 60);
-          const segundos = Math.floor((diferenca / 1000) % 60);
-
-          // Formata com zeros à esquerda (ex: 09:05:02)
-          setTempoRestante(
-            `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`
-          );
-        } else {
-          setTempoRestante('00:00:00');
-          localStorage.removeItem('bit_participacao_concluida');
-          setAlreadyParticipated(false);
-        }
-      };
-
-      calcularTempoAteMeiaNoite(); // Renderiza o tempo imediatamente
-      const timer = setInterval(calcularTempoAteMeiaNoite, 1000); // Atualiza a cada segundo
-
-      // Limpa o intervalo quando o componente for desmontado
-      return () => clearInterval(timer);
-    } else {
+    if (!alreadyParticipated || terminoFixo === null) {
       setTempoRestante('');
+      return;
     }
-  }, [errorType, alreadyParticipated]);
+
+    const atualizarCronometro = () => {
+      // Subtrai o tempo de execução atual do ponto de término fixo (alta performance, imune a mudanças de data/hora do SO durante o uso)
+      const agoraPerf = performance.now();
+      const diferenca = terminoFixo - agoraPerf;
+
+      if (diferenca > 0) {
+        const horas = Math.floor((diferenca / (1000 * 60 * 60)) % 24);
+        const minutos = Math.floor((diferenca / 1000 / 60) % 60);
+        const segundos = Math.floor((diferenca / 1000) % 60);
+
+        setTempoRestante(
+          `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`
+        );
+      } else {
+        setTempoRestante('00:00:00');
+        localStorage.removeItem('bit_expiration_time');
+        localStorage.removeItem('bit_participacao_concluida');
+        setAlreadyParticipated(false);
+        setTerminoFixo(null);
+      }
+    };
+
+    atualizarCronometro(); // Atualiza o visual imediatamente
+    const timer = setInterval(atualizarCronometro, 1000); // Otimizado: atualiza estritamente uma vez por segundo
+
+    // Limpa o lixo de memória ao desmontar o componente
+    return () => clearInterval(timer);
+  }, [alreadyParticipated, terminoFixo]);
 
   const capturePhoto = useCallback(() => {
     const imageSrc = webcamRef.current?.getScreenshot();
@@ -195,8 +202,27 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
 
             // Mantém a compatibilidade com a trava diária do sistema
             if (serverErrorType === 'erroParticipacao') {
-              setAnalysisError(erroMensagem);
-              localStorage.setItem('bit_participacao_concluida', new Date().toDateString());
+              const tempoRestanteSegundos = responseData.tempoRestante;
+              let remainingMs;
+              if (typeof tempoRestanteSegundos === 'number') {
+                remainingMs = tempoRestanteSegundos * 1000;
+              } else {
+                const agora = new Date();
+                const meiaNoite = new Date();
+                meiaNoite.setHours(23, 59, 59, 999);
+                remainingMs = meiaNoite.getTime() - agora.getTime();
+              }
+              
+              localStorage.setItem('bit_expiration_time', (Date.now() + remainingMs).toString());
+              localStorage.setItem('bit_participacao_concluida', new Date().toDateString()); // Fallback visual antigo
+              
+              setTerminoFixo(performance.now() + remainingMs);
+              setAlreadyParticipated(true);
+              
+              setAnalysisError(null);
+              setErrorType(null);
+              setSubmissionState('idle');
+              return;
             } else if (serverErrorType === 'erroUniforme') {
               setTentativasRestantes(prev => prev > 0 ? prev - 1 : 0);
               setAnalysisError(erroMensagem);
@@ -219,8 +245,27 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
             setErrorType(serverErrorType);
 
             if (serverErrorType === 'erroParticipacao') {
-              setAnalysisError(String(erroGenerico));
-              localStorage.setItem('bit_participacao_concluida', new Date().toDateString());
+              const tempoRestanteSegundos = responseData.tempoRestante;
+              let remainingMs;
+              if (typeof tempoRestanteSegundos === 'number') {
+                remainingMs = tempoRestanteSegundos * 1000;
+              } else {
+                const agora = new Date();
+                const meiaNoite = new Date();
+                meiaNoite.setHours(23, 59, 59, 999);
+                remainingMs = meiaNoite.getTime() - agora.getTime();
+              }
+              
+              localStorage.setItem('bit_expiration_time', (Date.now() + remainingMs).toString());
+              localStorage.setItem('bit_participacao_concluida', new Date().toDateString()); // Fallback visual antigo
+              
+              setTerminoFixo(performance.now() + remainingMs);
+              setAlreadyParticipated(true);
+              
+              setAnalysisError(null);
+              setErrorType(null);
+              setSubmissionState('idle');
+              return;
             } else if (serverErrorType === 'erroUniforme') {
               setTentativasRestantes(prev => prev > 0 ? prev - 1 : 0);
               setAnalysisError(String(erroGenerico));
