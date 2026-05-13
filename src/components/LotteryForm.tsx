@@ -9,6 +9,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useLocationVerification } from '@/hooks/useLocationVerification';
 import ClassCodeManager from './ClassCodeManager';
 import Celebration from './Celebration';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 interface LotteryFormProps {
@@ -35,6 +38,8 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   const [terminoFixo, setTerminoFixo] = useState<number | null>(null);
   const [useQRContingency, setUseQRContingency] = useState(false);
   const [isGracePeriod, setIsGracePeriod] = useState(true);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [isTermsOpen, setIsTermsOpen] = useState(false);
   const webcamRef = useRef<Webcam>(null);
   const { toast } = useToast();
 
@@ -794,9 +799,39 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                 )}
               </div>
 
+              {!isAdminMode && (
+                <div className="flex items-start space-x-3 pt-2">
+                  <Checkbox 
+                    id="terms" 
+                    checked={termsAccepted} 
+                    onCheckedChange={(checked) => setTermsAccepted(checked as boolean)} 
+                    className="mt-1"
+                  />
+                  <div className="grid gap-1.5 leading-none">
+                    <label
+                      htmlFor="terms"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-school-blue-700"
+                    >
+                      Aceito os termos e a captação da minha foto *
+                    </label>
+                    <p className="text-sm text-school-blue-600/80">
+                      Você deve ler e concordar com os{' '}
+                      <button 
+                        type="button" 
+                        onClick={() => setIsTermsOpen(true)}
+                        className="text-school-yellow-600 font-bold hover:underline"
+                      >
+                        Termos de uso
+                      </button>
+                      {' '}antes de participar.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <Button
                 type="submit"
-                disabled={submissionState === 'enviando' || submissionState === 'processando' || !photo || photoValidationError !== null || isLocationInvalid || tentativasCodigo === 0}
+                disabled={submissionState === 'enviando' || submissionState === 'processando' || !photo || photoValidationError !== null || isLocationInvalid || tentativasCodigo === 0 || (!isAdminMode && !termsAccepted)}
                 className={`w-full h-auto py-5 text-base md:text-lg font-bold rounded-2xl shadow-sm transition-all duration-500 disabled:cursor-not-allowed ${showRedButton
                   ? "bg-red-500 text-white disabled:opacity-100"
                   : "bg-school-blue-600 hover:bg-school-blue-700 text-white animate-pulse-subtle disabled:opacity-70 disabled:animate-none hover:shadow-md"
@@ -922,6 +957,89 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
           </Card>
         </div>
       )}
+
+      {/* Terms Modal */}
+      <Dialog open={isTermsOpen} onOpenChange={setIsTermsOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-school-blue-800 text-xl">Termos de Uso e Ciência de Tratamento de Imagem</DialogTitle>
+            <DialogDescription>
+              Última atualização: 13 de maio de 2026
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="flex-1 pr-4">
+            <div className="space-y-4 text-sm text-school-blue-700/80 leading-relaxed">
+              <p>
+                Ao prosseguir com a participação no SorteBIT, o(a) aluno(a) declara, para todos os fins, que leu, compreendeu e concordou integralmente com as disposições deste Termo.
+              </p>
+              
+              <div>
+                <h3 className="font-bold text-school-blue-800">1. Objeto</h3>
+                <p>1.1. O presente Termo regula as condições de participação no sorteio denominado SorteBIT.</p>
+                <p>1.2. A participação está condicionada ao cumprimento cumulativo dos requisitos operacionais e das regras de elegibilidade aqui previstas.</p>
+              </div>
+
+              <div>
+                <h3 className="font-bold text-school-blue-800">2. Requisitos para Participação</h3>
+                <p>2.1. Para validação da participação, o(a) aluno(a) deverá:</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>preencher corretamente os dados solicitados no formulário;</li>
+                  <li>inserir código válido disponibilizado pela instituição;</li>
+                  <li>realizar captura de imagem (selfie) no ato da inscrição.</li>
+                </ul>
+                <p className="mt-2">2.2. O não atendimento de qualquer requisito poderá implicar indeferimento da participação, sem geração de ticket.</p>
+              </div>
+
+              <div>
+                <h3 className="font-bold text-school-blue-800">3. Coleta e Finalidade da Imagem</h3>
+                <p>3.1. A imagem capturada será utilizada exclusivamente para:</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>verificação da autenticidade da participação;</li>
+                  <li>prevenção de fraude, duplicidade ou uso indevido do sistema;</li>
+                  <li>conferência do cumprimento da regra de uniforme para elegibilidade no sorteio.</li>
+                </ul>
+                <p className="mt-2">3.2. A captura da imagem constitui condição técnica essencial para participação no SorteBIT.</p>
+                <p>3.3. O envio de imagem incompatível com os critérios de validação poderá ensejar reprovação automática da participação.</p>
+              </div>
+
+              <div>
+                <h3 className="font-bold text-school-blue-800">4. Regra de Elegibilidade por Uniforme</h3>
+                <p>4.1. O SorteBIT é destinado exclusivamente a alunos(as) que estejam trajando uniforme institucional no momento da participação.</p>
+                <p>4.2. A ausência de uniforme, total ou parcial, conforme critérios de validação aplicáveis, acarreta inelegibilidade e consequente recusa da participação.</p>
+              </div>
+
+              <div>
+                <h3 className="font-bold text-school-blue-800">5. Validação, Registro e Limitações</h3>
+                <p>5.1. Uma vez cumpridos os requisitos e aprovada a validação, a participação será registrada e o sistema emitirá confirmação (ticket).</p>
+                <p>5.2. Participações com inconsistências de dados, irregularidades técnicas, indícios de fraude ou descumprimento deste Termo poderão ser bloqueadas, recusadas ou anuladas, a critério da administração responsável pelo sorteio.</p>
+                <p>5.3. Poderão existir limites de tentativas e janelas de participação, conforme regras operacionais vigentes no sistema.</p>
+              </div>
+
+              <div>
+                <h3 className="font-bold text-school-blue-800">6. Declarações do(a) Participante</h3>
+                <p>Ao aceitar este Termo, o(a) participante declara que:</p>
+                <ul className="list-none space-y-1">
+                  <li>a) prestou informações verídicas;</li>
+                  <li>b) está ciente da obrigatoriedade de captura da imagem para validação;</li>
+                  <li>c) está ciente da exigência de uniforme como requisito de elegibilidade;</li>
+                  <li>d) concorda com o processamento necessário dos dados inseridos e da imagem, estritamente para execução e segurança do SorteBIT.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="font-bold text-school-blue-800">7. Disposições Finais</h3>
+                <p>7.1. Este Termo poderá ser atualizado a qualquer tempo para adequação operacional, técnica ou normativa, passando a vigorar a versão publicada no sistema.</p>
+                <p>7.2. Em caso de divergência interpretativa, prevalecerá a versão mais recente disponibilizada no ambiente oficial do SorteBIT.</p>
+              </div>
+            </div>
+          </ScrollArea>
+          <div className="pt-4 border-t mt-auto flex justify-end">
+            <Button onClick={() => setIsTermsOpen(false)} className="bg-school-blue-600 hover:bg-school-blue-700">
+              Fechar e Voltar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
