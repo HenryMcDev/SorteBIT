@@ -162,28 +162,28 @@ const AdminTeacherPanel = () => {
   };
 
   return (
-    <Card className="p-6 md:p-8 shadow-xl border-0 bg-white rounded-2xl">
+    <Card className="p-6 md:p-8 shadow-xl border-0 bg-white dark:bg-slate-900 rounded-2xl">
       <div className="space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
-          <Users className="w-12 h-12 text-school-blue-600 mx-auto" />
-          <h2 className="text-xl md:text-2xl font-bold text-school-blue-700">
+          <Users className="w-12 h-12 text-school-blue-600 dark:text-school-blue-400 mx-auto" />
+          <h2 className="text-xl md:text-2xl font-bold text-school-blue-700 dark:text-school-blue-300">
             Gerenciar Professores
           </h2>
-          <p className="text-school-blue-600">
+          <p className="text-school-blue-600 dark:text-school-blue-400">
             Cadastre professores autorizados para acessar o sistema
           </p>
         </div>
 
         {/* Registration Form */}
-        <div className="space-y-4 border-b border-gray-200 pb-6">
-          <h3 className="text-lg font-semibold text-school-blue-700">
+        <div className="space-y-4 border-b border-gray-200 dark:border-slate-700 pb-6">
+          <h3 className="text-lg font-semibold text-school-blue-700 dark:text-school-blue-300">
             Cadastrar Novo Professor
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-school-blue-700 font-semibold">
+              <Label htmlFor="name" className="text-school-blue-700 dark:text-school-blue-300 font-semibold">
                 Nome completo
               </Label>
               <Input
@@ -192,13 +192,13 @@ const AdminTeacherPanel = () => {
                 placeholder="Nome completo do professor"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="h-12 border-2 border-gray-200 focus:border-school-blue-500 rounded-xl"
+                className="h-12 border-2 border-gray-200 dark:border-slate-700 focus:border-school-blue-500 rounded-xl"
                 disabled={isLoading}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="username" className="text-school-blue-700 font-semibold">
+              <Label htmlFor="username" className="text-school-blue-700 dark:text-school-blue-300 font-semibold">
                 Usuário (login)
               </Label>
               <Input
@@ -207,13 +207,13 @@ const AdminTeacherPanel = () => {
                 placeholder="Nome de usuário para login"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="h-12 border-2 border-gray-200 focus:border-school-blue-500 rounded-xl"
+                className="h-12 border-2 border-gray-200 dark:border-slate-700 focus:border-school-blue-500 rounded-xl"
                 disabled={isLoading}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-school-blue-700 font-semibold">
+              <Label htmlFor="password" className="text-school-blue-700 dark:text-school-blue-300 font-semibold">
                 Senha
               </Label>
               <Input
@@ -222,17 +222,17 @@ const AdminTeacherPanel = () => {
                 placeholder="Senha do professor"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="h-12 border-2 border-gray-200 focus:border-school-blue-500 rounded-xl"
+                className="h-12 border-2 border-gray-200 dark:border-slate-700 focus:border-school-blue-500 rounded-xl"
                 disabled={isLoading}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="class" className="text-school-blue-700 font-semibold">
+              <Label htmlFor="class" className="text-school-blue-700 dark:text-school-blue-300 font-semibold">
                 Turma principal
               </Label>
               <Select value={className} onValueChange={setClassName} disabled={isLoading}>
-                <SelectTrigger className="h-12 border-2 border-gray-200 focus:border-school-blue-500 rounded-xl">
+                <SelectTrigger className="h-12 border-2 border-gray-200 dark:border-slate-700 focus:border-school-blue-500 rounded-xl">
                   <SelectValue placeholder="Selecione a turma" />
                 </SelectTrigger>
                 <SelectContent>
@@ -249,7 +249,7 @@ const AdminTeacherPanel = () => {
           <Button
             onClick={handleRegisterTeacher}
             disabled={isLoading || !name.trim() || !username.trim() || !password.trim() || !className}
-            className="w-full h-12 md:h-14 text-base md:text-lg font-bold bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+            className="w-full h-12 md:h-14 text-base md:text-lg font-bold bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 dark:text-school-blue-200 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
           >
             {isLoading ? (
               <div className="flex items-center">
@@ -267,12 +267,12 @@ const AdminTeacherPanel = () => {
 
         {/* Teachers List */}
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-school-blue-700">
+          <h3 className="text-lg font-semibold text-school-blue-700 dark:text-school-blue-300">
             Professores Cadastrados ({teachers.length})
           </h3>
 
           {teachers.length === 0 ? (
-            <p className="text-gray-500 text-center py-4">
+            <p className="text-gray-500 dark:text-gray-400 text-center py-4">
               Nenhum professor cadastrado ainda.
             </p>
           ) : (
@@ -283,8 +283,8 @@ const AdminTeacherPanel = () => {
                   className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
                 >
                   <div>
-                    <p className="font-medium text-school-blue-700">{teacher.name}</p>
-                    <p className="text-sm text-gray-600">
+                    <p className="font-medium text-school-blue-700 dark:text-school-blue-300">{teacher.name}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
                       Cadastrado em: {new Date(teacher.created_at).toLocaleDateString('pt-BR')}
                     </p>
                   </div>
@@ -292,7 +292,7 @@ const AdminTeacherPanel = () => {
                     onClick={() => handleDeleteTeacher(teacher.id, teacher.name)}
                     variant="outline"
                     size="sm"
-                    className="border-red-300 text-red-600 hover:bg-red-50"
+                    className="border-red-300 text-red-600 dark:text-red-400 hover:bg-red-50 dark:bg-red-950/30"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>

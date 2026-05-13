@@ -303,11 +303,6 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
         const formattedTicket = ticketFromServer;
         setGeneratedTicket(formattedTicket);
 
-        toast({
-          title: "🎉 Participação registrada!",
-          description: `Seu ticket é: ${formattedTicket}`,
-          variant: "default"
-        });
 
         // Mantém os dados no formulário para exibir o nome na tela de sucesso (Celebration)
       }
@@ -329,13 +324,13 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
     return (
       <div className="max-w-4xl mx-auto px-4">
         <div className="mb-6">
-          <div className="flex flex-wrap gap-2 bg-white rounded-lg p-2 shadow-lg">
+          <div className="flex flex-wrap gap-2 bg-white dark:bg-zinc-950 rounded-lg p-2 shadow-lg">
             <Button
               onClick={() => setActiveTab('lottery')}
               variant={activeTab === 'lottery' ? 'default' : 'outline'}
               className={`flex-1 min-w-32 ${activeTab === 'lottery'
                 ? 'bg-school-blue-600 text-white'
-                : 'border-school-blue-600 text-school-blue-600 hover:bg-school-blue-50'
+                : 'border-school-blue-600 text-school-blue-600 dark:text-zinc-400 hover:bg-school-blue-50 dark:bg-slate-800'
                 }`}
             >
               <Dice1 className="w-4 h-4 mr-2" />
@@ -346,7 +341,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
               variant={activeTab === 'codes' ? 'default' : 'outline'}
               className={`flex-1 min-w-32 ${activeTab === 'codes'
                 ? 'bg-school-blue-600 text-white'
-                : 'border-school-blue-600 text-school-blue-600 hover:bg-school-blue-50'
+                : 'border-school-blue-600 text-school-blue-600 dark:text-zinc-400 hover:bg-school-blue-50 dark:bg-slate-800'
                 }`}
             >
               <Crown className="w-4 h-4 mr-2" />
@@ -357,24 +352,24 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
 
         {activeTab === 'codes' && <ClassCodeManager />}
         {activeTab === 'lottery' && (
-          <Card className="p-6 md:p-8 shadow-xl border-0 bg-white rounded-2xl">
+          <Card className="p-6 md:p-8 shadow-xl border-0 dark:border dark:border-zinc-800 bg-white dark:bg-zinc-950 rounded-2xl">
             <div className="space-y-6">
               <div className="text-center space-y-2">
                 <div className="flex items-center justify-center space-x-2">
-                  <Crown className="w-8 h-8 text-school-yellow-500" />
-                  <Dice1 className="w-12 h-12 text-school-blue-600" />
+                  <Crown className="w-8 h-8 text-school-yellow-500 dark:text-school-yellow-400" />
+                  <Dice1 className="w-12 h-12 text-school-blue-600 dark:text-zinc-400" />
                 </div>
-                <h2 className="text-xl md:text-2xl font-bold text-school-blue-700">
+                <h2 className="text-xl md:text-2xl font-bold text-school-blue-700 dark:text-white">
                   Sorteio - Modo Administrativo
                 </h2>
-                <p className="text-school-blue-600">
+                <p className="text-school-blue-600 dark:text-zinc-400">
                   Registre participações sem validação de localização
                 </p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="text-school-blue-700 font-semibold">
+                  <Label htmlFor="name" className="text-school-blue-700 dark:text-zinc-200 font-semibold">
                     Nome completo *
                   </Label>
                   <Input
@@ -383,13 +378,13 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                     placeholder="Digite seu nome completo"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 focus:border-school-blue-500 rounded-xl"
+                    className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 dark:bg-zinc-900 dark:border-zinc-700 dark:text-white focus:border-school-blue-500 rounded-xl"
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-school-blue-700 font-semibold">
+                  <Label htmlFor="phone" className="text-school-blue-700 dark:text-zinc-200 font-semibold">
                     Telefone *
                   </Label>
                   <Input
@@ -398,7 +393,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                     placeholder="(00) 00000-0000"
                     value={phone}
                     onChange={handlePhoneChange}
-                    className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 focus:border-school-blue-500 rounded-xl"
+                    className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 dark:bg-zinc-900 dark:border-zinc-700 dark:text-white focus:border-school-blue-500 rounded-xl"
                     maxLength={15}
                     required
                   />
@@ -407,7 +402,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                 <Button
                   type="submit"
                   disabled={submissionState === 'enviando' || submissionState === 'processando'}
-                  className="w-full h-12 md:h-16 text-base md:text-lg font-bold bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                  className="w-full h-12 md:h-16 text-base md:text-lg font-bold bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 dark:text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                 >
                   {(submissionState === 'enviando' || submissionState === 'processando') ? (
                     <div className="flex items-center">
@@ -441,25 +436,25 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   if (analysisError && errorType === 'erroUniforme') {
     return (
       <div className="max-w-lg mx-auto px-4">
-        <Card className="p-6 md:p-8 shadow-xl border-0 bg-white rounded-2xl">
+        <Card className="p-6 md:p-8 shadow-xl border-0 dark:border dark:border-zinc-800 bg-white dark:bg-zinc-950 rounded-2xl">
           <div className="text-center space-y-6">
-            <div className="mx-auto w-24 h-24 bg-red-50 rounded-full flex items-center justify-center">
-              <Camera className="w-12 h-12 text-red-500" />
+            <div className="mx-auto w-24 h-24 bg-red-50 dark:bg-red-950/30 rounded-full flex items-center justify-center">
+              <Camera className="w-12 h-12 text-red-500 dark:text-red-400" />
             </div>
 
             <div className="flex flex-col items-center justify-center gap-3">
               <div className="flex items-center justify-center gap-2">
-                <AlertTriangle className="w-6 h-6 text-school-yellow-500 fill-current" />
-                <h2 className="text-xl md:text-2xl font-bold text-school-blue-700">
+                <AlertTriangle className="w-6 h-6 text-school-yellow-500 dark:text-school-yellow-400 fill-current" />
+                <h2 className="text-xl md:text-2xl font-bold text-school-blue-700 dark:text-white">
                   {tentativasRestantes > 0 ? 'Sua foto precisa de um ajuste' : 'Tentativas Esgotadas'}
                 </h2>
               </div>
-              <span className="text-sm font-bold px-4 py-1.5 bg-red-100 text-red-700 rounded-full border border-red-200">
+              <span className="text-sm font-bold px-4 py-1.5 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 rounded-full border border-red-200 dark:border-red-800/50">
                 Você tem mais {tentativasRestantes} tentativa{tentativasRestantes !== 1 ? 's' : ''} de 3
               </span>
             </div>
 
-            <p className="text-gray-600 px-2">
+            <p className="text-gray-600 dark:text-zinc-400 px-2">
               {tentativasRestantes > 0
                 ? 'A análise detectou um problema. Vamos resolver isso para você!'
                 : 'Você atingiu o limite de envios. Por favor, procure um instrutor para validação manual.'}
@@ -467,17 +462,17 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
 
             {tentativasRestantes > 0 ? (
               <>
-                <div className="bg-red-50 border border-red-100 rounded-lg p-4 max-w-sm mx-auto">
-                  <p className="text-sm font-medium text-red-600">{analysisError}</p>
+                <div className="bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 rounded-lg p-4 max-w-sm mx-auto">
+                  <p className="text-sm font-medium text-red-600 dark:text-red-400">{analysisError}</p>
                 </div>
 
-                <ul className="text-left text-sm md:text-base text-gray-500 space-y-2 max-w-sm mx-auto list-disc pl-5">
+                <ul className="text-left text-sm md:text-base text-gray-500 dark:text-zinc-400 space-y-2 max-w-sm mx-auto list-disc pl-5">
                   <li>Certifique-se de que o logo da BIT na sua roupa está visível</li>
                   <li>Mostre seu rosto claramente</li>
                   <li>Evite fundos com reflexos de telas</li>
                 </ul>
 
-                <div className="border-2 border-yellow-200 rounded-2xl p-4 md:p-6 my-6 max-w-sm mx-auto">
+                <div className="border-2 border-yellow-200 dark:border-yellow-800/50 rounded-2xl p-4 md:p-6 my-6 max-w-sm mx-auto">
                   <Button
                     onClick={() => {
                       setAnalysisError(null);
@@ -487,7 +482,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                       setZoom(1);
                       setIsCameraOpen(true);
                     }}
-                    className="w-full h-14 md:h-16 text-base md:text-lg font-bold bg-[#FFF9D6] hover:bg-[#FFF4B3] text-school-blue-800 rounded-xl shadow-sm transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2"
+                    className="w-full h-14 md:h-16 text-base md:text-lg font-bold bg-[#FFF9D6] hover:bg-[#FFF4B3] text-school-blue-800 dark:text-white rounded-xl shadow-sm transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2"
                   >
                     <RefreshCw className="w-5 h-5 md:w-6 md:h-6" />
                     Tentar Novamente
@@ -495,17 +490,17 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                 </div>
               </>
             ) : (
-              <div className="border-2 border-red-200 bg-red-50 rounded-2xl p-4 md:p-6 my-6 max-w-sm mx-auto">
+              <div className="border-2 border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-950/30 rounded-2xl p-4 md:p-6 my-6 max-w-sm mx-auto">
                 <Button
                   disabled
-                  className="w-full h-14 md:h-16 text-base md:text-lg font-bold bg-red-500 text-white rounded-xl shadow-sm opacity-100 flex items-center justify-center gap-2"
+                  className="w-full h-14 md:h-16 text-base md:text-lg font-bold bg-red-50 dark:bg-red-950/300 text-white rounded-xl shadow-sm opacity-100 flex items-center justify-center gap-2"
                 >
                   Envio Bloqueado
                 </Button>
               </div>
             )}
 
-            <div className="text-center pt-4 border-t border-gray-100 mt-6">
+            <div className="text-center pt-4 border-t border-gray-100 dark:border-slate-800 mt-6">
               <img
                 src="/img/logo.png"
                 alt="Logo da Escola"
@@ -521,36 +516,36 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   if (analysisError && errorType === 'erroSeguranca') {
     return (
       <div className="max-w-lg mx-auto px-4">
-        <Card className="p-6 md:p-8 shadow-xl border-0 bg-white rounded-2xl">
+        <Card className="p-6 md:p-8 shadow-xl border-0 dark:border dark:border-zinc-800 bg-white dark:bg-zinc-950 rounded-2xl">
           <div className="text-center space-y-6">
-            <div className="mx-auto w-24 h-24 bg-red-50 rounded-full flex items-center justify-center">
-              <Camera className="w-12 h-12 text-red-500" />
+            <div className="mx-auto w-24 h-24 bg-red-50 dark:bg-red-950/30 rounded-full flex items-center justify-center">
+              <Camera className="w-12 h-12 text-red-500 dark:text-red-400" />
             </div>
 
             <div className="flex flex-col items-center justify-center gap-3">
               <div className="flex items-center justify-center gap-2">
-                <AlertTriangle className="w-6 h-6 text-school-yellow-500 fill-current" />
-                <h2 className="text-xl md:text-2xl font-bold text-school-blue-700">
+                <AlertTriangle className="w-6 h-6 text-school-yellow-500 dark:text-school-yellow-400 fill-current" />
+                <h2 className="text-xl md:text-2xl font-bold text-school-blue-700 dark:text-white">
                   Validação de Segurança
                 </h2>
               </div>
             </div>
 
-            <p className="text-gray-600 px-2">
+            <p className="text-gray-600 dark:text-zinc-400 px-2">
               Não foi possível validar sua foto. Por favor, certifique-se de tirar uma foto real neste momento.
             </p>
 
-            <div className="bg-red-50 border border-red-100 rounded-lg p-4 max-w-sm mx-auto">
-              <p className="text-sm font-medium text-red-600">{analysisError}</p>
+            <div className="bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 rounded-lg p-4 max-w-sm mx-auto">
+              <p className="text-sm font-medium text-red-600 dark:text-red-400">{analysisError}</p>
             </div>
 
-            <ul className="text-left text-sm md:text-base text-gray-500 space-y-2 max-w-sm mx-auto list-disc pl-5">
+            <ul className="text-left text-sm md:text-base text-gray-500 dark:text-zinc-400 space-y-2 max-w-sm mx-auto list-disc pl-5">
               <li>Tire uma foto sua agora (selfie)</li>
               <li>Não tire fotos de outras telas ou monitores</li>
               <li>Não utilize fotos impressas ou de documentos</li>
             </ul>
 
-            <div className="border-2 border-yellow-200 rounded-2xl p-4 md:p-6 my-6 max-w-sm mx-auto">
+            <div className="border-2 border-yellow-200 dark:border-yellow-800/50 rounded-2xl p-4 md:p-6 my-6 max-w-sm mx-auto">
               <Button
                 onClick={() => {
                   setAnalysisError(null);
@@ -560,14 +555,14 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                   setZoom(1);
                   setIsCameraOpen(true);
                 }}
-                className="w-full h-14 md:h-16 text-base md:text-lg font-bold bg-[#FFF9D6] hover:bg-[#FFF4B3] text-school-blue-800 rounded-xl shadow-sm transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2"
+                className="w-full h-14 md:h-16 text-base md:text-lg font-bold bg-[#FFF9D6] hover:bg-[#FFF4B3] text-school-blue-800 dark:text-white rounded-xl shadow-sm transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2"
               >
                 <RefreshCw className="w-5 h-5 md:w-6 md:h-6" />
                 Tentar Novamente
               </Button>
             </div>
 
-            <div className="text-center pt-4 border-t border-gray-100 mt-6">
+            <div className="text-center pt-4 border-t border-gray-100 dark:border-slate-800 mt-6">
               <img
                 src="/img/logo.png"
                 alt="Logo da Escola"
@@ -603,32 +598,32 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   // Standard user interface
   return (
     <div className="max-w-lg mx-auto px-4">
-      <Card className="p-6 md:p-8 shadow-xl border-0 bg-white rounded-2xl">
+      <Card className="p-6 md:p-8 shadow-xl border-0 dark:border dark:border-zinc-800 bg-white dark:bg-zinc-950 rounded-2xl">
         <div className="space-y-6">
           <div className="text-center space-y-2">
-            <h2 className="text-2xl md:text-3xl font-black text-school-blue-700">
+            <h2 className="text-2xl md:text-3xl font-black text-school-blue-700 dark:text-white">
               Participe do Sorteio!
             </h2>
-            <p className="text-school-blue-600">
+            <p className="text-school-blue-600 dark:text-zinc-400">
               Preencha os dados e insira o código fornecido pelo seu professor
             </p>
           </div>
 
           {alreadyParticipated ? (
-            <div className="bg-school-blue-50 border border-school-blue-100 rounded-2xl p-6 shadow-sm animate-in fade-in slide-in-from-top-4 mt-6">
+            <div className="bg-school-blue-50 dark:bg-slate-800 border border-school-blue-100 dark:border-slate-700 rounded-2xl p-6 shadow-sm animate-in fade-in slide-in-from-top-4 mt-6">
               <div className="flex flex-col items-center text-center space-y-4">
-                <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-sm text-school-blue-600 mb-2">
+                <div className="w-14 h-14 bg-white dark:bg-zinc-950 rounded-full flex items-center justify-center shadow-sm text-school-blue-600 dark:text-zinc-400 mb-2">
                   <Clock className="w-7 h-7" />
                 </div>
-                <h3 className="text-xl font-bold text-school-blue-800">Participação Concluída</h3>
-                <p className="text-school-blue-600 font-medium">
+                <h3 className="text-xl font-bold text-school-blue-800 dark:text-white">Participação Concluída</h3>
+                <p className="text-school-blue-600 dark:text-zinc-400 font-medium">
                   Você já registrou sua participação no sorteio de hoje.
                 </p>
-                <div className="pt-6 border-t border-school-blue-200/50 w-full mt-2">
-                  <p className="text-xs font-bold text-school-blue-700 uppercase tracking-widest mb-3">
+                <div className="pt-6 border-t border-school-blue-200 dark:border-slate-700/50 w-full mt-2">
+                  <p className="text-xs font-bold text-school-blue-700 dark:text-white uppercase tracking-widest mb-3">
                     Sua próxima chance de ganhar renova em
                   </p>
-                  <div className="text-4xl font-mono font-black text-school-blue-800 tracking-wider">
+                  <div className="text-4xl font-mono font-black text-school-blue-800 dark:text-white tracking-wider">
                     {tempoRestante}
                   </div>
                 </div>
@@ -637,12 +632,12 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               {photoValidationError && (
-                <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-start justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
+                <div className="bg-red-50 dark:bg-red-950/30 border-2 border-red-200 dark:border-red-800/50 rounded-xl p-4 flex items-start justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
                   <div className="flex gap-3">
-                    <AlertCircle className="w-6 h-6 text-red-500 shrink-0" />
+                    <AlertCircle className="w-6 h-6 text-red-500 dark:text-red-400 shrink-0" />
                     <div>
-                      <h4 className="font-bold text-red-800">Atenção</h4>
-                      <p className="text-red-600 text-sm mt-1">{photoValidationError}</p>
+                      <h4 className="font-bold text-red-800 dark:text-red-200">Atenção</h4>
+                      <p className="text-red-600 dark:text-red-400 text-sm mt-1">{photoValidationError}</p>
                     </div>
                   </div>
                   <button
@@ -652,7 +647,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                       setSubmissionState('idle');
                       setPhoto(null);
                     }}
-                    className="text-red-500 hover:text-red-700 transition-colors p-1"
+                    className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 transition-colors p-1"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -667,7 +662,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                         type="button"
                         onClick={() => setUseQRContingency(true)}
                         variant="outline"
-                        className="w-full text-school-blue-700 border-school-blue-300 hover:bg-school-blue-50"
+                        className="w-full text-school-blue-700 dark:text-white border-school-blue-300 dark:border-slate-600 hover:bg-school-blue-50 dark:bg-slate-800"
                       >
                         <QrCode className="w-5 h-5 mr-2" />
                         Utilizar Contingência por QR Code
@@ -676,9 +671,9 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                   )}
 
                   {useQRContingency && (
-                    <div className="flex flex-col items-center justify-center p-3 bg-school-blue-50 border border-school-blue-200 rounded-lg mt-2">
-                      <QrCode className="w-6 h-6 text-school-blue-600 mb-1" />
-                      <span className="text-sm font-bold text-school-blue-700">
+                    <div className="flex flex-col items-center justify-center p-3 bg-school-blue-50 dark:bg-slate-800 border border-school-blue-200 dark:border-slate-700 rounded-lg mt-2">
+                      <QrCode className="w-6 h-6 text-school-blue-600 dark:text-zinc-400 mb-1" />
+                      <span className="text-sm font-bold text-school-blue-700 dark:text-white">
                         Modo Contingência Ativo
                       </span>
                     </div>
@@ -687,7 +682,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-school-blue-700 font-semibold">
+                <Label htmlFor="name" className="text-school-blue-700 dark:text-zinc-200 font-semibold">
                   Nome completo *
                 </Label>
                 <Input
@@ -696,13 +691,13 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                   placeholder="Digite seu nome completo"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 focus:border-school-blue-500 rounded-xl"
+                  className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 dark:bg-zinc-900 dark:border-zinc-700 dark:text-white focus:border-school-blue-500 rounded-xl"
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone" className="text-school-blue-700 font-semibold">
+                <Label htmlFor="phone" className="text-school-blue-700 dark:text-zinc-200 font-semibold">
                   Telefone *
                 </Label>
                 <Input
@@ -711,14 +706,14 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                   placeholder="(00) 00000-0000"
                   value={phone}
                   onChange={handlePhoneChange}
-                  className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 focus:border-school-blue-500 rounded-xl"
+                  className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 dark:bg-zinc-900 dark:border-zinc-700 dark:text-white focus:border-school-blue-500 rounded-xl"
                   maxLength={15}
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="studentCode" className="text-school-blue-700 font-semibold">
+                <Label htmlFor="studentCode" className="text-school-blue-700 dark:text-zinc-200 font-semibold">
                   Digite o código do dia *
                 </Label>
                 <Input
@@ -727,25 +722,25 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                   placeholder="Digite o código"
                   value={studentCode}
                   onChange={(e) => setStudentCode(e.target.value.toUpperCase())}
-                  className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 focus:border-school-blue-500 rounded-xl font-mono"
+                  className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 dark:bg-zinc-900 dark:border-zinc-700 dark:text-white focus:border-school-blue-500 rounded-xl font-mono"
                   required
                   disabled={tentativasCodigo === 0}
                 />
                 {errorType === 'erroCode' && analysisError && (
-                  <div className="mt-3 bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-start justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
+                  <div className="mt-3 bg-red-50 dark:bg-red-950/30 border-2 border-red-200 dark:border-red-800/50 rounded-xl p-4 flex items-start justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
                     <div className="flex gap-3">
-                      <AlertCircle className="w-6 h-6 text-red-500 shrink-0 mt-0.5" />
+                      <AlertCircle className="w-6 h-6 text-red-500 dark:text-red-400 shrink-0 mt-0.5" />
                       <div>
-                        <h4 className="font-bold text-red-800 text-sm md:text-base">
+                        <h4 className="font-bold text-red-800 dark:text-red-200 text-sm md:text-base">
                           {tentativasCodigo > 0 ? 'Código Incorreto' : 'Tentativas Esgotadas'}
                         </h4>
-                        <p className="text-red-600 text-xs md:text-sm mt-1">{analysisError}</p>
+                        <p className="text-red-600 dark:text-red-400 text-xs md:text-sm mt-1">{analysisError}</p>
                         {tentativasCodigo > 0 ? (
-                          <p className="text-red-700 text-xs md:text-sm font-medium mt-2">
+                          <p className="text-red-700 dark:text-red-300 text-xs md:text-sm font-medium mt-2">
                             Você tem mais {tentativasCodigo} tentativa{tentativasCodigo !== 1 ? 's' : ''} de 3. Tente novamente ou solicite o código oficial na secretaria da BIT.
                           </p>
                         ) : (
-                          <p className="text-red-700 text-sm font-bold mt-2 uppercase tracking-wide">
+                          <p className="text-red-700 dark:text-red-300 text-sm font-bold mt-2 uppercase tracking-wide">
                             Procure o atendimento na secretaria.
                           </p>
                         )}
@@ -760,7 +755,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                           setSubmissionState('idle');
                           setStudentCode(''); // Opcional: limpa o campo
                         }}
-                        className="text-red-500 hover:text-red-700 transition-colors p-1"
+                        className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 transition-colors p-1"
                       >
                         <X className="w-5 h-5" />
                       </button>
@@ -770,14 +765,14 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
               </div>
 
               <div className="space-y-3">
-                <Label className="text-school-blue-700 font-semibold">
+                <Label className="text-school-blue-700 dark:text-white font-semibold">
                   Foto com o Uniforme *
                 </Label>
                 {!photo ? (
                   <Button
                     type="button"
                     onClick={() => { setZoom(1); setIsCameraOpen(true); }}
-                    className="w-full h-16 md:h-20 bg-school-blue-600 hover:bg-school-blue-700 text-white rounded-xl flex items-center justify-center shadow-md transition-transform hover:scale-[1.02]"
+                    className="w-full h-16 md:h-20 bg-school-blue-600 hover:bg-school-blue-700 text-white dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 rounded-xl flex items-center justify-center shadow-md transition-transform hover:scale-[1.02]"
                   >
                     <Camera className="w-8 h-8 mr-3" />
                     <span className="text-lg font-bold">Abrir Câmera</span>
@@ -789,7 +784,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                       <Button
                         type="button"
                         onClick={retakePhoto}
-                        className="absolute top-3 right-3 w-10 h-10 p-0 rounded-full bg-red-500 hover:bg-red-600 text-white shadow-[0_0_10px_rgba(0,0,0,0.5)] border-2 border-white flex items-center justify-center opacity-90 hover:opacity-100 transition-all hover:scale-110"
+                        className="absolute top-3 right-3 w-10 h-10 p-0 rounded-full bg-red-50 dark:bg-red-950/300 hover:bg-red-600 text-white shadow-[0_0_10px_rgba(0,0,0,0.5)] border-2 border-white flex items-center justify-center opacity-90 hover:opacity-100 transition-all hover:scale-110"
                         title="Excluir foto"
                       >
                         <X className="w-6 h-6" />
@@ -810,16 +805,16 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                   <div className="grid gap-1.5 leading-none">
                     <label
                       htmlFor="terms"
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-school-blue-700"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-school-blue-700 dark:text-white"
                     >
                       Aceito os termos e a captação da minha foto *
                     </label>
-                    <p className="text-sm text-school-blue-600/80">
+                    <p className="text-sm text-school-blue-600 dark:text-zinc-400/80">
                       Você deve ler e concordar com os{' '}
                       <button 
                         type="button" 
                         onClick={() => setIsTermsOpen(true)}
-                        className="text-school-yellow-600 font-bold hover:underline"
+                        className="text-school-yellow-600 dark:text-school-yellow-400 font-bold hover:underline"
                       >
                         Termos de uso
                       </button>
@@ -833,8 +828,8 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                 type="submit"
                 disabled={submissionState === 'enviando' || submissionState === 'processando' || !photo || photoValidationError !== null || isLocationInvalid || tentativasCodigo === 0 || (!isAdminMode && !termsAccepted)}
                 className={`w-full h-auto py-5 text-base md:text-lg font-bold rounded-2xl shadow-sm transition-all duration-500 disabled:cursor-not-allowed ${showRedButton
-                  ? "bg-red-500 text-white disabled:opacity-100"
-                  : "bg-school-blue-600 hover:bg-school-blue-700 text-white animate-pulse-subtle disabled:opacity-70 disabled:animate-none hover:shadow-md"
+                  ? "bg-red-50 dark:bg-red-950/300 text-white disabled:opacity-100"
+                  : "bg-school-blue-600 hover:bg-school-blue-700 text-white dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 animate-pulse-subtle disabled:opacity-70 disabled:animate-none hover:shadow-md"
                   }`}
               >
                 {(submissionState === 'enviando' || submissionState === 'processando') ? (
@@ -869,7 +864,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
             {/* Header */}
             <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-20 bg-gradient-to-b from-black/80 to-transparent">
               <div className="flex items-center gap-2 px-4 py-2 bg-black/50 rounded-full border border-white/10 backdrop-blur-md">
-                <Camera className="w-4 h-4 text-school-yellow-500" />
+                <Camera className="w-4 h-4 text-school-yellow-500 dark:text-school-yellow-400" />
                 <span className="text-white font-medium text-sm">Validar Uniforme</span>
               </div>
               <Button
@@ -948,7 +943,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                   capturePhoto();
                   setIsCameraOpen(false);
                 }}
-                className="rounded-full w-20 h-20 flex items-center justify-center bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 shadow-[0_0_20px_rgba(250,204,21,0.4)] border-4 border-white transition-all transform hover:scale-105 active:scale-95"
+                className="rounded-full w-20 h-20 flex items-center justify-center bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 dark:text-white shadow-[0_0_20px_rgba(250,204,21,0.4)] border-4 border-white transition-all transform hover:scale-105 active:scale-95"
               >
                 <Camera className="w-10 h-10" />
               </Button>
@@ -962,25 +957,25 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
       <Dialog open={isTermsOpen} onOpenChange={setIsTermsOpen}>
         <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle className="text-school-blue-800 text-xl">Termos de Uso e Ciência de Tratamento de Imagem</DialogTitle>
+            <DialogTitle className="text-school-blue-800 dark:text-white text-xl">Termos de Uso e Ciência de Tratamento de Imagem</DialogTitle>
             <DialogDescription>
               Última atualização: 13 de maio de 2026
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="flex-1 pr-4">
-            <div className="space-y-4 text-sm text-school-blue-700/80 leading-relaxed">
+            <div className="space-y-4 text-sm text-school-blue-700 dark:text-zinc-400/80 leading-relaxed">
               <p>
                 Ao prosseguir com a participação no SorteBIT, o(a) aluno(a) declara, para todos os fins, que leu, compreendeu e concordou integralmente com as disposições deste Termo.
               </p>
               
               <div>
-                <h3 className="font-bold text-school-blue-800">1. Objeto</h3>
+                <h3 className="font-bold text-school-blue-800 dark:text-white">1. Objeto</h3>
                 <p>1.1. O presente Termo regula as condições de participação no sorteio denominado SorteBIT.</p>
                 <p>1.2. A participação está condicionada ao cumprimento cumulativo dos requisitos operacionais e das regras de elegibilidade aqui previstas.</p>
               </div>
 
               <div>
-                <h3 className="font-bold text-school-blue-800">2. Requisitos para Participação</h3>
+                <h3 className="font-bold text-school-blue-800 dark:text-white">2. Requisitos para Participação</h3>
                 <p>2.1. Para validação da participação, o(a) aluno(a) deverá:</p>
                 <ul className="list-disc pl-5 space-y-1">
                   <li>preencher corretamente os dados solicitados no formulário;</li>
@@ -991,7 +986,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
               </div>
 
               <div>
-                <h3 className="font-bold text-school-blue-800">3. Coleta e Finalidade da Imagem</h3>
+                <h3 className="font-bold text-school-blue-800 dark:text-white">3. Coleta e Finalidade da Imagem</h3>
                 <p>3.1. A imagem capturada será utilizada exclusivamente para:</p>
                 <ul className="list-disc pl-5 space-y-1">
                   <li>verificação da autenticidade da participação;</li>
@@ -1003,20 +998,20 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
               </div>
 
               <div>
-                <h3 className="font-bold text-school-blue-800">4. Regra de Elegibilidade por Uniforme</h3>
+                <h3 className="font-bold text-school-blue-800 dark:text-white">4. Regra de Elegibilidade por Uniforme</h3>
                 <p>4.1. O SorteBIT é destinado exclusivamente a alunos(as) que estejam trajando uniforme institucional no momento da participação.</p>
                 <p>4.2. A ausência de uniforme, total ou parcial, conforme critérios de validação aplicáveis, acarreta inelegibilidade e consequente recusa da participação.</p>
               </div>
 
               <div>
-                <h3 className="font-bold text-school-blue-800">5. Validação, Registro e Limitações</h3>
+                <h3 className="font-bold text-school-blue-800 dark:text-white">5. Validação, Registro e Limitações</h3>
                 <p>5.1. Uma vez cumpridos os requisitos e aprovada a validação, a participação será registrada e o sistema emitirá confirmação (ticket).</p>
                 <p>5.2. Participações com inconsistências de dados, irregularidades técnicas, indícios de fraude ou descumprimento deste Termo poderão ser bloqueadas, recusadas ou anuladas, a critério da administração responsável pelo sorteio.</p>
                 <p>5.3. Poderão existir limites de tentativas e janelas de participação, conforme regras operacionais vigentes no sistema.</p>
               </div>
 
               <div>
-                <h3 className="font-bold text-school-blue-800">6. Declarações do(a) Participante</h3>
+                <h3 className="font-bold text-school-blue-800 dark:text-white">6. Declarações do(a) Participante</h3>
                 <p>Ao aceitar este Termo, o(a) participante declara que:</p>
                 <ul className="list-none space-y-1">
                   <li>a) prestou informações verídicas;</li>
@@ -1027,7 +1022,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
               </div>
 
               <div>
-                <h3 className="font-bold text-school-blue-800">7. Disposições Finais</h3>
+                <h3 className="font-bold text-school-blue-800 dark:text-white">7. Disposições Finais</h3>
                 <p>7.1. Este Termo poderá ser atualizado a qualquer tempo para adequação operacional, técnica ou normativa, passando a vigorar a versão publicada no sistema.</p>
                 <p>7.2. Em caso de divergência interpretativa, prevalecerá a versão mais recente disponibilizada no ambiente oficial do SorteBIT.</p>
               </div>

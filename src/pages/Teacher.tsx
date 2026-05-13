@@ -5,7 +5,7 @@ import TeacherPortal from '@/components/TeacherPortal';
 
 const Teacher = () => {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white dark:bg-slate-900">
       {/* Background decorativo sutil */}
       <div className="absolute inset-0 bg-gradient-to-br from-school-blue-50/30 via-white to-school-yellow-50/30 pointer-events-none"></div>
       

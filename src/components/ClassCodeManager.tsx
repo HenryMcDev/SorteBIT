@@ -95,12 +95,12 @@ const ClassCodeManager = () => {
   };
 
   return (
-    <Card className="p-6 mb-6 bg-school-blue-50 border-2 border-school-blue-200">
+    <Card className="p-6 mb-6 bg-school-blue-50 dark:bg-slate-800 border-2 border-school-blue-200 dark:border-slate-700">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Settings className="w-6 h-6 text-school-blue-700" />
-            <h3 className="text-xl font-bold text-school-blue-700">
+            <Settings className="w-6 h-6 text-school-blue-700 dark:text-school-blue-300" />
+            <h3 className="text-xl font-bold text-school-blue-700 dark:text-school-blue-300">
               Gerador de Código do Dia
             </h3>
           </div>
@@ -109,26 +109,26 @@ const ClassCodeManager = () => {
             variant="outline"
             size="sm"
             disabled={isLoading}
-            className="border-school-blue-300 text-school-blue-700"
+            className="border-school-blue-300 dark:border-slate-600 text-school-blue-700 dark:text-school-blue-300"
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Atualizar
           </Button>
         </div>
 
-        <div className="flex flex-col items-center justify-center p-8 bg-white rounded-xl border-2 border-school-blue-100 shadow-inner">
+        <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-900 rounded-xl border-2 border-school-blue-100 dark:border-slate-700 shadow-inner">
           {currentCode ? (
             <div className="text-center space-y-4">
-              <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Código Atual</p>
-              <div className="text-5xl font-mono font-bold text-school-blue-800 tracking-widest bg-school-yellow-100 py-4 px-8 rounded-lg border-2 border-school-yellow-300">
+              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Código Atual</p>
+              <div className="text-5xl font-mono font-bold text-school-blue-800 dark:text-school-blue-200 tracking-widest bg-school-yellow-100 py-4 px-8 rounded-lg border-2 border-school-yellow-300">
                 {currentCode.code}
               </div>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 Gerado em: {formatToBrazilTime(currentCode.created_at)}
               </p>
             </div>
           ) : (
-            <p className="text-center text-gray-500 py-6">
+            <p className="text-center text-gray-500 dark:text-gray-400 py-6">
               Nenhum código gerado para hoje ainda.
             </p>
           )}

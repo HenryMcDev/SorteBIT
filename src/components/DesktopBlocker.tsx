@@ -51,7 +51,7 @@ const DesktopBlocker = ({ onAdminAccess }: DesktopBlockerProps) => {
         <Button
           onClick={() => setShowAdminForm(!showAdminForm)}
           variant="outline"
-          className="border-school-blue-600 text-school-blue-600 hover:bg-school-blue-50"
+          className="border-school-blue-600 text-school-blue-600 dark:text-school-blue-400 hover:bg-school-blue-50 dark:bg-slate-800"
         >
           <Lock className="w-4 h-4 mr-2" />
           Administrativo
@@ -61,14 +61,14 @@ const DesktopBlocker = ({ onAdminAccess }: DesktopBlockerProps) => {
       {/* Formulário administrativo */}
       {showAdminForm && (
         <div className="w-full max-w-md mx-auto px-4 mb-8">
-          <Card className="p-6 shadow-lg border-2 border-school-blue-200">
+          <Card className="p-6 shadow-lg border-2 border-school-blue-200 dark:border-slate-700">
             <form onSubmit={handleAdminLogin} className="space-y-4">
               <div className="text-center mb-4">
-                <h3 className="text-lg font-bold text-school-blue-700">Acesso Administrativo</h3>
+                <h3 className="text-lg font-bold text-school-blue-700 dark:text-school-blue-300">Acesso Administrativo</h3>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="admin-username" className="text-school-blue-700 font-semibold flex items-center">
+                <Label htmlFor="admin-username" className="text-school-blue-700 dark:text-school-blue-300 font-semibold flex items-center">
                   <User className="w-4 h-4 mr-2" />
                   Usuário
                 </Label>
@@ -78,13 +78,13 @@ const DesktopBlocker = ({ onAdminAccess }: DesktopBlockerProps) => {
                   placeholder="Digite o usuário"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="border-2 border-gray-200 focus:border-school-blue-500 rounded-lg"
+                  className="border-2 border-gray-200 dark:border-slate-700 focus:border-school-blue-500 rounded-lg"
                   disabled={isLoading}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="admin-password" className="text-school-blue-700 font-semibold flex items-center">
+                <Label htmlFor="admin-password" className="text-school-blue-700 dark:text-school-blue-300 font-semibold flex items-center">
                   <Lock className="w-4 h-4 mr-2" />
                   Senha
                 </Label>
@@ -95,7 +95,7 @@ const DesktopBlocker = ({ onAdminAccess }: DesktopBlockerProps) => {
                     placeholder="Digite a senha"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="border-2 border-gray-200 focus:border-school-blue-500 rounded-lg pr-10"
+                    className="border-2 border-gray-200 dark:border-slate-700 focus:border-school-blue-500 rounded-lg pr-10"
                     disabled={isLoading}
                   />
                   <Button
@@ -137,21 +137,21 @@ const DesktopBlocker = ({ onAdminAccess }: DesktopBlockerProps) => {
 
       {/* Mensagem principal de bloqueio */}
       <div className="flex-1 flex items-center justify-center px-4">
-        <Card className="p-8 max-w-lg mx-auto shadow-xl border-0 bg-white rounded-2xl text-center">
+        <Card className="p-8 max-w-lg mx-auto shadow-xl border-0 bg-white dark:bg-slate-900 rounded-2xl text-center">
           <div className="space-y-6">
-            <Smartphone className="w-16 h-16 text-school-blue-600 mx-auto" />
+            <Smartphone className="w-16 h-16 text-school-blue-600 dark:text-school-blue-400 mx-auto" />
             
             <div className="space-y-4">
-              <h2 className="text-2xl md:text-3xl font-bold text-school-blue-700">
+              <h2 className="text-2xl md:text-3xl font-bold text-school-blue-700 dark:text-school-blue-300">
                 ⚠️ Este site é exclusivo para dispositivos móveis
               </h2>
               
-              <p className="text-lg text-school-blue-600 leading-relaxed">
+              <p className="text-lg text-school-blue-600 dark:text-school-blue-400 leading-relaxed">
                 Acesse pelo <strong>celular</strong> para participar do sorteio.
               </p>
               
               <div className="bg-school-yellow-50 border-2 border-school-yellow-200 rounded-xl p-4 mt-6">
-                <p className="text-school-blue-700 font-semibold">
+                <p className="text-school-blue-700 dark:text-school-blue-300 font-semibold">
                   📱 Escaneie o QR Code ou digite o endereço no seu celular
                 </p>
               </div>

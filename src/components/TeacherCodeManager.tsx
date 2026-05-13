@@ -173,15 +173,15 @@ const TeacherCodeManager = ({ teacher, classOptions }: TeacherCodeManagerProps) 
   return (
     <div className="space-y-6">
       {/* Generate code for student */}
-      <Card className="p-4 md:p-6 bg-school-blue-50 border-school-blue-200">
-        <h3 className="text-lg md:text-xl font-bold text-school-blue-700 mb-4 flex items-center">
+      <Card className="p-4 md:p-6 bg-school-blue-50 dark:bg-slate-800 border-school-blue-200 dark:border-slate-700">
+        <h3 className="text-lg md:text-xl font-bold text-school-blue-700 dark:text-school-blue-300 mb-4 flex items-center">
           <Plus className="w-5 h-5 mr-2" />
           Gerar Código para Aluno
         </h3>
         
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="studentName" className="text-school-blue-700 font-semibold text-sm md:text-base">
+            <Label htmlFor="studentName" className="text-school-blue-700 dark:text-school-blue-300 font-semibold text-sm md:text-base">
               Nome completo do aluno
             </Label>
             <Input
@@ -190,17 +190,17 @@ const TeacherCodeManager = ({ teacher, classOptions }: TeacherCodeManagerProps) 
               placeholder="Digite o nome completo do aluno"
               value={studentName}
               onChange={(e) => setStudentName(e.target.value)}
-              className="h-10 md:h-12 text-sm md:text-base border-2 border-gray-200 focus:border-school-blue-500 rounded-lg"
+              className="h-10 md:h-12 text-sm md:text-base border-2 border-gray-200 dark:border-slate-700 focus:border-school-blue-500 rounded-lg"
               disabled={isGenerating}
             />
           </div>
 
           <div className="space-y-2">
-            <Label className="text-school-blue-700 font-semibold text-sm md:text-base">
+            <Label className="text-school-blue-700 dark:text-school-blue-300 font-semibold text-sm md:text-base">
               Turma
             </Label>
             <Select value={selectedClass} onValueChange={setSelectedClass} disabled={isGenerating}>
-              <SelectTrigger className="h-10 md:h-12 text-sm md:text-base border-2 border-gray-200 focus:border-school-blue-500 rounded-lg">
+              <SelectTrigger className="h-10 md:h-12 text-sm md:text-base border-2 border-gray-200 dark:border-slate-700 focus:border-school-blue-500 rounded-lg">
                 <SelectValue placeholder="Selecione a turma" />
               </SelectTrigger>
               <SelectContent>
@@ -216,7 +216,7 @@ const TeacherCodeManager = ({ teacher, classOptions }: TeacherCodeManagerProps) 
           <Button
             onClick={handleGenerateCode}
             disabled={isGenerating || !studentName.trim() || !selectedClass}
-            className="w-full h-10 md:h-12 text-sm md:text-base font-bold bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300"
+            className="w-full h-10 md:h-12 text-sm md:text-base font-bold bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 dark:text-school-blue-200 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300"
           >
             {isGenerating ? (
               <div className="flex items-center">
@@ -236,7 +236,7 @@ const TeacherCodeManager = ({ teacher, classOptions }: TeacherCodeManagerProps) 
       {/* List of generated codes */}
       {studentCodes.length > 0 && (
         <Card className="p-4 md:p-6">
-          <h3 className="text-lg md:text-xl font-bold text-school-blue-700 mb-4">
+          <h3 className="text-lg md:text-xl font-bold text-school-blue-700 dark:text-school-blue-300 mb-4">
             Códigos Gerados Hoje ({studentCodes.length})
           </h3>
           
@@ -246,8 +246,8 @@ const TeacherCodeManager = ({ teacher, classOptions }: TeacherCodeManagerProps) 
                 key={studentCode.id}
                 className={`p-3 rounded-lg border-2 ${
                   studentCode.is_used 
-                    ? 'bg-gray-50 border-gray-200 text-gray-600' 
-                    : 'bg-white border-school-yellow-200'
+                    ? 'bg-gray-50 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-300' 
+                    : 'bg-white dark:bg-slate-900 border-school-yellow-200'
                 }`}
               >
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
@@ -255,7 +255,7 @@ const TeacherCodeManager = ({ teacher, classOptions }: TeacherCodeManagerProps) 
                     <p className="font-semibold text-sm md:text-base">
                       {studentCode.student_name}
                     </p>
-                    <p className="text-xs md:text-sm text-gray-600">
+                    <p className="text-xs md:text-sm text-gray-600 dark:text-gray-300">
                       {studentCode.class_name}
                     </p>
                   </div>
@@ -263,8 +263,8 @@ const TeacherCodeManager = ({ teacher, classOptions }: TeacherCodeManagerProps) 
                   <div className="flex items-center gap-2">
                     <span className={`px-2 py-1 rounded text-xs font-mono ${
                       studentCode.is_used 
-                        ? 'bg-gray-200 text-gray-600' 
-                        : 'bg-school-yellow-100 text-school-blue-700'
+                        ? 'bg-gray-200 text-gray-600 dark:text-gray-300' 
+                        : 'bg-school-yellow-100 text-school-blue-700 dark:text-school-blue-300'
                     }`}>
                       {studentCode.code}
                     </span>
@@ -287,7 +287,7 @@ const TeacherCodeManager = ({ teacher, classOptions }: TeacherCodeManagerProps) 
                 </div>
                 
                 {studentCode.is_used && (
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     Utilizado em: {new Date(studentCode.used_at!).toLocaleString('pt-BR')}
                   </p>
                 )}

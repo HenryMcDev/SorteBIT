@@ -7,8 +7,8 @@ const Footer = () => {
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-6 md:mb-8">
           <div className="flex justify-center items-center mb-3 md:mb-4">
-            <div className="bg-white rounded-full p-2 md:p-3 mr-3 md:mr-4">
-              <GraduationCap className="text-school-blue-700 w-6 h-6 md:w-8 md:h-8" />
+            <div className="bg-white dark:bg-slate-900 rounded-full p-2 md:p-3 mr-3 md:mr-4">
+              <GraduationCap className="text-school-blue-700 dark:text-school-blue-300 w-6 h-6 md:w-8 md:h-8" />
             </div>
             <div className="text-lg md:text-2xl font-bold">BIT EDUCAÇÃO & NEGÓCIOS</div>
           </div>

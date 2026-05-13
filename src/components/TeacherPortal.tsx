@@ -47,22 +47,22 @@ const TeacherPortal = () => {
   if (teacher) {
     return (
       <div className="max-w-4xl mx-auto px-4">
-        <Card className="p-6 md:p-8 shadow-xl border-0 bg-white rounded-2xl">
+        <Card className="p-6 md:p-8 shadow-xl border-0 bg-white dark:bg-slate-900 rounded-2xl">
           <div className="space-y-6">
             {/* Header with teacher info and logout */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-gray-200">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-gray-200 dark:border-slate-700">
               <div>
-                <h2 className="text-xl md:text-2xl font-bold text-school-blue-700">
+                <h2 className="text-xl md:text-2xl font-bold text-school-blue-700 dark:text-school-blue-300">
                   Painel do Professor
                 </h2>
-                <p className="text-school-blue-600">
+                <p className="text-school-blue-600 dark:text-school-blue-400">
                   Bem-vindo, {teacher.name}
                 </p>
               </div>
               <Button
                 onClick={logout}
                 variant="outline"
-                className="border-school-blue-600 text-school-blue-600 hover:bg-school-blue-50"
+                className="border-school-blue-600 text-school-blue-600 dark:text-school-blue-400 hover:bg-school-blue-50 dark:bg-slate-800"
               >
                 <LogOut className="w-4 h-4 mr-2" />
                 Deslogar
@@ -89,21 +89,21 @@ const TeacherPortal = () => {
   // Login form only (removed registration option)
   return (
     <div className="max-w-lg mx-auto px-4">
-      <Card className="p-6 md:p-8 shadow-xl border-0 bg-white rounded-2xl">
+      <Card className="p-6 md:p-8 shadow-xl border-0 bg-white dark:bg-slate-900 rounded-2xl">
         <div className="space-y-6">
           <div className="text-center space-y-2">
-            <GraduationCap className="w-12 h-12 text-school-blue-600 mx-auto" />
-            <h2 className="text-xl md:text-2xl font-bold text-school-blue-700">
+            <GraduationCap className="w-12 h-12 text-school-blue-600 dark:text-school-blue-400 mx-auto" />
+            <h2 className="text-xl md:text-2xl font-bold text-school-blue-700 dark:text-school-blue-300">
               Login do Professor
             </h2>
-            <p className="text-school-blue-600">
+            <p className="text-school-blue-600 dark:text-school-blue-400">
               Acesse o painel de gerenciamento
             </p>
           </div>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-school-blue-700 font-semibold flex items-center text-sm md:text-base">
+              <Label htmlFor="name" className="text-school-blue-700 dark:text-school-blue-300 font-semibold flex items-center text-sm md:text-base">
                 <User className="w-4 h-4 mr-2" />
                 Usuário
               </Label>
@@ -113,13 +113,13 @@ const TeacherPortal = () => {
                 placeholder="Digite seu usuário"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 focus:border-school-blue-500 rounded-xl"
+                className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 dark:border-slate-700 focus:border-school-blue-500 rounded-xl"
                 disabled={isLoading}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-school-blue-700 font-semibold flex items-center text-sm md:text-base">
+              <Label htmlFor="password" className="text-school-blue-700 dark:text-school-blue-300 font-semibold flex items-center text-sm md:text-base">
                 <Lock className="w-4 h-4 mr-2" />
                 Senha
               </Label>
@@ -129,7 +129,7 @@ const TeacherPortal = () => {
                 placeholder="Digite sua senha"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 focus:border-school-blue-500 rounded-xl"
+                className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 dark:border-slate-700 focus:border-school-blue-500 rounded-xl"
                 disabled={isLoading}
                 onKeyPress={(e) => e.key === 'Enter' && handleSubmit()}
               />
@@ -138,7 +138,7 @@ const TeacherPortal = () => {
             <Button
               onClick={handleSubmit}
               disabled={isLoading || !name.trim() || !password.trim()}
-              className="w-full h-12 md:h-16 text-base md:text-lg font-bold bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              className="w-full h-12 md:h-16 text-base md:text-lg font-bold bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 dark:text-school-blue-200 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
               {isLoading ? (
                 <div className="flex items-center">
@@ -154,7 +154,7 @@ const TeacherPortal = () => {
             </Button>
 
             <div className="text-center pt-2">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
                 Apenas professores autorizados podem acessar o sistema.
               </p>
             </div>

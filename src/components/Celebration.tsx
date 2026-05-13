@@ -65,18 +65,18 @@ const Celebration = ({ nome, onClose }: CelebrationProps) => {
         </div>
       ))}
 
-      <div className="success-card" onClick={(e) => e.stopPropagation()}>
-        <h1 className="success-title">🥳 BOA SORTE!</h1>
-        <p className="success-text">
+      <div className="success-card dark:bg-zinc-950 dark:border-zinc-700" onClick={(e) => e.stopPropagation()}>
+        <h1 className="success-title dark:text-white">🥳 BOA SORTE!</h1>
+        <p className="success-text dark:text-zinc-300">
           Participação confirmada, <strong>{nome}</strong>!<br />
           A Equipe BIT te deseja sorte no sorteio
         </p>
-        <p className="success-highlight">
+        <p className="success-highlight dark:text-school-blue-300">
           A BIA já validou tudo por aqui! ✨
         </p>
 
         {onClose && (
-          <button onClick={onClose} className="success-button"> Fazer novo sorteio </button>
+          <button onClick={onClose} className="success-button dark:bg-school-yellow-400 dark:text-school-blue-950"> SAIR </button>
         )}
       </div>
     </div>
