@@ -55,7 +55,7 @@ const TeacherCodeManager = ({ teacher, classOptions }: TeacherCodeManagerProps) 
   const loadStudentCodes = async () => {
     try {
       const today = new Date().toISOString().split('T')[0];
-      
+
       const { data, error } = await supabase
         .from('student_codes')
         .select('id, student_name, class_name, code, is_used, used_at')
@@ -92,7 +92,7 @@ const TeacherCodeManager = ({ teacher, classOptions }: TeacherCodeManagerProps) 
 
     try {
       const today = new Date().toISOString().split('T')[0];
-      
+
       // Check if student already has a code for today
       const { data: existingCode } = await supabase
         .from('student_codes')
@@ -178,7 +178,7 @@ const TeacherCodeManager = ({ teacher, classOptions }: TeacherCodeManagerProps) 
           <Plus className="w-5 h-5 mr-2" />
           Gerar Código para Aluno
         </h3>
-        
+
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="studentName" className="text-school-blue-700 dark:text-school-blue-300 font-semibold text-sm md:text-base">
@@ -239,16 +239,15 @@ const TeacherCodeManager = ({ teacher, classOptions }: TeacherCodeManagerProps) 
           <h3 className="text-lg md:text-xl font-bold text-school-blue-700 dark:text-school-blue-300 mb-4">
             Códigos Gerados Hoje ({studentCodes.length})
           </h3>
-          
+
           <div className="space-y-3 max-h-96 overflow-y-auto">
             {studentCodes.map((studentCode) => (
               <div
                 key={studentCode.id}
-                className={`p-3 rounded-lg border-2 ${
-                  studentCode.is_used 
-                    ? 'bg-gray-50 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-300' 
+                className={`p-3 rounded-lg border-2 ${studentCode.is_used
+                    ? 'bg-gray-50 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-300'
                     : 'bg-white dark:bg-slate-900 border-school-yellow-200'
-                }`}
+                  }`}
               >
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                   <div className="flex-1">
@@ -259,16 +258,15 @@ const TeacherCodeManager = ({ teacher, classOptions }: TeacherCodeManagerProps) 
                       {studentCode.class_name}
                     </p>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
-                    <span className={`px-2 py-1 rounded text-xs font-mono ${
-                      studentCode.is_used 
-                        ? 'bg-gray-200 text-gray-600 dark:text-gray-300' 
+                    <span className={`px-2 py-1 rounded text-xs font-mono ${studentCode.is_used
+                        ? 'bg-gray-200 text-gray-600 dark:text-gray-300'
                         : 'bg-school-yellow-100 text-school-blue-700 dark:text-school-blue-300'
-                    }`}>
+                      }`}>
                       {studentCode.code}
                     </span>
-                    
+
                     {!studentCode.is_used && (
                       <Button
                         onClick={() => copyToClipboard(studentCode.code)}
@@ -285,7 +283,7 @@ const TeacherCodeManager = ({ teacher, classOptions }: TeacherCodeManagerProps) 
                     )}
                   </div>
                 </div>
-                
+
                 {studentCode.is_used && (
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     Utilizado em: {new Date(studentCode.used_at!).toLocaleString('pt-BR')}

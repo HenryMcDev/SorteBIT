@@ -38,7 +38,12 @@ const LocationVerification = ({
               <img
                 src="/img/logo.png"
                 alt="Logo da Escola"
-                className="mx-auto h-16 md:h-20 w-auto object-contain"
+                className="mx-auto h-16 md:h-20 w-auto object-contain block dark:hidden"
+              />
+              <img
+                src="/img/logo_branca.png"
+                alt="Logo da Escola"
+                className="mx-auto h-16 md:h-20 w-auto object-contain hidden dark:block"
               />
             </div>
           </div>
@@ -71,7 +76,12 @@ const LocationVerification = ({
               <img
                 src="/img/logo.png"
                 alt="Logo da Escola"
-                className="mx-auto h-16 md:h-20 w-auto object-contain"
+                className="mx-auto h-16 md:h-20 w-auto object-contain block dark:hidden"
+              />
+              <img
+                src="/img/logo_branca.png"
+                alt="Logo da Escola"
+                className="mx-auto h-16 md:h-20 w-auto object-contain hidden dark:block"
               />
             </div>
           </div>
@@ -112,7 +122,12 @@ const LocationVerification = ({
               <img
                 src="/img/logo.png"
                 alt="Logo da Escola"
-                className="mx-auto h-16 md:h-20 w-auto object-contain"
+                className="mx-auto h-16 md:h-20 w-auto object-contain block dark:hidden"
+              />
+              <img
+                src="/img/logo_branca.png"
+                alt="Logo da Escola"
+                className="mx-auto h-16 md:h-20 w-auto object-contain hidden dark:block"
               />
             </div>
           </div>

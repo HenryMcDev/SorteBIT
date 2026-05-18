@@ -1,168 +1,62 @@
-
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Smartphone, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { Smartphone, Lock } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
-interface DesktopBlockerProps {
-  onAdminAccess: () => void;
-}
-
-const DesktopBlocker = ({ onAdminAccess }: DesktopBlockerProps) => {
-  const [showAdminForm, setShowAdminForm] = useState(false);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleAdminLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
-
-    // Credenciais fixas do administrador master (henrydev / 123321@)
-    setTimeout(() => {
-      if (username.trim() === 'henrydev' && password === '123321@') {
-        // Persiste a sessão de admin para que o useTeacherAuth também a reconheça
-        try {
-          sessionStorage.setItem(
-            'school_teacher_session',
-            JSON.stringify({ id: 'admin-henrydev', name: 'henrydev', isAdmin: true })
-          );
-        } catch {
-          // ignore
-        }
-        onAdminAccess();
-      } else {
-        setError('Usuário ou senha incorretos');
-      }
-      setIsLoading(false);
-    }, 600);
-  };
-
+const DesktopBlocker = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-school-blue-50 via-white to-school-yellow-50 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-school-blue-50 via-white to-school-yellow-50 dark:bg-zinc-950 dark:bg-none flex flex-col">
       {/* Botão Administrativo no topo */}
       <div className="w-full p-4 flex justify-end">
-        <Button
-          onClick={() => setShowAdminForm(!showAdminForm)}
-          variant="outline"
-          className="border-school-blue-600 text-school-blue-600 dark:text-school-blue-400 hover:bg-school-blue-50 dark:bg-slate-800"
-        >
-          <Lock className="w-4 h-4 mr-2" />
-          Administrativo
-        </Button>
+        <Link to="/admin">
+          <Button
+            variant="outline"
+            className="border-school-blue-600 text-school-blue-600 dark:text-school-blue-400 dark:bg-slate-800"
+          >
+            <Lock className="w-4 h-4 mr-2" />
+            Administrativo
+          </Button>
+        </Link>
       </div>
-
-      {/* Formulário administrativo */}
-      {showAdminForm && (
-        <div className="w-full max-w-md mx-auto px-4 mb-8">
-          <Card className="p-6 shadow-lg border-2 border-school-blue-200 dark:border-slate-700">
-            <form onSubmit={handleAdminLogin} className="space-y-4">
-              <div className="text-center mb-4">
-                <h3 className="text-lg font-bold text-school-blue-700 dark:text-school-blue-300">Acesso Administrativo</h3>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="admin-username" className="text-school-blue-700 dark:text-school-blue-300 font-semibold flex items-center">
-                  <User className="w-4 h-4 mr-2" />
-                  Usuário
-                </Label>
-                <Input
-                  id="admin-username"
-                  type="text"
-                  placeholder="Digite o usuário"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="border-2 border-gray-200 dark:border-slate-700 focus:border-school-blue-500 rounded-lg"
-                  disabled={isLoading}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="admin-password" className="text-school-blue-700 dark:text-school-blue-300 font-semibold flex items-center">
-                  <Lock className="w-4 h-4 mr-2" />
-                  Senha
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="admin-password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Digite a senha"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="border-2 border-gray-200 dark:border-slate-700 focus:border-school-blue-500 rounded-lg pr-10"
-                    disabled={isLoading}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 h-auto p-1"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </Button>
-                </div>
-              </div>
-
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-
-              <Button
-                type="submit"
-                disabled={isLoading || !username.trim() || !password.trim()}
-                className="w-full bg-school-blue-600 hover:bg-school-blue-700 text-white rounded-lg"
-              >
-                {isLoading ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Verificando...
-                  </div>
-                ) : (
-                  'Acessar'
-                )}
-              </Button>
-            </form>
-          </Card>
-        </div>
-      )}
 
       {/* Mensagem principal de bloqueio */}
       <div className="flex-1 flex items-center justify-center px-4">
         <Card className="p-8 max-w-lg mx-auto shadow-xl border-0 bg-white dark:bg-slate-900 rounded-2xl text-center">
           <div className="space-y-6">
-            <Smartphone className="w-16 h-16 text-school-blue-600 dark:text-school-blue-400 mx-auto" />
-            
+            <Smartphone className="w-16 h-16 text-school-blue-600 dark:text-blue-400 mx-auto" />
+
             <div className="space-y-4">
-              <h2 className="text-2xl md:text-3xl font-bold text-school-blue-700 dark:text-school-blue-300">
+              <h2 className="text-2xl md:text-3xl font-bold text-school-blue-700 dark:text-blue-400">
                 ⚠️ Este site é exclusivo para dispositivos móveis
               </h2>
-              
-              <p className="text-lg text-school-blue-600 dark:text-school-blue-400 leading-relaxed">
+
+              <p className="text-lg text-school-blue-600 dark:text-blue-400 leading-relaxed">
                 Acesse pelo <strong>celular</strong> para participar do sorteio.
               </p>
-              
-              <div className="bg-school-yellow-50 border-2 border-school-yellow-200 rounded-xl p-4 mt-6">
-                <p className="text-school-blue-700 dark:text-school-blue-300 font-semibold">
+
+              <div className="bg-school-yellow-50 border-2 border-school-yellow-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-4 mt-6">
+                <p className="text-school-blue-700 dark:text-blue-500 font-semibold">
                   📱 Escaneie o QR Code ou digite o endereço no seu celular
                 </p>
+                <img
+                  src="/img/QRCode.png"
+                  alt="QR Code para acessar o SorteBIT pelo celular"
+                  className="mx-auto mt-4 w-44 h-44 object-contain rounded-xl shadow-md"
+                />
               </div>
             </div>
 
             {/* Logo da escola */}
             <div className="pt-6">
-              <img 
-                src="/img/logo.png" 
-                alt="Logo da Escola" 
-                className="mx-auto h-16 w-auto object-contain"
+              <img
+                src="/img/logo.png"
+                alt="Logo da Escola"
+                className="mx-auto h-16 w-auto object-contain block dark:hidden"
+              />
+              <img
+                src="/img/logo_branca.png"
+                alt="Logo da Escola"
+                className="mx-auto h-16 w-auto object-contain hidden dark:block"
               />
             </div>
           </div>

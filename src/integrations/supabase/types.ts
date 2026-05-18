@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      code_adm: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
       daily_codes: {
         Row: {
           code: string

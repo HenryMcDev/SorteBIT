@@ -7,18 +7,13 @@ import { Card } from '@/components/ui/card';
 import { Dice1, MapPin, AlertCircle, Crown, Camera, RefreshCw, X, AlertTriangle, QrCode, CheckCircle2, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useLocationVerification } from '@/hooks/useLocationVerification';
-import ClassCodeManager from './ClassCodeManager';
 import Celebration from './Celebration';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 
-interface LotteryFormProps {
-  isAdminMode?: boolean;
-}
-
-const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
+const LotteryForm = () => {
   const [activeTab, setActiveTab] = useState<'lottery' | 'codes'>('lottery');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -36,7 +31,6 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   const [tempoRestante, setTempoRestante] = useState<string>('');
   const [alreadyParticipated, setAlreadyParticipated] = useState(false);
   const [terminoFixo, setTerminoFixo] = useState<number | null>(null);
-  const [useQRContingency, setUseQRContingency] = useState(false);
   const [isGracePeriod, setIsGracePeriod] = useState(true);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [isTermsOpen, setIsTermsOpen] = useState(false);
@@ -126,7 +120,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   };
 
   // Use location verification only for non-admin mode
-  const { isWithinRange, locationProgress, showContingency, latitude, longitude, distance } = useLocationVerification(isAdminMode);
+  const { isWithinRange, locationProgress, showContingency, latitude, longitude, distance } = useLocationVerification(false);
 
   const generateLuckyNumber = (): number => {
     return Math.floor(Math.random() * 9000) + 1000;
@@ -148,7 +142,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name.trim() || !phone.trim() || (!isAdminMode && !studentCode.trim())) {
+    if (!name.trim() || !phone.trim() || !studentCode.trim()) {
       toast({
         title: "Erro",
         description: "Por favor, preencha todos os campos obrigatórios.",
@@ -157,13 +151,10 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
       return;
     }
 
-    // Verificação de segurança da memória para dispositivos móveis
-    if (!isAdminMode) {
-      if (!photo || typeof photo !== 'string' || photo.length < 50) {
-        setPhotoValidationError("Sua foto não foi carregada corretamente. O navegador pode ter descartado o arquivo por falta de memória. Por favor, capture a foto novamente.");
-        setPhoto(null);
-        return;
-      }
+    if (!photo || typeof photo !== 'string' || photo.length < 50) {
+      setPhotoValidationError("Sua foto não foi carregada corretamente. O navegador pode ter descartado o arquivo por falta de memória. Por favor, capture a foto novamente.");
+      setPhoto(null);
+      return;
     }
 
     setSubmissionState('enviando');
@@ -173,138 +164,130 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
       let isSuccess = false;
       let ticketFromServer = '';
 
-      if (!isAdminMode) {
-        setSubmissionState('processando');
-        try {
-          // Envolvemos toda a lógica de serialização e fetch em um try-catch robusto
-          const payload = JSON.stringify({
-            nome: name.trim(),
-            telefone: phone.replace(/\D/g, ''),
-            codigo: studentCode.trim(),
-            fotoBase64: photo,
-          });
+      setSubmissionState('processando');
+      try {
+        // Envolvemos toda a lógica de serialização e fetch em um try-catch robusto
+        const payload = JSON.stringify({
+          nome: name.trim(),
+          telefone: phone.replace(/\D/g, ''),
+          codigo: studentCode.trim(),
+          fotoBase64: photo,
+        });
 
-          const webhookResponse = await fetch('https://bitn8n.infinityflowapp.com/webhook/sortebit', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: payload,
-          });
+        const webhookResponse = await fetch('https://bitn8n.infinityflowapp.com/webhook/sortebit', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: payload,
+        });
 
-          const responseData = await webhookResponse.json();
+        const responseData = await webhookResponse.json();
 
-          if (responseData.sucesso === true) {
-            isSuccess = true;
-            ticketFromServer = responseData.ticket || 'SORTEBIT#VALIDADO';
-          } else if (responseData.sucesso === false) {
-            // Captura o texto exato da API e evita crash no React com tipos inesperados
-            const erroMensagem = typeof responseData.erro === 'string'
-              ? responseData.erro
-              : (responseData.erro ? JSON.stringify(responseData.erro) : "A validação falhou.");
+        if (responseData.sucesso === true) {
+          isSuccess = true;
+          ticketFromServer = responseData.ticket || 'SORTEBIT#VALIDADO';
+        } else if (responseData.sucesso === false) {
+          // Captura o texto exato da API e evita crash no React com tipos inesperados
+          const erroMensagem = typeof responseData.erro === 'string'
+            ? responseData.erro
+            : (responseData.erro ? JSON.stringify(responseData.erro) : "A validação falhou.");
 
-            const serverErrorType = responseData.tipoErro || null;
-            setErrorType(serverErrorType);
+          const serverErrorType = responseData.tipoErro || null;
+          setErrorType(serverErrorType);
 
-            // Mantém a compatibilidade com a trava diária do sistema
-            if (serverErrorType === 'erroParticipacao') {
-              const tempoRestanteSegundos = responseData.tempoRestante;
-              let remainingMs;
-              if (typeof tempoRestanteSegundos === 'number') {
-                remainingMs = tempoRestanteSegundos * 1000;
-              } else {
-                const agora = new Date();
-                const meiaNoite = new Date();
-                meiaNoite.setHours(23, 59, 59, 999);
-                remainingMs = meiaNoite.getTime() - agora.getTime();
-              }
-
-              localStorage.setItem('bit_expiration_time', (Date.now() + remainingMs).toString());
-              localStorage.setItem('bit_participacao_concluida', new Date().toDateString()); // Fallback visual antigo
-
-              setTerminoFixo(performance.now() + remainingMs);
-              setAlreadyParticipated(true);
-
-              setAnalysisError(null);
-              setErrorType(null);
-              setSubmissionState('idle');
-              return;
-            } else if (serverErrorType === 'erroUniforme') {
-              setTentativasRestantes(prev => prev > 0 ? prev - 1 : 0);
-              setAnalysisError(erroMensagem);
-            } else if (serverErrorType === 'erroCode') {
-              setTentativasCodigo(prev => prev > 0 ? prev - 1 : 0);
-              setAnalysisError(erroMensagem);
-            } else if (serverErrorType === 'erroSeguranca') {
-              setAnalysisError(erroMensagem);
+          // Mantém a compatibilidade com a trava diária do sistema
+          if (serverErrorType === 'erroParticipacao') {
+            const tempoRestanteSegundos = responseData.tempoRestante;
+            let remainingMs;
+            if (typeof tempoRestanteSegundos === 'number') {
+              remainingMs = tempoRestanteSegundos * 1000;
             } else {
-              setPhotoValidationError(erroMensagem);
+              const agora = new Date();
+              const meiaNoite = new Date();
+              meiaNoite.setHours(23, 59, 59, 999);
+              remainingMs = meiaNoite.getTime() - agora.getTime();
             }
-            setSubmissionState('erro');
+
+            localStorage.setItem('bit_expiration_time', (Date.now() + remainingMs).toString());
+            localStorage.setItem('bit_participacao_concluida', new Date().toDateString()); // Fallback visual antigo
+
+            setTerminoFixo(performance.now() + remainingMs);
+            setAlreadyParticipated(true);
+
+            setAnalysisError(null);
+            setErrorType(null);
+            setSubmissionState('idle');
             return;
+          } else if (serverErrorType === 'erroUniforme') {
+            setTentativasRestantes(prev => prev > 0 ? prev - 1 : 0);
+            setAnalysisError(erroMensagem);
+          } else if (serverErrorType === 'erroCode') {
+            setTentativasCodigo(prev => prev > 0 ? prev - 1 : 0);
+            setAnalysisError(erroMensagem);
+          } else if (serverErrorType === 'erroSeguranca') {
+            setAnalysisError(erroMensagem);
           } else {
-            const erroGenerico = typeof responseData.erro === 'string'
-              ? responseData.erro
-              : (responseData.mensagem || "A análise detectou um problema na sua foto.");
-
-            const serverErrorType = responseData.tipoErro || null;
-            setErrorType(serverErrorType);
-
-            if (serverErrorType === 'erroParticipacao') {
-              const tempoRestanteSegundos = responseData.tempoRestante;
-              let remainingMs;
-              if (typeof tempoRestanteSegundos === 'number') {
-                remainingMs = tempoRestanteSegundos * 1000;
-              } else {
-                const agora = new Date();
-                const meiaNoite = new Date();
-                meiaNoite.setHours(23, 59, 59, 999);
-                remainingMs = meiaNoite.getTime() - agora.getTime();
-              }
-
-              localStorage.setItem('bit_expiration_time', (Date.now() + remainingMs).toString());
-              localStorage.setItem('bit_participacao_concluida', new Date().toDateString()); // Fallback visual antigo
-
-              setTerminoFixo(performance.now() + remainingMs);
-              setAlreadyParticipated(true);
-
-              setAnalysisError(null);
-              setErrorType(null);
-              setSubmissionState('idle');
-              return;
-            } else if (serverErrorType === 'erroUniforme') {
-              setTentativasRestantes(prev => prev > 0 ? prev - 1 : 0);
-              setAnalysisError(String(erroGenerico));
-            } else if (serverErrorType === 'erroCode') {
-              setTentativasCodigo(prev => prev > 0 ? prev - 1 : 0);
-              setAnalysisError(String(erroGenerico));
-            } else if (serverErrorType === 'erroSeguranca') {
-              setAnalysisError(String(erroGenerico));
-            } else {
-              setPhotoValidationError(String(erroGenerico));
-            }
-            setSubmissionState('erro');
-            return;
+            setPhotoValidationError(erroMensagem);
           }
-        } catch (error: any) {
-          console.error("Webhook error:", error);
-          // Atualiza estado de erro ao invés de manipular o DOM
-          setPhotoValidationError("Não foi possível conectar ao servidor. Verifique sua internet ou tente novamente mais tarde.");
+          setSubmissionState('erro');
+          return;
+        } else {
+          const erroGenerico = typeof responseData.erro === 'string'
+            ? responseData.erro
+            : (responseData.mensagem || "A análise detectou um problema na sua foto.");
+
+          const serverErrorType = responseData.tipoErro || null;
+          setErrorType(serverErrorType);
+
+          if (serverErrorType === 'erroParticipacao') {
+            const tempoRestanteSegundos = responseData.tempoRestante;
+            let remainingMs;
+            if (typeof tempoRestanteSegundos === 'number') {
+              remainingMs = tempoRestanteSegundos * 1000;
+            } else {
+              const agora = new Date();
+              const meiaNoite = new Date();
+              meiaNoite.setHours(23, 59, 59, 999);
+              remainingMs = meiaNoite.getTime() - agora.getTime();
+            }
+
+            localStorage.setItem('bit_expiration_time', (Date.now() + remainingMs).toString());
+            localStorage.setItem('bit_participacao_concluida', new Date().toDateString()); // Fallback visual antigo
+
+            setTerminoFixo(performance.now() + remainingMs);
+            setAlreadyParticipated(true);
+
+            setAnalysisError(null);
+            setErrorType(null);
+            setSubmissionState('idle');
+            return;
+          } else if (serverErrorType === 'erroUniforme') {
+            setTentativasRestantes(prev => prev > 0 ? prev - 1 : 0);
+            setAnalysisError(String(erroGenerico));
+          } else if (serverErrorType === 'erroCode') {
+            setTentativasCodigo(prev => prev > 0 ? prev - 1 : 0);
+            setAnalysisError(String(erroGenerico));
+          } else if (serverErrorType === 'erroSeguranca') {
+            setAnalysisError(String(erroGenerico));
+          } else {
+            setPhotoValidationError(String(erroGenerico));
+          }
           setSubmissionState('erro');
           return;
         }
-      } else {
-        isSuccess = true;
-        ticketFromServer = 'SORTEBIT#ADMIN';
+      } catch (error: any) {
+        console.error("Webhook error:", error);
+        // Atualiza estado de erro ao invés de manipular o DOM
+        setPhotoValidationError("Não foi possível conectar ao servidor. Verifique sua internet ou tente novamente mais tarde.");
+        setSubmissionState('erro');
+        return;
       }
 
       if (isSuccess) {
         setSubmissionState('sucesso');
         const formattedTicket = ticketFromServer;
         setGeneratedTicket(formattedTicket);
-
-
-        // Mantém os dados no formulário para exibir o nome na tela de sucesso (Celebration)
       }
 
     } catch (error) {
@@ -318,119 +301,6 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
     }
   };
 
-
-  // Admin mode interface
-  if (isAdminMode) {
-    return (
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="mb-6">
-          <div className="flex flex-wrap gap-2 bg-white dark:bg-zinc-950 rounded-lg p-2 shadow-lg">
-            <Button
-              onClick={() => setActiveTab('lottery')}
-              variant={activeTab === 'lottery' ? 'default' : 'outline'}
-              className={`flex-1 min-w-32 ${activeTab === 'lottery'
-                ? 'bg-school-blue-600 text-white'
-                : 'border-school-blue-600 text-school-blue-600 dark:text-zinc-400 hover:bg-school-blue-50 dark:bg-slate-800'
-                }`}
-            >
-              <Dice1 className="w-4 h-4 mr-2" />
-              Sorteio
-            </Button>
-            <Button
-              onClick={() => setActiveTab('codes')}
-              variant={activeTab === 'codes' ? 'default' : 'outline'}
-              className={`flex-1 min-w-32 ${activeTab === 'codes'
-                ? 'bg-school-blue-600 text-white'
-                : 'border-school-blue-600 text-school-blue-600 dark:text-zinc-400 hover:bg-school-blue-50 dark:bg-slate-800'
-                }`}
-            >
-              <Crown className="w-4 h-4 mr-2" />
-              Códigos
-            </Button>
-          </div>
-        </div>
-
-        {activeTab === 'codes' && <ClassCodeManager />}
-        {activeTab === 'lottery' && (
-          <Card className="p-6 md:p-8 shadow-xl border-0 dark:border dark:border-zinc-800 bg-white dark:bg-zinc-950 rounded-2xl">
-            <div className="space-y-6">
-              <div className="text-center space-y-2">
-                <div className="flex items-center justify-center space-x-2">
-                  <Crown className="w-8 h-8 text-school-yellow-500 dark:text-school-yellow-400" />
-                  <Dice1 className="w-12 h-12 text-school-blue-600 dark:text-zinc-400" />
-                </div>
-                <h2 className="text-xl md:text-2xl font-bold text-school-blue-700 dark:text-white">
-                  Sorteio - Modo Administrativo
-                </h2>
-                <p className="text-school-blue-600 dark:text-zinc-400">
-                  Registre participações sem validação de localização
-                </p>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="text-school-blue-700 dark:text-zinc-200 font-semibold">
-                    Nome completo *
-                  </Label>
-                  <Input
-                    id="name"
-                    type="text"
-                    placeholder="Digite seu nome completo"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 dark:bg-zinc-900 dark:border-zinc-700 dark:text-white focus:border-school-blue-500 rounded-xl"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-school-blue-700 dark:text-zinc-200 font-semibold">
-                    Telefone *
-                  </Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="(00) 00000-0000"
-                    value={phone}
-                    onChange={handlePhoneChange}
-                    className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 dark:bg-zinc-900 dark:border-zinc-700 dark:text-white focus:border-school-blue-500 rounded-xl"
-                    maxLength={15}
-                    required
-                  />
-                </div>
-
-                <Button
-                  type="submit"
-                  disabled={submissionState === 'enviando' || submissionState === 'processando'}
-                  className="w-full h-12 md:h-16 text-base md:text-lg font-bold bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 dark:text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                >
-                  {(submissionState === 'enviando' || submissionState === 'processando') ? (
-                    <div className="flex items-center">
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-school-blue-800 mr-2"></div>
-                      Processando...
-                    </div>
-                  ) : (
-                    <div className="flex items-center">
-                      <Dice1 className="w-5 h-5 mr-2" />
-                      Participar do Sorteio
-                    </div>
-                  )}
-                </Button>
-              </form>
-
-              <div className="text-center pt-4">
-                <img
-                  src="/img/logo.png"
-                  alt="Logo da Escola"
-                  className="mx-auto h-16 md:h-20 w-auto object-contain"
-                />
-              </div>
-            </div>
-          </Card>
-        )}
-      </div>
-    );
-  }
 
   // Show error UI if photo validation fails
   if (analysisError && errorType === 'erroUniforme') {
@@ -504,7 +374,12 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
               <img
                 src="/img/logo.png"
                 alt="Logo da Escola"
-                className="mx-auto h-12 md:h-16 w-auto object-contain"
+                className="mx-auto h-12 md:h-16 w-auto object-contain block dark:hidden"
+              />
+              <img
+                src="/img/logo_branca.png"
+                alt="Logo da Escola"
+                className="mx-auto h-12 md:h-16 w-auto object-contain hidden dark:block"
               />
             </div>
           </div>
@@ -566,7 +441,12 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
               <img
                 src="/img/logo.png"
                 alt="Logo da Escola"
-                className="mx-auto h-12 md:h-16 w-auto object-contain"
+                className="mx-auto h-12 md:h-16 w-auto object-contain block dark:hidden"
+              />
+              <img
+                src="/img/logo_branca.png"
+                alt="Logo da Escola"
+                className="mx-auto h-12 md:h-16 w-auto object-contain hidden dark:block"
               />
             </div>
           </div>
@@ -592,7 +472,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
     );
   }
 
-  const isLocationInvalid = !isAdminMode && !isWithinRange && !useQRContingency;
+  const isLocationInvalid = !isWithinRange;
   const showRedButton = isLocationInvalid && !isGracePeriod;
 
   // Standard user interface
@@ -631,6 +511,22 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="w-full">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm font-medium text-school-blue-700 dark:text-zinc-300 flex items-center gap-1">
+                    <MapPin className="w-4 h-4" />
+                    {isWithinRange ? 'Localização Confirmada' : 'Buscando localização...'}
+                  </span>
+                  <span className="text-sm font-bold text-school-blue-700 dark:text-zinc-300">{locationProgress}%</span>
+                </div>
+                <div className="w-full bg-zinc-200 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-300 ${isWithinRange ? 'bg-green-500' : 'bg-red-500'}`}
+                    style={{ width: `${locationProgress}%` }}
+                  ></div>
+                </div>
+              </div>
+              
               {photoValidationError && (
                 <div className="bg-red-50 dark:bg-red-950/30 border-2 border-red-200 dark:border-red-800/50 rounded-xl p-4 flex items-start justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
                   <div className="flex gap-3">
@@ -651,33 +547,6 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                   >
                     <X className="w-5 h-5" />
                   </button>
-                </div>
-              )}
-
-              {!isAdminMode && (showContingency || useQRContingency) && (
-                <div className="mb-6">
-                  {!isWithinRange && showContingency && !useQRContingency && (
-                    <div className="text-center animate-in fade-in slide-in-from-bottom-2">
-                      <Button
-                        type="button"
-                        onClick={() => setUseQRContingency(true)}
-                        variant="outline"
-                        className="w-full text-school-blue-700 dark:text-white border-school-blue-300 dark:border-slate-600 hover:bg-school-blue-50 dark:bg-slate-800"
-                      >
-                        <QrCode className="w-5 h-5 mr-2" />
-                        Utilizar Contingência por QR Code
-                      </Button>
-                    </div>
-                  )}
-
-                  {useQRContingency && (
-                    <div className="flex flex-col items-center justify-center p-3 bg-school-blue-50 dark:bg-slate-800 border border-school-blue-200 dark:border-slate-700 rounded-lg mt-2">
-                      <QrCode className="w-6 h-6 text-school-blue-600 dark:text-zinc-400 mb-1" />
-                      <span className="text-sm font-bold text-school-blue-700 dark:text-white">
-                        Modo Contingência Ativo
-                      </span>
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -794,41 +663,39 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                 )}
               </div>
 
-              {!isAdminMode && (
-                <div className="flex items-start space-x-3 pt-2">
-                  <Checkbox 
-                    id="terms" 
-                    checked={termsAccepted} 
-                    onCheckedChange={(checked) => setTermsAccepted(checked as boolean)} 
-                    className="mt-1"
-                  />
-                  <div className="grid gap-1.5 leading-none">
-                    <label
-                      htmlFor="terms"
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-school-blue-700 dark:text-white"
+              <div className="flex items-start space-x-3 pt-2">
+                <Checkbox
+                  id="terms"
+                  checked={termsAccepted}
+                  onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
+                  className="mt-1"
+                />
+                <div className="grid gap-1.5 leading-none">
+                  <label
+                    htmlFor="terms"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-school-blue-700 dark:text-white"
+                  >
+                    Aceito os termos e a captação da minha foto *
+                  </label>
+                  <p className="text-sm text-school-blue-600 dark:text-zinc-400/80">
+                    Você deve ler e concordar com os{' '}
+                    <button
+                      type="button"
+                      onClick={() => setIsTermsOpen(true)}
+                      className="text-school-yellow-600 dark:text-school-yellow-400 font-bold hover:underline"
                     >
-                      Aceito os termos e a captação da minha foto *
-                    </label>
-                    <p className="text-sm text-school-blue-600 dark:text-zinc-400/80">
-                      Você deve ler e concordar com os{' '}
-                      <button 
-                        type="button" 
-                        onClick={() => setIsTermsOpen(true)}
-                        className="text-school-yellow-600 dark:text-school-yellow-400 font-bold hover:underline"
-                      >
-                        Termos de uso
-                      </button>
-                      {' '}antes de participar.
-                    </p>
-                  </div>
+                      Termos de Uso
+                    </button>
+                    {' '}antes de participar.
+                  </p>
                 </div>
-              )}
+              </div>
 
               <Button
                 type="submit"
-                disabled={submissionState === 'enviando' || submissionState === 'processando' || !photo || photoValidationError !== null || isLocationInvalid || tentativasCodigo === 0 || (!isAdminMode && !termsAccepted)}
+                disabled={submissionState === 'enviando' || submissionState === 'processando' || !photo || photoValidationError !== null || isLocationInvalid || tentativasCodigo === 0 || !termsAccepted}
                 className={`w-full h-auto py-5 text-base md:text-lg font-bold rounded-2xl shadow-sm transition-all duration-500 disabled:cursor-not-allowed ${showRedButton
-                  ? "bg-red-50 dark:bg-red-950/300 text-white disabled:opacity-100"
+                  ? "bg-red-50 dark:bg-red-600 text-white dark:text-school-blue-900 disabled:opacity-100"
                   : "bg-school-blue-600 hover:bg-school-blue-700 text-white dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 animate-pulse-subtle disabled:opacity-70 disabled:animate-none hover:shadow-md"
                   }`}
               >
@@ -850,7 +717,12 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
             <img
               src="/img/logo.png"
               alt="Logo da Escola"
-              className="mx-auto h-16 md:h-20 w-auto object-contain"
+              className="mx-auto h-16 md:h-20 w-auto object-contain block dark:hidden"
+            />
+            <img
+              src="/img/logo_branca.png"
+              alt="Logo da Escola"
+              className="mx-auto h-16 md:h-20 w-auto object-contain hidden dark:block"
             />
           </div>
         </div>
@@ -860,7 +732,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
       {isCameraOpen && (
         <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center sm:p-6 backdrop-blur-md">
           <Card className="w-full h-full sm:h-auto max-w-md bg-black border-0 sm:border sm:border-gray-800 sm:rounded-[2rem] overflow-hidden shadow-2xl relative flex flex-col">
-            
+
             {/* Header */}
             <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-20 bg-gradient-to-b from-black/80 to-transparent">
               <div className="flex items-center gap-2 px-4 py-2 bg-black/50 rounded-full border border-white/10 backdrop-blur-md">
@@ -877,7 +749,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
             </div>
 
             {/* Viewfinder */}
-            <div 
+            <div
               className="relative w-full bg-[#050505] flex items-center justify-center mt-auto mb-auto"
               style={{ aspectRatio: '9 / 16', maxHeight: '100vh' }}
             >
@@ -920,7 +792,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
 
             {/* Bottom Controls */}
             <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center pb-8 pt-20 px-6 bg-gradient-to-t from-black via-black/90 to-transparent z-20">
-              
+
               {/* Zoom Control */}
               <div className="flex items-center gap-4 w-full max-w-[280px] mb-8 bg-black/60 p-4 rounded-2xl backdrop-blur-md border border-white/10 shadow-lg">
                 <span className="text-white font-bold text-xl select-none">-</span>
@@ -948,7 +820,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
                 <Camera className="w-10 h-10" />
               </Button>
             </div>
-            
+
           </Card>
         </div>
       )}
@@ -967,7 +839,7 @@ const LotteryForm = ({ isAdminMode = false }: LotteryFormProps) => {
               <p>
                 Ao prosseguir com a participação no SorteBIT, o(a) aluno(a) declara, para todos os fins, que leu, compreendeu e concordou integralmente com as disposições deste Termo.
               </p>
-              
+
               <div>
                 <h3 className="font-bold text-school-blue-800 dark:text-white">1. Objeto</h3>
                 <p>1.1. O presente Termo regula as condições de participação no sorteio denominado SorteBIT.</p>

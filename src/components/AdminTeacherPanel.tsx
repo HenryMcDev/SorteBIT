@@ -49,7 +49,7 @@ const AdminTeacherPanel = () => {
         .from('teachers')
         .select('id, name, created_at')
         .order('created_at', { ascending: false });
-      
+
       if (error) throw error;
       return data;
     }

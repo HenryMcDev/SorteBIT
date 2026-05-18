@@ -120,7 +120,7 @@ const ClassCodeManager = () => {
           {currentCode ? (
             <div className="text-center space-y-4">
               <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Código Atual</p>
-              <div className="text-5xl font-mono font-bold text-school-blue-800 dark:text-school-blue-200 tracking-widest bg-school-yellow-100 py-4 px-8 rounded-lg border-2 border-school-yellow-300">
+              <div className="text-5xl font-mono font-bold text-school-blue-800 dark:text-white tracking-widest bg-school-yellow-100 dark:bg-zinc-800 py-4 px-8 rounded-lg border-2 border-school-yellow-300 dark:border-zinc-600">
                 {currentCode.code}
               </div>
               <p className="text-sm text-gray-500 dark:text-gray-400">

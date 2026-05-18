@@ -74,10 +74,15 @@ const TeacherPortal = () => {
 
             {/* Logo da escola */}
             <div className="text-center pt-4">
-              <img 
-                src="/img/logo.png" 
-                alt="Logo da Escola" 
-                className="mx-auto h-16 md:h-20 w-auto object-contain"
+              <img
+                src="/img/logo.png"
+                alt="Logo da Escola"
+                className="mx-auto h-16 md:h-20 w-auto object-contain block dark:hidden"
+              />
+              <img
+                src="/img/logo_branca.png"
+                alt="Logo da Escola"
+                className="mx-auto h-16 md:h-20 w-auto object-contain hidden dark:block"
               />
             </div>
           </div>
@@ -162,10 +167,15 @@ const TeacherPortal = () => {
 
           {/* Logo da escola */}
           <div className="text-center pt-4">
-            <img 
-              src="/img/logo.png" 
-              alt="Logo da Escola" 
-              className="mx-auto h-16 md:h-20 w-auto object-contain"
+            <img
+              src="/img/logo.png"
+              alt="Logo da Escola"
+              className="mx-auto h-16 md:h-20 w-auto object-contain block dark:hidden"
+            />
+            <img
+              src="/img/logo_branca.png"
+              alt="Logo da Escola"
+              className="mx-auto h-16 md:h-20 w-auto object-contain hidden dark:block"
             />
           </div>
         </div>
