@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
-import { Dice1, MapPin, AlertCircle, Crown, Camera, RefreshCw, X, AlertTriangle, QrCode, CheckCircle2, Clock } from 'lucide-react';
+import { Dice1, MapPin, MapPinOff, AlertCircle, Crown, Camera, RefreshCw, X, AlertTriangle, QrCode, CheckCircle2, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useLocationVerification } from '@/hooks/useLocationVerification';
 import Celebration from './Celebration';
@@ -120,7 +120,7 @@ const LotteryForm = () => {
   };
 
   // Use location verification only for non-admin mode
-  const { isWithinRange, locationProgress, showContingency, latitude, longitude, distance } = useLocationVerification(false);
+  const { isLoading, isWithinRange, locationProgress, showContingency, latitude, longitude, distance, retryLocation } = useLocationVerification(false);
 
   const generateLuckyNumber = (): number => {
     return Math.floor(Math.random() * 9000) + 1000;
@@ -477,437 +477,466 @@ const LotteryForm = () => {
 
   // Standard user interface
   return (
-    <div className="max-w-lg mx-auto px-4">
-      <Card className="p-6 md:p-8 shadow-xl border-0 dark:border dark:border-zinc-800 bg-white dark:bg-zinc-950 rounded-2xl">
-        <div className="space-y-6">
-          <div className="text-center space-y-2">
-            <h2 className="text-2xl md:text-3xl font-black text-school-blue-700 dark:text-white">
-              Participe do Sorteio!
-            </h2>
-            <p className="text-school-blue-600 dark:text-zinc-400">
-              Preencha os dados e insira o código fornecido pelo seu professor
+    <>
+      {!isLoading && isWithinRange === false && (
+        <div className="fixed inset-0 w-screen h-screen z-[9999] backdrop-blur-md bg-zinc-950/70 flex items-center justify-center p-4">
+          <div className="bg-zinc-900/90 border border-red-500/20 rounded-2xl p-6 flex flex-col items-center text-center space-y-4 shadow-xl w-full max-w-sm animate-in zoom-in-95">
+            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-2">
+              <MapPinOff className="w-8 h-8 text-red-500 animate-pulse" />
+            </div>
+            <h3 className="text-xl font-bold text-white">Acesso Bloqueado por Proximidade</h3>
+            <p className="text-zinc-300 text-sm">
+              {distance !== null
+                ? `Você está a aproximadamente ${(distance).toFixed(0)} metros de distância. `
+                : 'Não conseguimos obter sua localização exata. '}
+              É obrigatório estar na BIT para participar.
             </p>
-          </div>
-
-          {alreadyParticipated ? (
-            <div className="bg-school-blue-50 dark:bg-slate-800 border border-school-blue-100 dark:border-slate-700 rounded-2xl p-6 shadow-sm animate-in fade-in slide-in-from-top-4 mt-6">
-              <div className="flex flex-col items-center text-center space-y-4">
-                <div className="w-14 h-14 bg-white dark:bg-zinc-950 rounded-full flex items-center justify-center shadow-sm text-school-blue-600 dark:text-zinc-400 mb-2">
-                  <Clock className="w-7 h-7" />
-                </div>
-                <h3 className="text-xl font-bold text-school-blue-800 dark:text-white">Participação Concluída</h3>
-                <p className="text-school-blue-600 dark:text-zinc-400 font-medium">
-                  Você já registrou sua participação no sorteio de hoje.
-                </p>
-                <div className="pt-6 border-t border-school-blue-200 dark:border-slate-700/50 w-full mt-2">
-                  <p className="text-xs font-bold text-school-blue-700 dark:text-white uppercase tracking-widest mb-3">
-                    Sua próxima chance de ganhar renova em
-                  </p>
-                  <div className="text-4xl font-mono font-black text-school-blue-800 dark:text-white tracking-wider">
-                    {tempoRestante}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="w-full">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm font-medium text-school-blue-700 dark:text-zinc-300 flex items-center gap-1">
-                    <MapPin className="w-4 h-4" />
-                    {isWithinRange ? 'Localização Confirmada' : 'Buscando localização...'}
-                  </span>
-                  <span className="text-sm font-bold text-school-blue-700 dark:text-zinc-300">{locationProgress}%</span>
-                </div>
-                <div className="w-full bg-zinc-200 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full transition-all duration-300 ${isWithinRange ? 'bg-green-500' : 'bg-red-500'}`}
-                    style={{ width: `${locationProgress}%` }}
-                  ></div>
-                </div>
-              </div>
-              
-              {photoValidationError && (
-                <div className="bg-red-50 dark:bg-red-950/30 border-2 border-red-200 dark:border-red-800/50 rounded-xl p-4 flex items-start justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
-                  <div className="flex gap-3">
-                    <AlertCircle className="w-6 h-6 text-red-500 dark:text-red-400 shrink-0" />
-                    <div>
-                      <h4 className="font-bold text-red-800 dark:text-red-200">Atenção</h4>
-                      <p className="text-red-600 dark:text-red-400 text-sm mt-1">{photoValidationError}</p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPhotoValidationError(null);
-                      setSubmissionState('idle');
-                      setPhoto(null);
-                    }}
-                    className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 transition-colors p-1"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-school-blue-700 dark:text-zinc-200 font-semibold">
-                  Nome completo *
-                </Label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="Digite seu nome completo"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 dark:bg-zinc-900 dark:border-zinc-700 dark:text-white focus:border-school-blue-500 rounded-xl"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="text-school-blue-700 dark:text-zinc-200 font-semibold">
-                  Telefone *
-                </Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="(00) 00000-0000"
-                  value={phone}
-                  onChange={handlePhoneChange}
-                  className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 dark:bg-zinc-900 dark:border-zinc-700 dark:text-white focus:border-school-blue-500 rounded-xl"
-                  maxLength={15}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="studentCode" className="text-school-blue-700 dark:text-zinc-200 font-semibold">
-                  Digite o código do dia *
-                </Label>
-                <Input
-                  id="studentCode"
-                  type="text"
-                  placeholder="Digite o código"
-                  value={studentCode}
-                  onChange={(e) => setStudentCode(e.target.value.toUpperCase())}
-                  className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 dark:bg-zinc-900 dark:border-zinc-700 dark:text-white focus:border-school-blue-500 rounded-xl font-mono"
-                  required
-                  disabled={tentativasCodigo === 0}
-                />
-                {errorType === 'erroCode' && analysisError && (
-                  <div className="mt-3 bg-red-50 dark:bg-red-950/30 border-2 border-red-200 dark:border-red-800/50 rounded-xl p-4 flex items-start justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
-                    <div className="flex gap-3">
-                      <AlertCircle className="w-6 h-6 text-red-500 dark:text-red-400 shrink-0 mt-0.5" />
-                      <div>
-                        <h4 className="font-bold text-red-800 dark:text-red-200 text-sm md:text-base">
-                          {tentativasCodigo > 0 ? 'Código Incorreto' : 'Tentativas Esgotadas'}
-                        </h4>
-                        <p className="text-red-600 dark:text-red-400 text-xs md:text-sm mt-1">{analysisError}</p>
-                        {tentativasCodigo > 0 ? (
-                          <p className="text-red-700 dark:text-red-300 text-xs md:text-sm font-medium mt-2">
-                            Você tem mais {tentativasCodigo} tentativa{tentativasCodigo !== 1 ? 's' : ''} de 3. Tente novamente ou solicite o código oficial na secretaria da BIT.
-                          </p>
-                        ) : (
-                          <p className="text-red-700 dark:text-red-300 text-sm font-bold mt-2 uppercase tracking-wide">
-                            Procure o atendimento na secretaria.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    {tentativasCodigo > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAnalysisError(null);
-                          setErrorType(null);
-                          setSubmissionState('idle');
-                          setStudentCode(''); // Opcional: limpa o campo
-                        }}
-                        className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 transition-colors p-1"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-3">
-                <Label className="text-school-blue-700 dark:text-white font-semibold">
-                  Foto com o Uniforme *
-                </Label>
-                {!photo ? (
-                  <Button
-                    type="button"
-                    onClick={() => { setZoom(1); setIsCameraOpen(true); }}
-                    className="w-full h-16 md:h-20 bg-school-blue-600 hover:bg-school-blue-700 text-white dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 rounded-xl flex items-center justify-center shadow-md transition-transform hover:scale-[1.02]"
-                  >
-                    <Camera className="w-8 h-8 mr-3" />
-                    <span className="text-lg font-bold">Abrir Câmera</span>
-                  </Button>
-                ) : (
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="overflow-hidden rounded-xl border-4 border-school-blue-500 w-full max-w-sm aspect-[3/4] relative group shadow-lg bg-black flex items-center justify-center">
-                      <img src={photo} alt="Selfie capturada" className="w-full h-full object-contain" />
-                      <Button
-                        type="button"
-                        onClick={retakePhoto}
-                        className="absolute top-3 right-3 w-10 h-10 p-0 rounded-full bg-red-50 dark:bg-red-950/300 hover:bg-red-600 text-white shadow-[0_0_10px_rgba(0,0,0,0.5)] border-2 border-white flex items-center justify-center opacity-90 hover:opacity-100 transition-all hover:scale-110"
-                        title="Excluir foto"
-                      >
-                        <X className="w-6 h-6" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-start space-x-3 pt-2">
-                <Checkbox
-                  id="terms"
-                  checked={termsAccepted}
-                  onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
-                  className="mt-1"
-                />
-                <div className="grid gap-1.5 leading-none">
-                  <label
-                    htmlFor="terms"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-school-blue-700 dark:text-white"
-                  >
-                    Aceito os termos e a captação da minha foto *
-                  </label>
-                  <p className="text-sm text-school-blue-600 dark:text-zinc-400/80">
-                    Você deve ler e concordar com os{' '}
-                    <button
-                      type="button"
-                      onClick={() => setIsTermsOpen(true)}
-                      className="text-school-yellow-600 dark:text-school-yellow-400 font-bold hover:underline"
-                    >
-                      Termos de Uso
-                    </button>
-                    {' '}antes de participar.
-                  </p>
-                </div>
-              </div>
-
-              <Button
-                type="submit"
-                disabled={submissionState === 'enviando' || submissionState === 'processando' || !photo || photoValidationError !== null || isLocationInvalid || tentativasCodigo === 0 || !termsAccepted}
-                className={`w-full h-auto py-5 text-base md:text-lg font-bold rounded-2xl shadow-sm transition-all duration-500 disabled:cursor-not-allowed ${showRedButton
-                  ? "bg-red-50 dark:bg-red-600 text-white dark:text-school-blue-900 disabled:opacity-100"
-                  : "bg-school-blue-600 hover:bg-school-blue-700 text-white dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 animate-pulse-subtle disabled:opacity-70 disabled:animate-none hover:shadow-md"
-                  }`}
-              >
-                {(submissionState === 'enviando' || submissionState === 'processando') ? (
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                    {submissionState === 'processando' ? 'Analisando foto, aguarde...' : 'Processando...'}
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center">
-                    {showRedButton ? 'Você não está na BIT' : 'Participar do sorteio'}
-                  </div>
-                )}
-              </Button>
-            </form>
-          )}
-
-          <div className="text-center pt-4">
-            <img
-              src="/img/logo.png"
-              alt="Logo da Escola"
-              className="mx-auto h-16 md:h-20 w-auto object-contain block dark:hidden"
-            />
-            <img
-              src="/img/logo_branca.png"
-              alt="Logo da Escola"
-              className="mx-auto h-16 md:h-20 w-auto object-contain hidden dark:block"
-            />
-          </div>
-        </div>
-      </Card>
-
-      {/* Camera Overlay */}
-      {isCameraOpen && (
-        <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center sm:p-6 backdrop-blur-md">
-          <Card className="w-full h-full sm:h-auto max-w-md bg-black border-0 sm:border sm:border-gray-800 sm:rounded-[2rem] overflow-hidden shadow-2xl relative flex flex-col">
-
-            {/* Header */}
-            <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-20 bg-gradient-to-b from-black/80 to-transparent">
-              <div className="flex items-center gap-2 px-4 py-2 bg-black/50 rounded-full border border-white/10 backdrop-blur-md">
-                <Camera className="w-4 h-4 text-school-yellow-500 dark:text-school-yellow-400" />
-                <span className="text-white font-medium text-sm">Validar Uniforme</span>
-              </div>
-              <Button
-                type="button"
-                onClick={() => setIsCameraOpen(false)}
-                className="w-10 h-10 rounded-full bg-black/50 hover:bg-black/80 text-white border border-white/20 flex items-center justify-center p-0 backdrop-blur-md transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </Button>
-            </div>
-
-            {/* Viewfinder */}
-            <div
-              className="relative w-full bg-[#050505] flex items-center justify-center mt-auto mb-auto"
-              style={{ aspectRatio: '9 / 16', maxHeight: '100vh' }}
+            <Button
+              type="button"
+              onClick={retryLocation}
+              className="mt-4 w-full h-12 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-all hover:scale-[1.02] flex items-center justify-center"
             >
-              <Webcam
-                audio={false}
-                ref={webcamRef}
-                mirrored={false}
-                screenshotFormat="image/jpeg"
-                screenshotQuality={0.5}
-                videoConstraints={{ facingMode: "user" }}
-                onUserMedia={(stream) => {
-                  const track = stream.getVideoTracks()[0];
-                  if (track && typeof track.getCapabilities === 'function') {
-                    const capabilities = track.getCapabilities();
-                    // @ts-expect-error - zoom might not be typed in all environments
-                    if (capabilities && capabilities.zoom) {
-                      track.applyConstraints({
-                        // @ts-expect-error - zoom might not be typed in all environments
-                        advanced: [{ zoom: capabilities.zoom.min || 1 }]
-                      }).catch(e => console.error("Erro ao configurar zoom:", e));
-                    }
-                  }
-                }}
-                className="w-full h-full object-contain origin-center transition-transform duration-200"
-                style={{ transform: `scale(${zoom}) scaleX(1)` }}
-              />
-
-              {/* Linhas de Grade de Composição (Grid) */}
-              <div className="absolute inset-0 pointer-events-none opacity-[0.15]">
-                <div className="w-full h-full border border-white/50 flex flex-col justify-between">
-                  <div className="w-full h-[33.33%] border-b border-white/50"></div>
-                  <div className="w-full h-[33.33%] border-b border-white/50"></div>
-                </div>
-                <div className="absolute inset-0 w-full h-full border border-transparent flex justify-between">
-                  <div className="h-full w-[33.33%] border-r border-white/50"></div>
-                  <div className="h-full w-[33.33%] border-r border-white/50"></div>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom Controls */}
-            <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center pb-8 pt-20 px-6 bg-gradient-to-t from-black via-black/90 to-transparent z-20">
-
-              {/* Zoom Control */}
-              <div className="flex items-center gap-4 w-full max-w-[280px] mb-8 bg-black/60 p-4 rounded-2xl backdrop-blur-md border border-white/10 shadow-lg">
-                <span className="text-white font-bold text-xl select-none">-</span>
-                <input
-                  type="range"
-                  min="1"
-                  max="3"
-                  step="0.1"
-                  value={zoom}
-                  onChange={(e) => setZoom(parseFloat(e.target.value))}
-                  className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-school-yellow-500"
-                />
-                <span className="text-white font-bold text-xl select-none">+</span>
-              </div>
-
-              {/* Capture Button */}
-              <Button
-                type="button"
-                onClick={() => {
-                  capturePhoto();
-                  setIsCameraOpen(false);
-                }}
-                className="rounded-full w-20 h-20 flex items-center justify-center bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 dark:text-white shadow-[0_0_20px_rgba(250,204,21,0.4)] border-4 border-white transition-all transform hover:scale-105 active:scale-95"
-              >
-                <Camera className="w-10 h-10" />
-              </Button>
-            </div>
-
-          </Card>
+              <RefreshCw className="w-5 h-5 mr-2" />
+              Tentar Novamente
+            </Button>
+          </div>
         </div>
       )}
 
-      {/* Terms Modal */}
-      <Dialog open={isTermsOpen} onOpenChange={setIsTermsOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="text-school-blue-800 dark:text-white text-xl">Termos de Uso e Ciência de Tratamento de Imagem</DialogTitle>
-            <DialogDescription>
-              Última atualização: 13 de maio de 2026
-            </DialogDescription>
-          </DialogHeader>
-          <ScrollArea className="flex-1 pr-4">
-            <div className="space-y-4 text-sm text-school-blue-700 dark:text-zinc-400/80 leading-relaxed">
-              <p>
-                Ao prosseguir com a participação no SorteBIT, o(a) aluno(a) declara, para todos os fins, que leu, compreendeu e concordou integralmente com as disposições deste Termo.
+      <div className="max-w-lg mx-auto px-4">
+        <Card className="p-6 md:p-8 shadow-xl border-0 dark:border dark:border-zinc-800 bg-white dark:bg-zinc-950 rounded-2xl">
+          <div className="space-y-6">
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl md:text-3xl font-black text-school-blue-700 dark:text-white">
+                Participe do Sorteio!
+              </h2>
+              <p className="text-school-blue-600 dark:text-zinc-400">
+                Preencha os dados e insira o código fornecido pelo seu professor
               </p>
-
-              <div>
-                <h3 className="font-bold text-school-blue-800 dark:text-white">1. Objeto</h3>
-                <p>1.1. O presente Termo regula as condições de participação no sorteio denominado SorteBIT.</p>
-                <p>1.2. A participação está condicionada ao cumprimento cumulativo dos requisitos operacionais e das regras de elegibilidade aqui previstas.</p>
-              </div>
-
-              <div>
-                <h3 className="font-bold text-school-blue-800 dark:text-white">2. Requisitos para Participação</h3>
-                <p>2.1. Para validação da participação, o(a) aluno(a) deverá:</p>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>preencher corretamente os dados solicitados no formulário;</li>
-                  <li>inserir código válido disponibilizado pela instituição;</li>
-                  <li>realizar captura de imagem (selfie) no ato da inscrição.</li>
-                </ul>
-                <p className="mt-2">2.2. O não atendimento de qualquer requisito poderá implicar indeferimento da participação, sem geração de ticket.</p>
-              </div>
-
-              <div>
-                <h3 className="font-bold text-school-blue-800 dark:text-white">3. Coleta e Finalidade da Imagem</h3>
-                <p>3.1. A imagem capturada será utilizada exclusivamente para:</p>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>verificação da autenticidade da participação;</li>
-                  <li>prevenção de fraude, duplicidade ou uso indevido do sistema;</li>
-                  <li>conferência do cumprimento da regra de uniforme para elegibilidade no sorteio.</li>
-                </ul>
-                <p className="mt-2">3.2. A captura da imagem constitui condição técnica essencial para participação no SorteBIT.</p>
-                <p>3.3. O envio de imagem incompatível com os critérios de validação poderá ensejar reprovação automática da participação.</p>
-              </div>
-
-              <div>
-                <h3 className="font-bold text-school-blue-800 dark:text-white">4. Regra de Elegibilidade por Uniforme</h3>
-                <p>4.1. O SorteBIT é destinado exclusivamente a alunos(as) que estejam trajando uniforme institucional no momento da participação.</p>
-                <p>4.2. A ausência de uniforme, total ou parcial, conforme critérios de validação aplicáveis, acarreta inelegibilidade e consequente recusa da participação.</p>
-              </div>
-
-              <div>
-                <h3 className="font-bold text-school-blue-800 dark:text-white">5. Validação, Registro e Limitações</h3>
-                <p>5.1. Uma vez cumpridos os requisitos e aprovada a validação, a participação será registrada e o sistema emitirá confirmação (ticket).</p>
-                <p>5.2. Participações com inconsistências de dados, irregularidades técnicas, indícios de fraude ou descumprimento deste Termo poderão ser bloqueadas, recusadas ou anuladas, a critério da administração responsável pelo sorteio.</p>
-                <p>5.3. Poderão existir limites de tentativas e janelas de participação, conforme regras operacionais vigentes no sistema.</p>
-              </div>
-
-              <div>
-                <h3 className="font-bold text-school-blue-800 dark:text-white">6. Declarações do(a) Participante</h3>
-                <p>Ao aceitar este Termo, o(a) participante declara que:</p>
-                <ul className="list-none space-y-1">
-                  <li>a) prestou informações verídicas;</li>
-                  <li>b) está ciente da obrigatoriedade de captura da imagem para validação;</li>
-                  <li>c) está ciente da exigência de uniforme como requisito de elegibilidade;</li>
-                  <li>d) concorda com o processamento necessário dos dados inseridos e da imagem, estritamente para execução e segurança do SorteBIT.</li>
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="font-bold text-school-blue-800 dark:text-white">7. Disposições Finais</h3>
-                <p>7.1. Este Termo poderá ser atualizado a qualquer tempo para adequação operacional, técnica ou normativa, passando a vigorar a versão publicada no sistema.</p>
-                <p>7.2. Em caso de divergência interpretativa, prevalecerá a versão mais recente disponibilizada no ambiente oficial do SorteBIT.</p>
-              </div>
             </div>
-          </ScrollArea>
-          <div className="pt-4 border-t mt-auto flex justify-end">
-            <Button onClick={() => setIsTermsOpen(false)} className="bg-school-blue-600 hover:bg-school-blue-700">
-              Fechar e Voltar
-            </Button>
+
+            {alreadyParticipated ? (
+              <div className="bg-school-blue-50 dark:bg-slate-800 border border-school-blue-100 dark:border-slate-700 rounded-2xl p-6 shadow-sm animate-in fade-in slide-in-from-top-4 mt-6">
+                <div className="flex flex-col items-center text-center space-y-4">
+                  <div className="w-14 h-14 bg-white dark:bg-zinc-950 rounded-full flex items-center justify-center shadow-sm text-school-blue-600 dark:text-zinc-400 mb-2">
+                    <Clock className="w-7 h-7" />
+                  </div>
+                  <h3 className="text-xl font-bold text-school-blue-800 dark:text-white">Participação Concluída</h3>
+                  <p className="text-school-blue-600 dark:text-zinc-400 font-medium">
+                    Você já registrou sua participação no sorteio de hoje.
+                  </p>
+                  <div className="pt-6 border-t border-school-blue-200 dark:border-slate-700/50 w-full mt-2">
+                    <p className="text-xs font-bold text-school-blue-700 dark:text-white uppercase tracking-widest mb-3">
+                      Sua próxima chance de ganhar renova em
+                    </p>
+                    <div className="text-4xl font-mono font-black text-school-blue-800 dark:text-white tracking-wider">
+                      {tempoRestante}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {isLoading && (
+                  <div className="w-full transition-all duration-300">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm font-medium text-school-blue-700 dark:text-zinc-300 flex items-center gap-1">
+                        <MapPin className="w-4 h-4 animate-pulse" />
+                        Buscando localização...
+                      </span>
+                      <span className="text-sm font-bold text-school-blue-700 dark:text-zinc-300">{locationProgress}%</span>
+                    </div>
+                    <div className="w-full bg-zinc-200 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
+                      <div
+                        className="h-full transition-all duration-300 bg-school-blue-500"
+                        style={{ width: `${locationProgress}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
+
+                {photoValidationError && (
+                  <div className="bg-red-50 dark:bg-red-950/30 border-2 border-red-200 dark:border-red-800/50 rounded-xl p-4 flex items-start justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
+                    <div className="flex gap-3">
+                      <AlertCircle className="w-6 h-6 text-red-500 dark:text-red-400 shrink-0" />
+                      <div>
+                        <h4 className="font-bold text-red-800 dark:text-red-200">Atenção</h4>
+                        <p className="text-red-600 dark:text-red-400 text-sm mt-1">{photoValidationError}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPhotoValidationError(null);
+                        setSubmissionState('idle');
+                        setPhoto(null);
+                      }}
+                      className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 transition-colors p-1"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-school-blue-700 dark:text-zinc-200 font-semibold">
+                    Nome completo *
+                  </Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="Digite seu nome completo"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 dark:bg-zinc-900 dark:border-zinc-700 dark:text-white focus:border-school-blue-500 rounded-xl"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone" className="text-school-blue-700 dark:text-zinc-200 font-semibold">
+                    Telefone *
+                  </Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="(00) 00000-0000"
+                    value={phone}
+                    onChange={handlePhoneChange}
+                    className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 dark:bg-zinc-900 dark:border-zinc-700 dark:text-white focus:border-school-blue-500 rounded-xl"
+                    maxLength={15}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="studentCode" className="text-school-blue-700 dark:text-zinc-200 font-semibold">
+                    Digite o código do dia *
+                  </Label>
+                  <Input
+                    id="studentCode"
+                    type="text"
+                    placeholder="Digite o código"
+                    value={studentCode}
+                    onChange={(e) => setStudentCode(e.target.value.toUpperCase())}
+                    className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 dark:bg-zinc-900 dark:border-zinc-700 dark:text-white focus:border-school-blue-500 rounded-xl font-mono"
+                    required
+                    disabled={tentativasCodigo === 0}
+                  />
+                  {errorType === 'erroCode' && analysisError && (
+                    <div className="mt-3 bg-red-50 dark:bg-red-950/30 border-2 border-red-200 dark:border-red-800/50 rounded-xl p-4 flex items-start justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
+                      <div className="flex gap-3">
+                        <AlertCircle className="w-6 h-6 text-red-500 dark:text-red-400 shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="font-bold text-red-800 dark:text-red-200 text-sm md:text-base">
+                            {tentativasCodigo > 0 ? 'Código Incorreto' : 'Tentativas Esgotadas'}
+                          </h4>
+                          <p className="text-red-600 dark:text-red-400 text-xs md:text-sm mt-1">{analysisError}</p>
+                          {tentativasCodigo > 0 ? (
+                            <p className="text-red-700 dark:text-red-300 text-xs md:text-sm font-medium mt-2">
+                              Você tem mais {tentativasCodigo} tentativa{tentativasCodigo !== 1 ? 's' : ''} de 3. Tente novamente ou solicite o código oficial na secretaria da BIT.
+                            </p>
+                          ) : (
+                            <p className="text-red-700 dark:text-red-300 text-sm font-bold mt-2 uppercase tracking-wide">
+                              Procure o atendimento na secretaria.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      {tentativasCodigo > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAnalysisError(null);
+                            setErrorType(null);
+                            setSubmissionState('idle');
+                            setStudentCode(''); // Opcional: limpa o campo
+                          }}
+                          className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 transition-colors p-1"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <Label className="text-school-blue-700 dark:text-white font-semibold">
+                    Foto com o Uniforme *
+                  </Label>
+                  {!photo ? (
+                    <Button
+                      type="button"
+                      onClick={() => { setZoom(1); setIsCameraOpen(true); }}
+                      className="w-full h-16 md:h-20 bg-school-blue-600 hover:bg-school-blue-700 text-white dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 rounded-xl flex items-center justify-center shadow-md transition-transform hover:scale-[1.02]"
+                    >
+                      <Camera className="w-8 h-8 mr-3" />
+                      <span className="text-lg font-bold">Abrir Câmera</span>
+                    </Button>
+                  ) : (
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="overflow-hidden rounded-xl border-4 border-school-blue-500 w-full max-w-sm aspect-[3/4] relative group shadow-lg bg-black flex items-center justify-center">
+                        <img src={photo} alt="Selfie capturada" className="w-full h-full object-contain" />
+                        <Button
+                          type="button"
+                          onClick={retakePhoto}
+                          className="absolute top-3 right-3 w-10 h-10 p-0 rounded-full bg-red-50 dark:bg-red-950/300 hover:bg-red-600 text-white shadow-[0_0_10px_rgba(0,0,0,0.5)] border-2 border-white flex items-center justify-center opacity-90 hover:opacity-100 transition-all hover:scale-110"
+                          title="Excluir foto"
+                        >
+                          <X className="w-6 h-6" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-start space-x-3 pt-2">
+                  <Checkbox
+                    id="terms"
+                    checked={termsAccepted}
+                    onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
+                    className="mt-1"
+                  />
+                  <div className="grid gap-1.5 leading-none">
+                    <label
+                      htmlFor="terms"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-school-blue-700 dark:text-white"
+                    >
+                      Aceito os termos e a captação da minha foto *
+                    </label>
+                    <p className="text-sm text-school-blue-600 dark:text-zinc-400/80">
+                      Você deve ler e concordar com os{' '}
+                      <button
+                        type="button"
+                        onClick={() => setIsTermsOpen(true)}
+                        className="text-school-yellow-600 dark:text-school-yellow-400 font-bold hover:underline"
+                      >
+                        Termos de Uso
+                      </button>
+                      {' '}antes de participar.
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={submissionState === 'enviando' || submissionState === 'processando' || !photo || photoValidationError !== null || isLocationInvalid || tentativasCodigo === 0 || !termsAccepted}
+                  className={`w-full h-auto py-5 text-base md:text-lg font-bold rounded-2xl shadow-sm transition-all duration-500 disabled:cursor-not-allowed ${showRedButton
+                    ? "bg-school-blue-600 text-white dark:bg-zinc-800 dark:text-zinc-100 disabled:opacity-100"
+                    : "bg-school-blue-600 hover:bg-school-blue-700 text-white dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 animate-pulse-subtle disabled:opacity-70 disabled:animate-none hover:shadow-md"
+                    }`}
+                >
+                  {(submissionState === 'enviando' || submissionState === 'processando') ? (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                      {submissionState === 'processando' ? 'Analisando foto, aguarde...' : 'Processando...'}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center">
+                      {showRedButton ? 'Você não está na BIT' : 'Participar do sorteio'}
+                    </div>
+                  )}
+                </Button>
+              </form>
+            )}
+
+            <div className="text-center pt-4">
+              <img
+                src="/img/logo.png"
+                alt="Logo da Escola"
+                className="mx-auto h-16 md:h-20 w-auto object-contain block dark:hidden"
+              />
+              <img
+                src="/img/logo_branca.png"
+                alt="Logo da Escola"
+                className="mx-auto h-16 md:h-20 w-auto object-contain hidden dark:block"
+              />
+            </div>
           </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+        </Card>
+
+        {/* Camera Overlay */}
+        {isCameraOpen && (
+          <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center sm:p-6 backdrop-blur-md">
+            <Card className="w-full h-full sm:h-auto max-w-md bg-black border-0 sm:border sm:border-gray-800 sm:rounded-[2rem] overflow-hidden shadow-2xl relative flex flex-col">
+
+              {/* Header */}
+              <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-20 bg-gradient-to-b from-black/80 to-transparent">
+                <div className="flex items-center gap-2 px-4 py-2 bg-black/50 rounded-full border border-white/10 backdrop-blur-md">
+                  <Camera className="w-4 h-4 text-school-yellow-500 dark:text-school-yellow-400" />
+                  <span className="text-white font-medium text-sm">Validar Uniforme</span>
+                </div>
+                <Button
+                  type="button"
+                  onClick={() => setIsCameraOpen(false)}
+                  className="w-10 h-10 rounded-full bg-black/50 hover:bg-black/80 text-white border border-white/20 flex items-center justify-center p-0 backdrop-blur-md transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+
+              {/* Viewfinder */}
+              <div
+                className="relative w-full bg-[#050505] flex items-center justify-center mt-auto mb-auto"
+                style={{ aspectRatio: '9 / 16', maxHeight: '100vh' }}
+              >
+                <Webcam
+                  audio={false}
+                  ref={webcamRef}
+                  mirrored={false}
+                  screenshotFormat="image/jpeg"
+                  screenshotQuality={0.5}
+                  videoConstraints={{ facingMode: "user" }}
+                  onUserMedia={(stream) => {
+                    const track = stream.getVideoTracks()[0];
+                    if (track && typeof track.getCapabilities === 'function') {
+                      const capabilities = track.getCapabilities();
+                      // @ts-expect-error - zoom might not be typed in all environments
+                      if (capabilities && capabilities.zoom) {
+                        track.applyConstraints({
+                          // @ts-expect-error - zoom might not be typed in all environments
+                          advanced: [{ zoom: capabilities.zoom.min || 1 }]
+                        }).catch(e => console.error("Erro ao configurar zoom:", e));
+                      }
+                    }
+                  }}
+                  className="w-full h-full object-contain origin-center transition-transform duration-200"
+                  style={{ transform: `scale(${zoom}) scaleX(1)` }}
+                />
+
+                {/* Linhas de Grade de Composição (Grid) */}
+                <div className="absolute inset-0 pointer-events-none opacity-[0.15]">
+                  <div className="w-full h-full border border-white/50 flex flex-col justify-between">
+                    <div className="w-full h-[33.33%] border-b border-white/50"></div>
+                    <div className="w-full h-[33.33%] border-b border-white/50"></div>
+                  </div>
+                  <div className="absolute inset-0 w-full h-full border border-transparent flex justify-between">
+                    <div className="h-full w-[33.33%] border-r border-white/50"></div>
+                    <div className="h-full w-[33.33%] border-r border-white/50"></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Controls */}
+              <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center pb-8 pt-20 px-6 bg-gradient-to-t from-black via-black/90 to-transparent z-20">
+
+                {/* Zoom Control */}
+                <div className="flex items-center gap-4 w-full max-w-[280px] mb-8 bg-black/60 p-4 rounded-2xl backdrop-blur-md border border-white/10 shadow-lg">
+                  <span className="text-white font-bold text-xl select-none">-</span>
+                  <input
+                    type="range"
+                    min="1"
+                    max="3"
+                    step="0.1"
+                    value={zoom}
+                    onChange={(e) => setZoom(parseFloat(e.target.value))}
+                    className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-school-yellow-500"
+                  />
+                  <span className="text-white font-bold text-xl select-none">+</span>
+                </div>
+
+                {/* Capture Button */}
+                <Button
+                  type="button"
+                  onClick={() => {
+                    capturePhoto();
+                    setIsCameraOpen(false);
+                  }}
+                  className="rounded-full w-20 h-20 flex items-center justify-center bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 dark:text-white shadow-[0_0_20px_rgba(250,204,21,0.4)] border-4 border-white transition-all transform hover:scale-105 active:scale-95"
+                >
+                  <Camera className="w-10 h-10" />
+                </Button>
+              </div>
+
+            </Card>
+          </div>
+        )}
+
+        {/* Terms Modal */}
+        <Dialog open={isTermsOpen} onOpenChange={setIsTermsOpen}>
+          <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="text-school-blue-800 dark:text-white text-xl">Termos de Uso e Ciência de Tratamento de Imagem</DialogTitle>
+              <DialogDescription>
+                Última atualização: 13 de maio de 2026
+              </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="flex-1 pr-4">
+              <div className="space-y-4 text-sm text-school-blue-700 dark:text-zinc-400/80 leading-relaxed">
+                <p>
+                  Ao prosseguir com a participação no SorteBIT, o(a) aluno(a) declara, para todos os fins, que leu, compreendeu e concordou integralmente com as disposições deste Termo.
+                </p>
+
+                <div>
+                  <h3 className="font-bold text-school-blue-800 dark:text-white">1. Objeto</h3>
+                  <p>1.1. O presente Termo regula as condições de participação no sorteio denominado SorteBIT.</p>
+                  <p>1.2. A participação está condicionada ao cumprimento cumulativo dos requisitos operacionais e das regras de elegibilidade aqui previstas.</p>
+                </div>
+
+                <div>
+                  <h3 className="font-bold text-school-blue-800 dark:text-white">2. Requisitos para Participação</h3>
+                  <p>2.1. Para validação da participação, o(a) aluno(a) deverá:</p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>preencher corretamente os dados solicitados no formulário;</li>
+                    <li>inserir código válido disponibilizado pela instituição;</li>
+                    <li>realizar captura de imagem (selfie) no ato da inscrição.</li>
+                  </ul>
+                  <p className="mt-2">2.2. O não atendimento de qualquer requisito poderá implicar indeferimento da participação, sem geração de ticket.</p>
+                </div>
+
+                <div>
+                  <h3 className="font-bold text-school-blue-800 dark:text-white">3. Coleta e Finalidade da Imagem</h3>
+                  <p>3.1. A imagem capturada será utilizada exclusivamente para:</p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>verificação da autenticidade da participação;</li>
+                    <li>prevenção de fraude, duplicidade ou uso indevido do sistema;</li>
+                    <li>conferência do cumprimento da regra de uniforme para elegibilidade no sorteio.</li>
+                  </ul>
+                  <p className="mt-2">3.2. A captura da imagem constitui condição técnica essencial para participação no SorteBIT.</p>
+                  <p>3.3. O envio de imagem incompatível com os critérios de validação poderá ensejar reprovação automática da participação.</p>
+                </div>
+
+                <div>
+                  <h3 className="font-bold text-school-blue-800 dark:text-white">4. Regra de Elegibilidade por Uniforme</h3>
+                  <p>4.1. O SorteBIT é destinado exclusivamente a alunos(as) que estejam trajando uniforme institucional no momento da participação.</p>
+                  <p>4.2. A ausência de uniforme, total ou parcial, conforme critérios de validação aplicáveis, acarreta inelegibilidade e consequente recusa da participação.</p>
+                </div>
+
+                <div>
+                  <h3 className="font-bold text-school-blue-800 dark:text-white">5. Validação, Registro e Limitações</h3>
+                  <p>5.1. Uma vez cumpridos os requisitos e aprovada a validação, a participação será registrada e o sistema emitirá confirmação (ticket).</p>
+                  <p>5.2. Participações com inconsistências de dados, irregularidades técnicas, indícios de fraude ou descumprimento deste Termo poderão ser bloqueadas, recusadas ou anuladas, a critério da administração responsável pelo sorteio.</p>
+                  <p>5.3. Poderão existir limites de tentativas e janelas de participação, conforme regras operacionais vigentes no sistema.</p>
+                </div>
+
+                <div>
+                  <h3 className="font-bold text-school-blue-800 dark:text-white">6. Declarações do(a) Participante</h3>
+                  <p>Ao aceitar este Termo, o(a) participante declara que:</p>
+                  <ul className="list-none space-y-1">
+                    <li>a) prestou informações verídicas;</li>
+                    <li>b) está ciente da obrigatoriedade de captura da imagem para validação;</li>
+                    <li>c) está ciente da exigência de uniforme como requisito de elegibilidade;</li>
+                    <li>d) concorda com o processamento necessário dos dados inseridos e da imagem, estritamente para execução e segurança do SorteBIT.</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h3 className="font-bold text-school-blue-800 dark:text-white">7. Disposições Finais</h3>
+                  <p>7.1. Este Termo poderá ser atualizado a qualquer tempo para adequação operacional, técnica ou normativa, passando a vigorar a versão publicada no sistema.</p>
+                  <p>7.2. Em caso de divergência interpretativa, prevalecerá a versão mais recente disponibilizada no ambiente oficial do SorteBIT.</p>
+                </div>
+              </div>
+            </ScrollArea>
+            <div className="pt-4 border-t mt-auto flex justify-end">
+              <Button onClick={() => setIsTermsOpen(false)} className="bg-school-blue-600 hover:bg-school-blue-700">
+                Fechar e Voltar
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </>
   );
 };
 

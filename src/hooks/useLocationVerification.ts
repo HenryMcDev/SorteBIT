@@ -17,7 +17,7 @@ const SCHOOL_COORDINATES = {
   latitude: -19.59876692284,
   longitude: -46.93668532359792
 };
-const ALLOWED_RADIUS_METERS = 1000;
+const ALLOWED_RADIUS_METERS = 80;
 
 // Função para calcular a distância entre duas coordenadas usando a fórmula de Haversine
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -63,10 +63,9 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
     }
 
     let watchId: number | null = null;
-    let fallbackTimeout: NodeJS.Timeout;
     let contingencyTimeout: NodeJS.Timeout;
 
-    const checkLocation = (highAccuracy: boolean) => {
+    const checkLocation = () => {
       // Verificar se a geolocalização é suportada
       if (!navigator.geolocation) {
         setLocationState({
@@ -83,7 +82,7 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
         return;
       }
 
-      setLocationState(prev => ({ ...prev, isLoading: true, locationProgress: highAccuracy ? 25 : 60 }));
+      setLocationState(prev => ({ ...prev, isLoading: true, locationProgress: 25 }));
 
       watchId = navigator.geolocation.watchPosition(
         (position) => {
@@ -98,11 +97,10 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
             SCHOOL_COORDINATES.longitude
           );
 
-          console.log(`Distância da escola (${highAccuracy ? 'Alta' : 'Baixa'} Precisão): ${distance.toFixed(2)} metros`);
+          console.log(`Distância da escola: ${distance.toFixed(2)} metros`);
 
           if (distance <= ALLOWED_RADIUS_METERS) {
             if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-            clearTimeout(fallbackTimeout);
             clearTimeout(contingencyTimeout);
             setLocationState({
               isLoading: false,
@@ -116,14 +114,16 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
               distance: distance
             });
           } else {
-            // Mantém carregando e atualiza progresso visual simulando busca
+            // Rejeita imediatamente se estiver fora do raio permitido
+            if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+            clearTimeout(contingencyTimeout);
             setLocationState(prev => ({
               ...prev,
-              isLoading: true,
+              isLoading: false,
               isWithinRange: false,
               error: null,
               hasPermission: true,
-              locationProgress: prev.locationProgress < 85 ? prev.locationProgress + (highAccuracy ? 5 : 10) : 85,
+              locationProgress: 0,
               latitude: userLat,
               longitude: userLon,
               distance: distance
@@ -131,7 +131,7 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
           }
         },
         (error) => {
-          console.error(`Erro ao obter localização (${highAccuracy ? 'Alta' : 'Baixa'} Precisão):`, error);
+          console.error(`Erro ao obter localização:`, error);
 
           if (error.code === GeolocationPositionError.PERMISSION_DENIED) {
             setLocationState({
@@ -146,7 +146,6 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
               distance: null
             });
             if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-            clearTimeout(fallbackTimeout);
             clearTimeout(contingencyTimeout);
           } else {
             // Continua monitorando com watchPosition apesar de pequenos erros de rede ou timeout
@@ -157,27 +156,15 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
           }
         },
         {
-          enableHighAccuracy: highAccuracy,
+          enableHighAccuracy: true,
           timeout: 10000,
           maximumAge: 0
         }
       );
     };
 
-    // 1º Nível: Tenta precisão alta imediatamente
-    checkLocation(true);
-
-    // 2º Nível: Se em 5 segundos não validar com alta precisão, força baixa precisão por celular/wifi
-    fallbackTimeout = setTimeout(() => {
-      setLocationState(prev => {
-        if (!prev.isWithinRange) {
-          if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-          console.log('Iniciando fallback para baixa precisão de localização...');
-          checkLocation(false);
-        }
-        return prev;
-      });
-    }, 5000);
+    // Tenta precisão alta imediatamente
+    checkLocation();
 
     // Contingência: Após ciclo completo (15s), se não achar libera o QR Code
     contingencyTimeout = setTimeout(() => {
@@ -192,7 +179,6 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
 
     return () => {
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-      clearTimeout(fallbackTimeout);
       clearTimeout(contingencyTimeout);
     };
   }, [skipVerification]);
