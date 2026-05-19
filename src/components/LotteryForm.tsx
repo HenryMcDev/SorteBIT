@@ -8,13 +8,14 @@ import { Dice1, MapPin, MapPinOff, AlertCircle, Crown, Camera, RefreshCw, X, Ale
 import { useToast } from '@/hooks/use-toast';
 import { useLocationVerification } from '@/hooks/useLocationVerification';
 import Celebration from './Celebration';
+import Mural from './Mural';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 const LotteryForm = () => {
-  const [activeTab, setActiveTab] = useState<'lottery' | 'codes'>('lottery');
+  const [activeTab, setActiveTab] = useState<'sorteio' | 'mural'>('sorteio');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [studentCode, setStudentCode] = useState('');
@@ -478,7 +479,7 @@ const LotteryForm = () => {
   // Standard user interface
   return (
     <>
-      {!isLoading && isWithinRange === false && (
+      {activeTab === 'sorteio' && !isLoading && isWithinRange === false && (
         <div className="fixed inset-0 w-screen h-screen z-[9999] backdrop-blur-md bg-zinc-950/70 flex items-center justify-center p-4">
           <div className="bg-zinc-900/90 border border-red-500/20 rounded-2xl p-6 flex flex-col items-center text-center space-y-4 shadow-xl w-full max-w-sm animate-in zoom-in-95">
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-2">
@@ -504,7 +505,34 @@ const LotteryForm = () => {
       )}
 
       <div className="max-w-lg mx-auto px-4">
-        <Card className="p-6 md:p-8 shadow-xl border-0 dark:border dark:border-zinc-800 bg-white dark:bg-zinc-950 rounded-2xl">
+        {/* Navigation Tabs */}
+        <div className="flex bg-zinc-100 dark:bg-zinc-900/80 p-1.5 rounded-full mb-6 mx-auto border border-gray-200 dark:border-zinc-800 shadow-sm relative z-10">
+          <button
+            type="button"
+            onClick={() => setActiveTab('sorteio')}
+            className={`flex-1 py-3 px-4 rounded-full text-sm md:text-base font-bold transition-all duration-300 ${
+              activeTab === 'sorteio'
+                ? 'bg-school-blue-600 text-white shadow-md'
+                : 'text-gray-500 dark:text-zinc-400 hover:text-school-blue-600 dark:hover:text-white'
+            }`}
+          >
+            Participar
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('mural')}
+            className={`flex-1 py-3 px-4 rounded-full text-sm md:text-base font-bold transition-all duration-300 ${
+              activeTab === 'mural'
+                ? 'bg-school-blue-600 text-white shadow-md'
+                : 'text-gray-500 dark:text-zinc-400 hover:text-school-blue-600 dark:hover:text-white'
+            }`}
+          >
+            Feedback do sorteio
+          </button>
+        </div>
+
+        {activeTab === 'sorteio' ? (
+          <Card className="p-6 md:p-8 shadow-xl border-0 dark:border dark:border-zinc-800 bg-white dark:bg-zinc-950 rounded-2xl">
           <div className="space-y-6">
             <div className="text-center space-y-2">
               <h2 className="text-2xl md:text-3xl font-black text-school-blue-700 dark:text-white">
@@ -669,7 +697,7 @@ const LotteryForm = () => {
                     <Button
                       type="button"
                       onClick={() => { setZoom(1); setIsCameraOpen(true); }}
-                      className="w-full h-16 md:h-20 bg-school-blue-600 hover:bg-school-blue-700 text-white dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 rounded-xl flex items-center justify-center shadow-md transition-transform hover:scale-[1.02]"
+                      className="w-full h-16 md:h-20 bg-school-blue-600 hover:bg-school-blue-700 text-white rounded-xl flex items-center justify-center shadow-md transition-transform hover:scale-[1.02]"
                     >
                       <Camera className="w-8 h-8 mr-3" />
                       <span className="text-lg font-bold">Abrir Câmera</span>
@@ -723,8 +751,8 @@ const LotteryForm = () => {
                   type="submit"
                   disabled={submissionState === 'enviando' || submissionState === 'processando' || !photo || photoValidationError !== null || isLocationInvalid || tentativasCodigo === 0 || !termsAccepted}
                   className={`w-full h-auto py-5 text-base md:text-lg font-bold rounded-2xl shadow-sm transition-all duration-500 disabled:cursor-not-allowed ${showRedButton
-                    ? "bg-school-blue-600 text-white dark:bg-zinc-800 dark:text-zinc-100 disabled:opacity-100"
-                    : "bg-school-blue-600 hover:bg-school-blue-700 text-white dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 animate-pulse-subtle disabled:opacity-70 disabled:animate-none hover:shadow-md"
+                    ? "bg-school-blue-600 text-white disabled:opacity-100"
+                    : "bg-school-blue-600 hover:bg-school-blue-700 text-white animate-pulse-subtle disabled:opacity-70 disabled:animate-none hover:shadow-md"
                     }`}
                 >
                   {(submissionState === 'enviando' || submissionState === 'processando') ? (
@@ -755,6 +783,9 @@ const LotteryForm = () => {
             </div>
           </div>
         </Card>
+        ) : (
+          <Mural />
+        )}
 
         {/* Camera Overlay */}
         {isCameraOpen && (

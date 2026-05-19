@@ -3,11 +3,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
-import { Dice1, Crown, User, Lock, Key, LogOut, Eye, EyeOff, Loader2, CheckCircle2, XCircle, ShieldCheck, Copy, CheckCheck, RefreshCw } from 'lucide-react';
+import { Dice1, Crown, User, Lock, Key, LogOut, Eye, EyeOff, Loader2, CheckCircle2, XCircle, ShieldCheck, Copy, CheckCheck, RefreshCw, MessageSquareWarning } from 'lucide-react';
 import { useAdmAuth } from '@/hooks/useAdmAuth';
 import { useToast } from '@/hooks/use-toast';
 import ClassCodeManager from '@/components/ClassCodeManager';
 import { supabase } from '@/integrations/supabase/client';
+import Participantes from '@/components/Participantes';
+import FeedbackModeration from '@/components/FeedbackModeration';
 import { Link } from 'react-router-dom';
 
 const formatCPF = (value: string) => {
@@ -42,10 +44,7 @@ const Admin = () => {
   const [regState, setRegState] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
 
   // Admin Panel State
-  const [activeTab, setActiveTab] = useState<'lottery' | 'codes'>('lottery');
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [submissionState, setSubmissionState] = useState<'idle' | 'enviando' | 'processando' | 'erro' | 'sucesso'>('idle');
+  const [activeTab, setActiveTab] = useState<'lottery' | 'codes' | 'moderacao'>('lottery');
   const { toast } = useToast();
 
   // Admin Code Generator State
@@ -181,83 +180,6 @@ const Admin = () => {
       });
     } finally {
       clearTimeout(timeoutId);
-    }
-  };
-
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, '');
-    if (value.length <= 11) {
-      value = value.replace(/(\d{2})(\d)/, '($1) $2');
-      value = value.replace(/(\d{5})(\d)/, '$1-$2');
-    }
-    setPhone(value);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim() || phone.replace(/\D/g, '').length < 10) {
-      toast({
-        title: "Dados inválidos",
-        description: "Por favor, preencha o nome e um telefone válido.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setSubmissionState('enviando');
-
-    try {
-      const luckyNumber = Math.floor(Math.random() * 9000) + 1000;
-
-      const { data, error } = await supabase
-        .from('lottery_participations')
-        .insert([
-          {
-            name: name.trim(),
-            phone: phone.replace(/\D/g, ''),
-            class_name: 'Desconhecida',
-            teacher_code: 'ADMIN',
-            lucky_number: luckyNumber
-          }
-        ])
-        .select('lucky_number')
-        .single();
-
-      if (error) {
-        if (error.code === '23505') {
-          toast({
-            title: "Participação já registrada",
-            description: "Este telefone já foi registrado.",
-            variant: "destructive"
-          });
-        } else {
-          throw error;
-        }
-        setSubmissionState('erro');
-        return;
-      }
-
-      toast({
-        title: "Sucesso!",
-        description: `Participação registrada. Bilhete: SORTEBIT#${data.lucky_number}`,
-      });
-
-      setName('');
-      setPhone('');
-      setSubmissionState('sucesso');
-
-      setTimeout(() => {
-        setSubmissionState('idle');
-      }, 3000);
-
-    } catch (error) {
-      console.error('Error submitting form:', error);
-      setSubmissionState('erro');
-      toast({
-        title: "Erro",
-        description: "Erro inesperado. Tente novamente.",
-        variant: "destructive"
-      });
     }
   };
 
@@ -509,7 +431,7 @@ const Admin = () => {
                 }`}
             >
               <Dice1 className="w-4 h-4 mr-2" />
-              Sorteio
+              Participantes
             </Button>
             <Button
               onClick={() => setActiveTab('codes')}
@@ -521,6 +443,17 @@ const Admin = () => {
             >
               <Crown className="w-4 h-4 mr-2" />
               Códigos
+            </Button>
+            <Button
+              onClick={() => setActiveTab('moderacao')}
+              variant={activeTab === 'moderacao' ? 'default' : 'outline'}
+              className={`flex-1 min-w-32 transition-none ${activeTab === 'moderacao'
+                ? 'bg-school-blue-600 text-white hover:bg-school-blue-600 hover:text-white'
+                : 'border-school-blue-600 text-school-blue-600 dark:text-zinc-400 bg-transparent hover:bg-transparent dark:bg-slate-800 dark:hover:bg-slate-800 hover:text-school-blue-600 dark:hover:text-zinc-400'
+                }`}
+            >
+              <MessageSquareWarning className="w-4 h-4 mr-2" />
+              Moderação
             </Button>
           </div>
         </div>
@@ -587,73 +520,15 @@ const Admin = () => {
         )}
 
         {activeTab === 'lottery' && (
-          <Card className="p-6 md:p-8 shadow-xl border-0 dark:border dark:border-zinc-800 bg-white dark:bg-zinc-950 rounded-2xl">
-            <div className="space-y-6">
-              <div className="text-center space-y-2">
-                <div className="flex items-center justify-center space-x-2">
-                  <Crown className="w-8 h-8 text-school-yellow-500 dark:text-school-yellow-400" />
-                  <Dice1 className="w-12 h-12 text-school-blue-600 dark:text-zinc-400" />
-                </div>
-                <h2 className="text-xl md:text-2xl font-bold text-school-blue-700 dark:text-white">
-                  Sorteio - Modo Administrativo
-                </h2>
-                <p className="text-school-blue-600 dark:text-zinc-400">
-                  Registre participações sem validação de localização
-                </p>
-              </div>
+          <div className="mt-6">
+            <Participantes />
+          </div>
+        )}
 
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="text-school-blue-700 dark:text-zinc-200 font-semibold">
-                    Nome completo *
-                  </Label>
-                  <Input
-                    id="name"
-                    type="text"
-                    placeholder="Digite seu nome completo"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="h-12 md:h-14 text-base md:text-lg border-2 border-school-blue-500 dark:bg-zinc-900 dark:border-school-blue-500 dark:text-white rounded-xl"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-school-blue-700 dark:text-zinc-200 font-semibold">
-                    Telefone *
-                  </Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="(00) 00000-0000"
-                    value={phone}
-                    onChange={handlePhoneChange}
-                    className="h-12 md:h-14 text-base md:text-lg border-2 border-school-blue-500 dark:bg-zinc-900 dark:border-school-blue-500 dark:text-white rounded-xl"
-                    maxLength={15}
-                    required
-                  />
-                </div>
-
-                <Button
-                  type="submit"
-                  disabled={submissionState === 'enviando' || submissionState === 'processando'}
-                  className="w-full h-12 md:h-16 text-base md:text-lg font-bold bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 dark:text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                >
-                  {(submissionState === 'enviando' || submissionState === 'processando') ? (
-                    <div className="flex items-center">
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-school-blue-800 mr-2"></div>
-                      Processando...
-                    </div>
-                  ) : (
-                    <div className="flex items-center">
-                      <Dice1 className="w-5 h-5 mr-2" />
-                      Participar do Sorteio
-                    </div>
-                  )}
-                </Button>
-              </form>
-            </div>
-          </Card>
+        {activeTab === 'moderacao' && (
+          <div className="mt-6">
+            <FeedbackModeration />
+          </div>
         )}
       </div>
     </div>

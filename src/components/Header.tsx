@@ -7,14 +7,14 @@ const Header = () => {
       <div className="flex justify-center items-center mb-4 md:mb-6">
         <img src="/img/logo.png" alt="Logo BIT" className="h-10 md:h-14 w-auto object-contain mr-3 block dark:hidden" />
         <img src="/img/logo_branca.png" alt="Logo BIT" className="h-10 md:h-14 w-auto object-contain mr-3 hidden dark:block" />
-        <div className="text-school-blue-600 dark:text-zinc-400 hover:dark:text-white transition-colors text-lg md:text-2xl font-bold">BIT EDUCAÇÃO & NEGÓCIOS</div>
+        <div className="text-black dark:text-white transition-colors text-lg md:text-2xl font-bold">BIT EDUCAÇÃO & NEGÓCIOS</div>
       </div>
       
-      <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold text-school-blue-700 dark:text-zinc-400 hover:dark:text-white transition-colors mb-3 md:mb-4 leading-tight px-2">
+      <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold text-black dark:text-white transition-colors mb-3 md:mb-4 leading-tight px-2">
         SorteBIT eu visto o UNIFORME
       </h1>
       
-      <p className="text-sm md:text-lg lg:text-xl text-gray-600 dark:text-zinc-400 hover:dark:text-white transition-colors max-w-2xl mx-auto leading-relaxed px-2">
+      <p className="text-sm md:text-lg lg:text-xl text-black dark:text-white transition-colors max-w-2xl mx-auto leading-relaxed px-2">
         Preencha seu nome, número de telefone e o codigo do sorteio para gerar automaticamente seu número da sorte. 
         O sorteio será realizado todo final de mês na BIT!
       </p>
