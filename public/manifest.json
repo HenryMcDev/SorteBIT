@@ -4,15 +4,15 @@
     "description": "Participe dos sorteios presenciais da BIT Educação & Negócios.",
     "icons": [
         {
-            "src": "/img/icon_smartphone_azul-192.png",
+            "src": "/img/icon-192x192.png",
             "type": "image/png",
             "sizes": "192x192"
         },
         {
-            "src": "/img/icon_smartphone_azul_512.png",
+            "src": "/img/icon-512x512.png",
             "type": "image/png",
             "sizes": "512x512",
-            "purpose": "any maskable"
+            "purpose": "any"
         }
     ],
     "start_url": "/",
