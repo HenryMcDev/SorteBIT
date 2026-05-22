@@ -91,7 +91,7 @@ const StudentAuth = ({ isLoading, login, register }: StudentAuthProps) => {
   };
 
   return (
-    <div className="max-w-md mx-auto px-4 w-full">
+    <div className="max-w-md mx-auto px-4 w-full notranslate">
       <Card className="rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden bg-white/95 dark:bg-zinc-900/85 backdrop-blur-xl">
         {/* Mode toggle tabs */}
         <div className="flex border-b border-zinc-200 dark:border-zinc-800">
@@ -173,7 +173,7 @@ const StudentAuth = ({ isLoading, login, register }: StudentAuthProps) => {
               <button
                 onClick={handleLoginSubmit}
                 disabled={isLoading || !loginCpf.trim() || !loginPassword.trim()}
-                className="w-full h-12 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed hover:opacity-90 active:scale-[0.98] bg-school-blue-600"
+                className="w-full h-12 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed hover:opacity-90 active:scale-[0.98] bg-school-blue-600 notranslate"
                 style={{ boxShadow: '0 4px 14px 0 rgba(37, 99, 235, 0.39)' }}
               >
                 {isLoading ? (<><Loader2 className="w-4 h-4 animate-spin" /> Carregando...</>) : (<><Key className="w-4 h-4" /> Entrar</>)}
@@ -203,7 +203,7 @@ const StudentAuth = ({ isLoading, login, register }: StudentAuthProps) => {
                 </div>
               ) : (
                 <div className="relative">
-                  <form onSubmit={handleRegisterSubmit} className="space-y-4" noValidate>
+                  <form onSubmit={handleRegisterSubmit} className="space-y-4 notranslate" noValidate>
                     <div className="space-y-2">
                       <label htmlFor="regFullName" className="block text-sm font-medium text-school-blue-700 dark:text-zinc-300">Nome completo <span className="text-red-500">*</span></label>
                       <input id="regFullName" type="text" autoComplete="name" placeholder="Ex.: João da Silva" value={regFullName} onChange={(e) => setRegFullName(e.target.value || '')} disabled={regState === 'submitting'} className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 px-4 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-school-blue-500/50 focus:border-school-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" />
@@ -245,7 +245,7 @@ const StudentAuth = ({ isLoading, login, register }: StudentAuthProps) => {
                     <button
                       type="submit"
                       disabled={regState === 'submitting'}
-                      className="mt-4 w-full h-12 rounded-xl font-bold text-sm text-white flex items-center justify-center transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed hover:opacity-90 active:scale-[0.98] bg-school-blue-600"
+                      className="mt-4 w-full h-12 rounded-xl font-bold text-sm text-white flex items-center justify-center transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed hover:opacity-90 active:scale-[0.98] bg-school-blue-600 notranslate"
                       style={{ boxShadow: '0 4px 14px 0 rgba(37, 99, 235, 0.39)' }}
                     >
                       {regState === 'submitting'
