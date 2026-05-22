@@ -142,7 +142,7 @@ export const useStudentAuth = () => {
         senha: password,
       });
 
-      if (resposta.data?.status && !resposta.data.status.toLowerCase().includes('error')) {
+      if (resposta.data?.status && !String(resposta.data.status).toLowerCase().includes('error')) {
         toast({
           title: 'Cadastro realizado!',
           description: resposta.data?.mensagem || 'Sua conta foi criada com sucesso.',

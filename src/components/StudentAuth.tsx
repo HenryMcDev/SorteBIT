@@ -39,43 +39,54 @@ const StudentAuth = ({ isLoading, login, register }: StudentAuthProps) => {
   const [regState, setRegState] = useState<'idle' | 'submitting' | 'success'>('idle');
 
   const handleLoginSubmit = async () => {
-    if (!loginCpf.trim() || !loginPassword.trim()) {
-      return;
-    }
-    setLoginError('');
-    const success = await login(loginCpf, loginPassword);
-    if (!success) {
-      setLoginError('CPF ou senha incorretos. Tente novamente.');
+    try {
+      if (!loginCpf.trim() || !loginPassword.trim()) {
+        return;
+      }
+      setLoginError('');
+      const success = await login(loginCpf, loginPassword);
+      if (!success) {
+        setLoginError('CPF ou senha incorretos. Tente novamente.');
+      }
+    } catch (err) {
+      console.error(err);
+      setLoginError('Ocorreu um erro inesperado. Tente novamente.');
     }
   };
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!regFullName.trim() || !regCpf.trim() || !regEmail.trim() || !regPassword.trim() || !regConfirmPassword.trim()) {
-      toast({ title: 'Campos obrigatórios', description: 'Preencha todos os campos para se registrar.', variant: 'destructive' });
-      return;
-    }
-    if (regCpf.replace(/\D/g, '').length !== 11) {
-      toast({ title: 'CPF inválido', description: 'Digite um CPF completo com 11 dígitos.', variant: 'destructive' });
-      return;
-    }
-    if (regPassword !== regConfirmPassword) {
-      toast({ title: 'Senhas não coincidem', description: 'A senha e a confirmação devem ser idênticas.', variant: 'destructive' });
-      return;
-    }
-    if (regPassword.length < 8) {
-      toast({ title: 'Senha muito curta', description: 'A senha deve ter no mínimo 8 caracteres.', variant: 'destructive' });
-      return;
-    }
+    try {
+      if (!regFullName.trim() || !regCpf.trim() || !regEmail.trim() || !regPassword.trim() || !regConfirmPassword.trim()) {
+        toast({ title: 'Campos obrigatórios', description: 'Preencha todos os campos para se registrar.', variant: 'destructive' });
+        return;
+      }
+      if (regCpf.replace(/\D/g, '').length !== 11) {
+        toast({ title: 'CPF inválido', description: 'Digite um CPF completo com 11 dígitos.', variant: 'destructive' });
+        return;
+      }
+      if (regPassword !== regConfirmPassword) {
+        toast({ title: 'Senhas não coincidem', description: 'A senha e a confirmação devem ser idênticas.', variant: 'destructive' });
+        return;
+      }
+      if (regPassword.length < 8) {
+        toast({ title: 'Senha muito curta', description: 'A senha deve ter no mínimo 8 caracteres.', variant: 'destructive' });
+        return;
+      }
 
-    setRegState('submitting');
+      setRegState('submitting');
 
-    const success = await register(regFullName, regCpf, regEmail, regPassword);
-    
-    if (success) {
-      setRegState('success');
-    } else {
+      const success = await register(regFullName, regCpf, regEmail, regPassword);
+      
+      if (success) {
+        setRegState('success');
+      } else {
+        setRegState('idle');
+      }
+    } catch (err) {
+      console.error(err);
       setRegState('idle');
+      toast({ title: 'Erro', description: 'Ocorreu um erro inesperado no formulário.', variant: 'destructive' });
     }
   };
 
@@ -133,7 +144,7 @@ const StudentAuth = ({ isLoading, login, register }: StudentAuthProps) => {
                   inputMode="numeric"
                   placeholder="000.000.000-00"
                   value={loginCpf}
-                  onChange={(e) => { setLoginCpf(formatCPF(e.target.value)); setLoginError(''); }}
+                  onChange={(e) => { setLoginCpf(formatCPF(e.target.value || '')); setLoginError(''); }}
                   disabled={isLoading}
                   maxLength={14}
                   className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 px-4 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-school-blue-500/50 focus:border-school-blue-500 disabled:opacity-50"
@@ -148,7 +159,7 @@ const StudentAuth = ({ isLoading, login, register }: StudentAuthProps) => {
                     type={showLoginPassword ? 'text' : 'password'}
                     placeholder="Digite a senha"
                     value={loginPassword}
-                    onChange={(e) => { setLoginPassword(e.target.value); setLoginError(''); }}
+                    onChange={(e) => { setLoginPassword(e.target.value || ''); setLoginError(''); }}
                     disabled={isLoading}
                     onKeyDown={(e) => e.key === 'Enter' && handleLoginSubmit()}
                     className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 px-4 pr-12 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-school-blue-500/50 focus:border-school-blue-500 disabled:opacity-50"
@@ -195,20 +206,20 @@ const StudentAuth = ({ isLoading, login, register }: StudentAuthProps) => {
                   <form onSubmit={handleRegisterSubmit} className="space-y-4" noValidate>
                     <div className="space-y-2">
                       <label htmlFor="regFullName" className="block text-sm font-medium text-school-blue-700 dark:text-zinc-300">Nome completo <span className="text-red-500">*</span></label>
-                      <input id="regFullName" type="text" autoComplete="name" placeholder="Ex.: João da Silva" value={regFullName} onChange={(e) => setRegFullName(e.target.value)} disabled={regState === 'submitting'} className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 px-4 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-school-blue-500/50 focus:border-school-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" />
+                      <input id="regFullName" type="text" autoComplete="name" placeholder="Ex.: João da Silva" value={regFullName} onChange={(e) => setRegFullName(e.target.value || '')} disabled={regState === 'submitting'} className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 px-4 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-school-blue-500/50 focus:border-school-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" />
                     </div>
                     <div className="space-y-2">
                       <label htmlFor="regCpf" className="block text-sm font-medium text-school-blue-700 dark:text-zinc-300">CPF <span className="text-red-500">*</span></label>
-                      <input id="regCpf" type="text" inputMode="numeric" autoComplete="off" placeholder="000.000.000-00" value={regCpf} onChange={(e) => setRegCpf(formatCPF(e.target.value))} disabled={regState === 'submitting'} maxLength={14} className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 px-4 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-school-blue-500/50 focus:border-school-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" />
+                      <input id="regCpf" type="text" inputMode="numeric" autoComplete="off" placeholder="000.000.000-00" value={regCpf} onChange={(e) => setRegCpf(formatCPF(e.target.value || ''))} disabled={regState === 'submitting'} maxLength={14} className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 px-4 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-school-blue-500/50 focus:border-school-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" />
                     </div>
                     <div className="space-y-2">
                       <label htmlFor="regEmail" className="block text-sm font-medium text-school-blue-700 dark:text-zinc-300">E-mail <span className="text-red-500">*</span></label>
-                      <input id="regEmail" type="email" autoComplete="email" placeholder="aluno@email.com" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} disabled={regState === 'submitting'} className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 px-4 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-school-blue-500/50 focus:border-school-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" />
+                      <input id="regEmail" type="email" autoComplete="email" placeholder="aluno@email.com" value={regEmail} onChange={(e) => setRegEmail(e.target.value || '')} disabled={regState === 'submitting'} className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 px-4 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-school-blue-500/50 focus:border-school-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" />
                     </div>
                     <div className="space-y-2">
                       <label htmlFor="regPassword" className="block text-sm font-medium text-school-blue-700 dark:text-zinc-300">Senha <span className="text-red-500">*</span></label>
                       <div className="relative">
-                        <input id="regPassword" type={showRegPassword ? 'text' : 'password'} autoComplete="new-password" placeholder="Mínimo 8 caracteres" value={regPassword} onChange={(e) => setRegPassword(e.target.value)} disabled={regState === 'submitting'} className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 px-4 pr-12 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-school-blue-500/50 focus:border-school-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" />
+                        <input id="regPassword" type={showRegPassword ? 'text' : 'password'} autoComplete="new-password" placeholder="Mínimo 8 caracteres" value={regPassword} onChange={(e) => setRegPassword(e.target.value || '')} disabled={regState === 'submitting'} className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 px-4 pr-12 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-school-blue-500/50 focus:border-school-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" />
                         <button type="button" onClick={() => setShowRegPassword(v => !v)} disabled={regState === 'submitting'} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors disabled:pointer-events-none">
                           {showRegPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                         </button>
@@ -217,7 +228,7 @@ const StudentAuth = ({ isLoading, login, register }: StudentAuthProps) => {
                     <div className="space-y-2">
                       <label htmlFor="regConfirmPassword" className="block text-sm font-medium text-school-blue-700 dark:text-zinc-300">Confirmar senha <span className="text-red-500">*</span></label>
                       <div className="relative">
-                        <input id="regConfirmPassword" type={showRegConfirm ? 'text' : 'password'} autoComplete="new-password" placeholder="Repita a senha" value={regConfirmPassword} onChange={(e) => setRegConfirmPassword(e.target.value)} disabled={regState === 'submitting'} className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 px-4 pr-12 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-school-blue-500/50 focus:border-school-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" />
+                        <input id="regConfirmPassword" type={showRegConfirm ? 'text' : 'password'} autoComplete="new-password" placeholder="Repita a senha" value={regConfirmPassword} onChange={(e) => setRegConfirmPassword(e.target.value || '')} disabled={regState === 'submitting'} className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 px-4 pr-12 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-school-blue-500/50 focus:border-school-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" />
                         <button type="button" onClick={() => setShowRegConfirm(v => !v)} disabled={regState === 'submitting'} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors disabled:pointer-events-none">
                           {showRegConfirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                         </button>
