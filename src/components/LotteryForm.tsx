@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
-import { Dice1, MapPin, MapPinOff, AlertCircle, Crown, Camera, RefreshCw, X, AlertTriangle, QrCode, CheckCircle2, Clock } from 'lucide-react';
+import { MapPin, MapPinOff, AlertCircle, Camera, RefreshCw, X, AlertTriangle, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useLocationVerification } from '@/hooks/useLocationVerification';
 import Celebration from './Celebration';
@@ -12,13 +12,25 @@ import Mural from './Mural';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { supabase } from '@/integrations/supabase/client';
 
 
-const LotteryForm = () => {
+interface StudentUser {
+  id: string;
+  name: string;
+  cpf: string;
+  termos_aceitos?: boolean;
+}
+
+interface LotteryFormProps {
+  studentUser?: StudentUser;
+}
+
+const LotteryForm = ({ studentUser }: LotteryFormProps) => {
   const [activeTab, setActiveTab] = useState<'sorteio' | 'mural'>('sorteio');
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [name, setName] = useState(studentUser?.name || '');
   const [studentCode, setStudentCode] = useState('');
+  const [phone, setPhone] = useState('');
   const [submissionState, setSubmissionState] = useState<'idle' | 'enviando' | 'processando' | 'erro' | 'sucesso'>('idle');
   const [photo, setPhoto] = useState<string | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
@@ -33,10 +45,78 @@ const LotteryForm = () => {
   const [alreadyParticipated, setAlreadyParticipated] = useState(false);
   const [terminoFixo, setTerminoFixo] = useState<number | null>(null);
   const [isGracePeriod, setIsGracePeriod] = useState(true);
-  const [termsAccepted, setTermsAccepted] = useState(false);
   const [isTermsOpen, setIsTermsOpen] = useState(false);
+  const [isAcceptingTerms, setIsAcceptingTerms] = useState(false);
   const webcamRef = useRef<Webcam>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (studentUser && studentUser.termos_aceitos === false) {
+      setIsTermsOpen(true);
+    }
+  }, [studentUser?.termos_aceitos]);
+
+  const handleAcceptTerms = async () => {
+    if (!studentUser?.cpf) return;
+    setIsAcceptingTerms(true);
+    try {
+      const { error } = await supabase
+        .from('estudantes' as any)
+        .update({ termos_aceitos: true })
+        .eq('cpf', studentUser.cpf);
+
+      if (error) throw error;
+
+      setIsTermsOpen(false);
+      toast({ title: "Termos Aceitos", description: "Obrigado por aceitar os termos de uso!" });
+      
+      // Atualiza o estado local temporariamente caso o hook demore
+      if (studentUser) {
+        studentUser.termos_aceitos = true;
+      }
+    } catch (err) {
+      console.error('Erro ao aceitar termos:', err);
+      toast({ title: "Erro", description: "Não foi possível confirmar o aceite. Tente novamente.", variant: "destructive" });
+    } finally {
+      setIsAcceptingTerms(false);
+    }
+  };
+
+  useEffect(() => {
+    if (studentUser?.name) {
+      setName(studentUser.name);
+    }
+  }, [studentUser?.name]);
+
+  useEffect(() => {
+    const fetchDailyCode = async () => {
+      try {
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        // Removemos o filtro de data rigoroso via string para evitar bugs de fuso horário (UTC vs GMT-3)
+        // e simplesmente ordenamos para capturar a chave de acesso mais recente gerada pelo professor.
+        const { data, error } = await supabase
+          .from('daily_codes')
+          .select('code')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Erro ao buscar o código diário:', error);
+          return;
+        }
+
+        if (data?.code) {
+          setStudentCode(data.code);
+        }
+      } catch (err) {
+        console.error('Falha inesperada ao buscar código:', err);
+      }
+    };
+
+    fetchDailyCode();
+  }, []);
 
   useEffect(() => {
     // Única consulta de sincronia ao banco de dados local na inicialização
@@ -121,11 +201,7 @@ const LotteryForm = () => {
   };
 
   // Use location verification only for non-admin mode
-  const { isLoading, isWithinRange, locationProgress, showContingency, latitude, longitude, distance, retryLocation } = useLocationVerification(false);
-
-  const generateLuckyNumber = (): number => {
-    return Math.floor(Math.random() * 9000) + 1000;
-  };
+  const { isLoading, isWithinRange, locationProgress, distance, retryLocation } = useLocationVerification(false);
 
   const formatPhone = (value: string): string => {
     const numbers = value.replace(/\D/g, '');
@@ -143,10 +219,11 @@ const LotteryForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name.trim() || !phone.trim() || !studentCode.trim()) {
+    const studentName = studentUser?.name || '';
+    if (!name.trim() || !studentCode.trim()) {
       toast({
         title: "Erro",
-        description: "Por favor, preencha todos os campos obrigatórios.",
+        description: "Falha na sincronização dos dados automáticos. Tente recarregar a página.",
         variant: "destructive"
       });
       return;
@@ -460,13 +537,11 @@ const LotteryForm = () => {
   if (generatedTicket) {
     return (
       <Celebration
-        nome={name || 'Aluno'}
+        nome={studentUser?.name || 'Aluno'}
         onClose={() => {
           setGeneratedTicket(null);
           setSubmissionState('idle');
-          setName('');
           setPhone('');
-          setStudentCode('');
           setPhoto(null);
         }}
       />
@@ -510,22 +585,20 @@ const LotteryForm = () => {
           <button
             type="button"
             onClick={() => setActiveTab('sorteio')}
-            className={`flex-1 py-3 px-4 rounded-full text-sm md:text-base font-bold transition-all duration-300 ${
-              activeTab === 'sorteio'
+            className={`flex-1 py-3 px-4 rounded-full text-sm md:text-base font-bold transition-all duration-300 ${activeTab === 'sorteio'
                 ? 'bg-school-blue-600 text-white shadow-md'
                 : 'text-gray-500 dark:text-zinc-400 hover:text-school-blue-600 dark:hover:text-white'
-            }`}
+              }`}
           >
             Participar
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('mural')}
-            className={`flex-1 py-3 px-4 rounded-full text-sm md:text-base font-bold transition-all duration-300 ${
-              activeTab === 'mural'
+            className={`flex-1 py-3 px-4 rounded-full text-sm md:text-base font-bold transition-all duration-300 ${activeTab === 'mural'
                 ? 'bg-school-blue-600 text-white shadow-md'
                 : 'text-gray-500 dark:text-zinc-400 hover:text-school-blue-600 dark:hover:text-white'
-            }`}
+              }`}
           >
             Feedback do sorteio
           </button>
@@ -533,258 +606,175 @@ const LotteryForm = () => {
 
         {activeTab === 'sorteio' ? (
           <Card className="p-6 md:p-8 shadow-xl border-0 dark:border dark:border-zinc-800 bg-white dark:bg-zinc-950 rounded-2xl">
-          <div className="space-y-6">
-            <div className="text-center space-y-2">
-              <h2 className="text-2xl md:text-3xl font-black text-school-blue-700 dark:text-white">
-                Participe do Sorteio!
-              </h2>
-              <p className="text-school-blue-600 dark:text-zinc-400">
-                Preencha os dados e insira o código fornecido pelo seu professor
-              </p>
-            </div>
-
-            {alreadyParticipated ? (
-              <div className="bg-school-blue-50 dark:bg-slate-800 border border-school-blue-100 dark:border-slate-700 rounded-2xl p-6 shadow-sm animate-in fade-in slide-in-from-top-4 mt-6">
-                <div className="flex flex-col items-center text-center space-y-4">
-                  <div className="w-14 h-14 bg-white dark:bg-zinc-950 rounded-full flex items-center justify-center shadow-sm text-school-blue-600 dark:text-zinc-400 mb-2">
-                    <Clock className="w-7 h-7" />
-                  </div>
-                  <h3 className="text-xl font-bold text-school-blue-800 dark:text-white">Participação Concluída</h3>
-                  <p className="text-school-blue-600 dark:text-zinc-400 font-medium">
-                    Você já registrou sua participação no sorteio de hoje.
-                  </p>
-                  <div className="pt-6 border-t border-school-blue-200 dark:border-slate-700/50 w-full mt-2">
-                    <p className="text-xs font-bold text-school-blue-700 dark:text-white uppercase tracking-widest mb-3">
-                      Sua próxima chance de ganhar renova em
-                    </p>
-                    <div className="text-4xl font-mono font-black text-school-blue-800 dark:text-white tracking-wider">
-                      {tempoRestante}
-                    </div>
-                  </div>
-                </div>
+            <div className="space-y-6">
+              <div className="text-center space-y-2">
+                <h2 className="text-2xl md:text-3xl font-black text-school-blue-700 dark:text-white">
+                  Participe do Sorteio!
+                </h2>
+                <p className="text-school-blue-600 dark:text-zinc-400">
+                  Preencha os dados e insira o código fornecido pelo seu professor
+                </p>
               </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {isLoading && (
-                  <div className="w-full transition-all duration-300">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm font-medium text-school-blue-700 dark:text-zinc-300 flex items-center gap-1">
-                        <MapPin className="w-4 h-4 animate-pulse" />
-                        Buscando localização...
-                      </span>
-                      <span className="text-sm font-bold text-school-blue-700 dark:text-zinc-300">{locationProgress}%</span>
-                    </div>
-                    <div className="w-full bg-zinc-200 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
-                      <div
-                        className="h-full transition-all duration-300 bg-school-blue-500"
-                        style={{ width: `${locationProgress}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                )}
 
-                {photoValidationError && (
-                  <div className="bg-red-50 dark:bg-red-950/30 border-2 border-red-200 dark:border-red-800/50 rounded-xl p-4 flex items-start justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
-                    <div className="flex gap-3">
-                      <AlertCircle className="w-6 h-6 text-red-500 dark:text-red-400 shrink-0" />
-                      <div>
-                        <h4 className="font-bold text-red-800 dark:text-red-200">Atenção</h4>
-                        <p className="text-red-600 dark:text-red-400 text-sm mt-1">{photoValidationError}</p>
+              {alreadyParticipated ? (
+                <div className="bg-school-blue-50 dark:bg-slate-800 border border-school-blue-100 dark:border-slate-700 rounded-2xl p-6 shadow-sm animate-in fade-in slide-in-from-top-4 mt-6">
+                  <div className="flex flex-col items-center text-center space-y-4">
+                    <div className="w-14 h-14 bg-white dark:bg-zinc-950 rounded-full flex items-center justify-center shadow-sm text-school-blue-600 dark:text-zinc-400 mb-2">
+                      <Clock className="w-7 h-7" />
+                    </div>
+                    <h3 className="text-xl font-bold text-school-blue-800 dark:text-white">Participação Concluída</h3>
+                    <p className="text-school-blue-600 dark:text-zinc-400 font-medium">
+                      Você já registrou sua participação no sorteio de hoje.
+                    </p>
+                    <div className="pt-6 border-t border-school-blue-200 dark:border-slate-700/50 w-full mt-2">
+                      <p className="text-xs font-bold text-school-blue-700 dark:text-white uppercase tracking-widest mb-3">
+                        Sua próxima chance de ganhar renova em
+                      </p>
+                      <div className="text-4xl font-mono font-black text-school-blue-800 dark:text-white tracking-wider">
+                        {tempoRestante}
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPhotoValidationError(null);
-                        setSubmissionState('idle');
-                        setPhoto(null);
-                      }}
-                      className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 transition-colors p-1"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
                   </div>
-                )}
-
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="text-school-blue-700 dark:text-zinc-200 font-semibold">
-                    Nome completo *
-                  </Label>
-                  <Input
-                    id="name"
-                    type="text"
-                    placeholder="Digite seu nome completo"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 dark:bg-zinc-900 dark:border-zinc-700 dark:text-white focus:border-school-blue-500 rounded-xl"
-                    required
-                  />
                 </div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {isLoading && (
+                    <div className="w-full transition-all duration-300">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-sm font-medium text-school-blue-700 dark:text-zinc-300 flex items-center gap-1">
+                          <MapPin className="w-4 h-4 animate-pulse" />
+                          Buscando localização...
+                        </span>
+                        <span className="text-sm font-bold text-school-blue-700 dark:text-zinc-300">{locationProgress}%</span>
+                      </div>
+                      <div className="w-full bg-zinc-200 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
+                        <div
+                          className="h-full transition-all duration-300 bg-school-blue-500"
+                          style={{ width: `${locationProgress}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-school-blue-700 dark:text-zinc-200 font-semibold">
-                    Telefone *
-                  </Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="(00) 00000-0000"
-                    value={phone}
-                    onChange={handlePhoneChange}
-                    className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 dark:bg-zinc-900 dark:border-zinc-700 dark:text-white focus:border-school-blue-500 rounded-xl"
-                    maxLength={15}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="studentCode" className="text-school-blue-700 dark:text-zinc-200 font-semibold">
-                    Digite o código do dia *
-                  </Label>
-                  <Input
-                    id="studentCode"
-                    type="text"
-                    placeholder="Digite o código"
-                    value={studentCode}
-                    onChange={(e) => setStudentCode(e.target.value.toUpperCase())}
-                    className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 dark:bg-zinc-900 dark:border-zinc-700 dark:text-white focus:border-school-blue-500 rounded-xl font-mono"
-                    required
-                    disabled={tentativasCodigo === 0}
-                  />
-                  {errorType === 'erroCode' && analysisError && (
-                    <div className="mt-3 bg-red-50 dark:bg-red-950/30 border-2 border-red-200 dark:border-red-800/50 rounded-xl p-4 flex items-start justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
+                  {photoValidationError && (
+                    <div className="bg-red-50 dark:bg-red-950/30 border-2 border-red-200 dark:border-red-800/50 rounded-xl p-4 flex items-start justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
                       <div className="flex gap-3">
-                        <AlertCircle className="w-6 h-6 text-red-500 dark:text-red-400 shrink-0 mt-0.5" />
+                        <AlertCircle className="w-6 h-6 text-red-500 dark:text-red-400 shrink-0" />
                         <div>
-                          <h4 className="font-bold text-red-800 dark:text-red-200 text-sm md:text-base">
-                            {tentativasCodigo > 0 ? 'Código Incorreto' : 'Tentativas Esgotadas'}
-                          </h4>
-                          <p className="text-red-600 dark:text-red-400 text-xs md:text-sm mt-1">{analysisError}</p>
-                          {tentativasCodigo > 0 ? (
-                            <p className="text-red-700 dark:text-red-300 text-xs md:text-sm font-medium mt-2">
-                              Você tem mais {tentativasCodigo} tentativa{tentativasCodigo !== 1 ? 's' : ''} de 3. Tente novamente ou solicite o código oficial na secretaria da BIT.
-                            </p>
-                          ) : (
-                            <p className="text-red-700 dark:text-red-300 text-sm font-bold mt-2 uppercase tracking-wide">
-                              Procure o atendimento na secretaria.
-                            </p>
-                          )}
+                          <h4 className="font-bold text-red-800 dark:text-red-200">Atenção</h4>
+                          <p className="text-red-600 dark:text-red-400 text-sm mt-1">{photoValidationError}</p>
                         </div>
                       </div>
-                      {tentativasCodigo > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAnalysisError(null);
-                            setErrorType(null);
-                            setSubmissionState('idle');
-                            setStudentCode(''); // Opcional: limpa o campo
-                          }}
-                          className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 transition-colors p-1"
-                        >
-                          <X className="w-5 h-5" />
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-3">
-                  <Label className="text-school-blue-700 dark:text-white font-semibold">
-                    Foto com o Uniforme *
-                  </Label>
-                  {!photo ? (
-                    <Button
-                      type="button"
-                      onClick={() => { setZoom(1); setIsCameraOpen(true); }}
-                      className="w-full h-16 md:h-20 bg-school-blue-600 hover:bg-school-blue-700 text-white rounded-xl flex items-center justify-center shadow-md transition-transform hover:scale-[1.02]"
-                    >
-                      <Camera className="w-8 h-8 mr-3" />
-                      <span className="text-lg font-bold">Abrir Câmera</span>
-                    </Button>
-                  ) : (
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="overflow-hidden rounded-xl border-4 border-school-blue-500 w-full max-w-sm aspect-[3/4] relative group shadow-lg bg-black flex items-center justify-center">
-                        <img src={photo} alt="Selfie capturada" className="w-full h-full object-contain" />
-                        <Button
-                          type="button"
-                          onClick={retakePhoto}
-                          className="absolute top-3 right-3 w-10 h-10 p-0 rounded-full bg-red-50 dark:bg-red-950/300 hover:bg-red-600 text-white shadow-[0_0_10px_rgba(0,0,0,0.5)] border-2 border-white flex items-center justify-center opacity-90 hover:opacity-100 transition-all hover:scale-110"
-                          title="Excluir foto"
-                        >
-                          <X className="w-6 h-6" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-start space-x-3 pt-2">
-                  <Checkbox
-                    id="terms"
-                    checked={termsAccepted}
-                    onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
-                    className="mt-1"
-                  />
-                  <div className="grid gap-1.5 leading-none">
-                    <label
-                      htmlFor="terms"
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-school-blue-700 dark:text-white"
-                    >
-                      Aceito os termos e a captação da minha foto *
-                    </label>
-                    <p className="text-sm text-school-blue-600 dark:text-zinc-400/80">
-                      Você deve ler e concordar com os{' '}
                       <button
                         type="button"
-                        onClick={() => setIsTermsOpen(true)}
-                        className="text-school-yellow-600 dark:text-school-yellow-400 font-bold hover:underline"
+                        onClick={() => {
+                          setPhotoValidationError(null);
+                          setSubmissionState('idle');
+                          setPhoto(null);
+                        }}
+                        className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 transition-colors p-1"
                       >
-                        Termos de Uso
+                        <X className="w-5 h-5" />
                       </button>
-                      {' '}antes de participar.
-                    </p>
-                  </div>
-                </div>
-
-                <Button
-                  type="submit"
-                  disabled={submissionState === 'enviando' || submissionState === 'processando' || !photo || photoValidationError !== null || isLocationInvalid || tentativasCodigo === 0 || !termsAccepted}
-                  className={`w-full h-auto py-5 text-base md:text-lg font-bold rounded-2xl shadow-sm transition-all duration-500 disabled:cursor-not-allowed ${showRedButton
-                    ? "bg-school-blue-600 text-white disabled:opacity-100"
-                    : "bg-school-blue-600 hover:bg-school-blue-700 text-white animate-pulse-subtle disabled:opacity-70 disabled:animate-none hover:shadow-md"
-                    }`}
-                >
-                  {(submissionState === 'enviando' || submissionState === 'processando') ? (
-                    <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                      {submissionState === 'processando' ? 'Analisando foto, aguarde...' : 'Processando...'}
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center">
-                      {showRedButton ? 'Você não está na BIT' : 'Participar do sorteio'}
                     </div>
                   )}
-                </Button>
-              </form>
-            )}
 
-            <div className="text-center pt-4">
-              <img
-                src="/img/logo.png"
-                alt="Logo da Escola"
-                className="mx-auto h-16 md:h-20 w-auto object-contain block dark:hidden"
-              />
-              <img
-                src="/img/logo_branca.png"
-                alt="Logo da Escola"
-                className="mx-auto h-16 md:h-20 w-auto object-contain hidden dark:block"
-              />
+
+
+                  <div className="hidden space-y-2">
+                    <Label className="text-school-blue-700 dark:text-zinc-200 font-semibold">
+                      Nome completo (Leitura)
+                    </Label>
+                    <Input
+                      type="text"
+                      value={name}
+                      disabled
+                      className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 dark:bg-zinc-900/80 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 rounded-xl cursor-not-allowed opacity-80"
+                    />
+                  </div>
+
+                  <div className="hidden space-y-2">
+                    <Label className="text-school-blue-700 dark:text-zinc-200 font-semibold">
+                      Código do dia (Automação)
+                    </Label>
+                    <Input
+                      type="text"
+                      value={studentCode || 'Buscando código automático...'}
+                      disabled
+                      className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 dark:bg-zinc-900/80 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 rounded-xl cursor-not-allowed opacity-80 font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-school-blue-700 dark:text-white font-semibold">
+                      Foto com o Uniforme *
+                    </Label>
+                    {!photo ? (
+                      <Button
+                        type="button"
+                        onClick={() => { setZoom(1); setIsCameraOpen(true); }}
+                        className="w-full h-16 md:h-20 bg-school-blue-600 hover:bg-school-blue-700 text-white rounded-xl flex items-center justify-center shadow-md transition-transform hover:scale-[1.02]"
+                      >
+                        <Camera className="w-8 h-8 mr-3" />
+                        <span className="text-lg font-bold">Abrir Câmera</span>
+                      </Button>
+                    ) : (
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="overflow-hidden rounded-xl border-4 border-school-blue-500 w-full max-w-sm aspect-[3/4] relative group shadow-lg bg-black flex items-center justify-center">
+                          <img src={photo} alt="Selfie capturada" className="w-full h-full object-contain" />
+                          <Button
+                            type="button"
+                            onClick={retakePhoto}
+                            className="absolute top-3 right-3 w-10 h-10 p-0 rounded-full bg-red-50 dark:bg-red-950/300 hover:bg-red-600 text-white shadow-[0_0_10px_rgba(0,0,0,0.5)] border-2 border-white flex items-center justify-center opacity-90 hover:opacity-100 transition-all hover:scale-110"
+                            title="Excluir foto"
+                          >
+                            <X className="w-6 h-6" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+
+
+                  <Button
+                    type="submit"
+                    disabled={submissionState === 'enviando' || submissionState === 'processando' || !photo || photoValidationError !== null || isLocationInvalid || tentativasCodigo === 0}
+                    className={`w-full h-auto py-5 text-base md:text-lg font-bold rounded-2xl shadow-sm transition-all duration-500 disabled:cursor-not-allowed ${showRedButton
+                      ? "bg-school-blue-600 text-white disabled:opacity-100"
+                      : "bg-school-blue-600 hover:bg-school-blue-700 text-white animate-pulse-subtle disabled:opacity-70 disabled:animate-none hover:shadow-md"
+                      }`}
+                  >
+                    {(submissionState === 'enviando' || submissionState === 'processando') ? (
+                      <div className="flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                        {submissionState === 'processando' ? 'Analisando foto, aguarde...' : 'Processando...'}
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center">
+                        {showRedButton ? 'Você não está na BIT' : 'Participar do sorteio'}
+                      </div>
+                    )}
+                  </Button>
+                </form>
+              )}
+
+              <div className="text-center pt-4">
+                <img
+                  src="/img/logo.png"
+                  alt="Logo da Escola"
+                  className="mx-auto h-16 md:h-20 w-auto object-contain block dark:hidden"
+                />
+                <img
+                  src="/img/logo_branca.png"
+                  alt="Logo da Escola"
+                  className="mx-auto h-16 md:h-20 w-auto object-contain hidden dark:block"
+                />
+              </div>
             </div>
-          </div>
-        </Card>
+          </Card>
         ) : (
-          <Mural />
+          <Mural studentUser={studentUser || { id: '', name: '', cpf: '' }} />
         )}
 
         {/* Camera Overlay */}
@@ -885,8 +875,22 @@ const LotteryForm = () => {
         )}
 
         {/* Terms Modal */}
-        <Dialog open={isTermsOpen} onOpenChange={setIsTermsOpen}>
-          <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+        <Dialog 
+          open={isTermsOpen} 
+          onOpenChange={(open) => {
+            if (studentUser?.termos_aceitos === false) return;
+            setIsTermsOpen(open);
+          }}
+        >
+          <DialogContent 
+            className="max-w-2xl max-h-[85vh] flex flex-col"
+            onInteractOutside={(e) => {
+              if (studentUser?.termos_aceitos === false) e.preventDefault();
+            }}
+            onEscapeKeyDown={(e) => {
+              if (studentUser?.termos_aceitos === false) e.preventDefault();
+            }}
+          >
             <DialogHeader>
               <DialogTitle className="text-school-blue-800 dark:text-white text-xl">Termos de Uso e Ciência de Tratamento de Imagem</DialogTitle>
               <DialogDescription>
@@ -960,9 +964,22 @@ const LotteryForm = () => {
               </div>
             </ScrollArea>
             <div className="pt-4 border-t mt-auto flex justify-end">
-              <Button onClick={() => setIsTermsOpen(false)} className="bg-school-blue-600 hover:bg-school-blue-700">
-                Fechar e Voltar
-              </Button>
+              {studentUser?.termos_aceitos === false ? (
+                <Button 
+                  onClick={handleAcceptTerms} 
+                  disabled={isAcceptingTerms} 
+                  className="bg-school-blue-600 hover:bg-school-blue-700 w-full sm:w-auto"
+                >
+                  {isAcceptingTerms ? 'Processando...' : 'Li e Aceito os Termos'}
+                </Button>
+              ) : (
+                <Button 
+                  onClick={() => setIsTermsOpen(false)} 
+                  className="bg-school-blue-600 hover:bg-school-blue-700"
+                >
+                  Fechar e Voltar
+                </Button>
+              )}
             </div>
           </DialogContent>
         </Dialog>

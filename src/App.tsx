@@ -28,10 +28,6 @@ const isSessionValid = (): boolean => {
   }
 };
 
-/** Rota protegida: redireciona para /admin (login) se não autenticado */
-const ProtectedRoute = ({ element }: { element: React.ReactElement }) =>
-  isSessionValid() ? element : <Navigate to="/admin" replace />;
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>

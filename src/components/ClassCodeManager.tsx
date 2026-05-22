@@ -15,7 +15,6 @@ interface DailyCode {
 const ClassCodeManager = () => {
   const [currentCode, setCurrentCode] = useState<DailyCode | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
 
   const formatToBrazilTime = (dateString: string) => {
@@ -32,7 +31,7 @@ const ClassCodeManager = () => {
       }).format(d);
       
       return formatted.replace(/,?\s+/, ' às ');
-    } catch (e) {
+    } catch {
       return dateString;
     }
   };
@@ -48,7 +47,35 @@ const ClassCodeManager = () => {
         .maybeSingle();
 
       if (error) throw error;
-      setCurrentCode(data);
+
+      let latestCode = data;
+
+      const isFromToday = (dateString: string) => {
+        const date = new Date(dateString.replace(/(Z|[+-]\d{2}(?::?\d{2})?)$/, ''));
+        const today = new Date();
+        return date.getDate() === today.getDate() && 
+               date.getMonth() === today.getMonth() && 
+               date.getFullYear() === today.getFullYear();
+      };
+
+      if (!latestCode || !isFromToday(latestCode.created_at)) {
+        const chars = '0123456789';
+        let newCode = '';
+        for (let i = 0; i < 6; i++) {
+          newCode += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        
+        const { data: newCodeData, error: insertError } = await supabase
+          .from('daily_codes')
+          .insert({ code: newCode })
+          .select('id, code, created_at')
+          .single();
+
+        if (insertError) throw insertError;
+        latestCode = newCodeData;
+      }
+
+      setCurrentCode(latestCode);
     } catch (error) {
       console.error('Erro ao carregar código do dia:', error);
       toast({
@@ -64,35 +91,6 @@ const ClassCodeManager = () => {
   useEffect(() => {
     loadCurrentCode();
   }, []);
-
-  const generateNewCode = async () => {
-    setIsGenerating(true);
-    try {
-      const chars = '0123456789';
-      let newCode = '';
-      for (let i = 0; i < 6; i++) {
-        newCode += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      
-      const { error } = await supabase.from('daily_codes').insert({
-        code: newCode
-      });
-
-      if (error) throw error;
-      
-      toast({ title: 'Novo código gerado com sucesso!' });
-      loadCurrentCode();
-    } catch (error) {
-      console.error('Erro ao gerar novo código:', error);
-      toast({
-        title: 'Erro',
-        description: 'Erro ao gerar o código do dia.',
-        variant: 'destructive'
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
   return (
     <Card className="p-6 mb-6 bg-school-blue-50 dark:bg-slate-800 border-2 border-school-blue-200 dark:border-slate-700">
@@ -133,19 +131,6 @@ const ClassCodeManager = () => {
             </p>
           )}
         </div>
-
-        <Button
-          onClick={generateNewCode}
-          disabled={isGenerating}
-          className="w-full h-14 text-lg font-bold bg-school-blue-600 hover:bg-school-blue-700 text-white rounded-xl shadow-md transition-transform hover:scale-[1.02]"
-        >
-          {isGenerating ? (
-            <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
-          ) : (
-            <PlusCircle className="w-5 h-5 mr-2" />
-          )}
-          Gerar Novo Código
-        </Button>
       </div>
     </Card>
   );

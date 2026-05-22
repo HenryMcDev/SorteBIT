@@ -1,6 +1,4 @@
 
-import { GraduationCap } from 'lucide-react';
-
 const Header = () => {
   return (
     <header className="text-center py-6 md:py-8 px-4 dark:bg-zinc-950 border-b border-transparent dark:border-zinc-800/50">

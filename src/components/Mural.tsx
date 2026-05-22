@@ -17,8 +17,18 @@ interface Feedback {
   aprovado: boolean;
 }
 
-const Mural = () => {
-  const [nome, setNome] = useState('');
+interface StudentUser {
+  id: string;
+  name: string;
+  cpf: string;
+}
+
+interface MuralProps {
+  studentUser: StudentUser;
+}
+
+const Mural = ({ studentUser }: MuralProps) => {
+  const [nome, setNome] = useState(studentUser.name);
   const [mensagem, setMensagem] = useState('');
   const [nota, setNota] = useState(5);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -183,7 +193,7 @@ const Mural = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
+          <div className="hidden">
             <Label htmlFor="nomeFeedback" className="text-school-blue-700 dark:text-zinc-200 font-semibold">
               Seu Nome *
             </Label>
@@ -192,8 +202,9 @@ const Mural = () => {
               placeholder="Como quer ser chamado?"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
-              className="h-12 border-2 border-gray-200 dark:bg-zinc-900 dark:border-zinc-700 dark:text-white focus:border-school-blue-500 rounded-xl"
+              className="h-12 border-2 border-gray-200 dark:border-zinc-700 dark:text-zinc-400 bg-gray-100 dark:bg-zinc-800 rounded-xl cursor-not-allowed opacity-80"
               required
+              disabled
             />
           </div>
 
@@ -230,9 +241,13 @@ const Mural = () => {
               placeholder="O que você achou do sorteio?"
               value={mensagem}
               onChange={(e) => setMensagem(e.target.value)}
+              maxLength={200}
               className="min-h-[100px] resize-none border-2 border-gray-200 dark:bg-zinc-900 dark:border-zinc-700 dark:text-white focus:border-school-blue-500 rounded-xl"
               required
             />
+            <div className="text-right text-xs text-gray-500 dark:text-zinc-500">
+              {mensagem.length}/200
+            </div>
           </div>
 
           <Button
@@ -273,7 +288,7 @@ const Mural = () => {
             onMouseLeave={() => (isInteracting.current = false)}
           >
             {[...feedbacks, ...feedbacks].map((feedback, index) => (
-              <Card key={`${feedback.id}-${index}`} className="min-w-[280px] md:min-w-[350px] inline-block snap-center bg-zinc-900 border border-zinc-800 rounded-2xl p-4 whitespace-normal transition-all hover:shadow-md">
+              <Card key={`${feedback.id}-${index}`} className="min-w-[280px] md:min-w-[350px] inline-block snap-center bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl p-4 whitespace-normal transition-all hover:shadow-md">
                 <div className="flex justify-between items-start mb-3 gap-2">
                   <div className="font-bold text-school-blue-800 dark:text-zinc-100 text-lg truncate block max-w-[180px]" title={feedback.nome_aluno}>
                     {feedback.nome_aluno}
