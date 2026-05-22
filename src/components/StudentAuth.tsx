@@ -236,8 +236,8 @@ const StudentAuth = ({ isLoading, login, register }: StudentAuthProps) => {
                       {regConfirmPassword.length > 0 && regState !== 'submitting' && (
                         <p className={`text-xs flex items-center gap-1 mt-1 ${regPassword === regConfirmPassword ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
                           {regPassword === regConfirmPassword
-                            ? <><CheckCircle2 className="w-3.5 h-3.5" /> Senhas coincidem</>
-                            : <><XCircle className="w-3.5 h-3.5" /> As senhas não coincidem</>}
+                            ? <span className="flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Senhas coincidem</span>
+                            : <span className="flex items-center gap-1"><XCircle className="w-3.5 h-3.5" /> As senhas não coincidem</span>}
                         </p>
                       )}
                     </div>
