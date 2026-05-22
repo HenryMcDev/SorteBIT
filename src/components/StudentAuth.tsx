@@ -233,11 +233,11 @@ const StudentAuth = ({ isLoading, login, register }: StudentAuthProps) => {
                           {showRegConfirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                         </button>
                       </div>
-                      {regConfirmPassword.length > 0 && regState !== 'submitting' && (
+                      {regConfirmPassword.length > 0 && regState !== 'submitting' && regConfirmPassword.length >= regPassword.length && (
                         <p className={`text-xs flex items-center gap-1 mt-1 ${regPassword === regConfirmPassword ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
                           {regPassword === regConfirmPassword
-                            ? <span className="flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Senhas coincidem</span>
-                            : <span className="flex items-center gap-1"><XCircle className="w-3.5 h-3.5" /> As senhas não coincidem</span>}
+                            ? <span className="flex items-center gap-1 notranslate"><CheckCircle2 className="w-3.5 h-3.5" /> Senhas coincidem</span>
+                            : <span className="flex items-center gap-1 notranslate"><XCircle className="w-3.5 h-3.5" /> As senhas não coincidem</span>}
                         </p>
                       )}
                     </div>
