@@ -693,7 +693,7 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
                     />
                   </div>
 
-                  <div className="hidden space-y-2">
+                  <div className="space-y-2">
                     <Label className="text-school-blue-700 dark:text-zinc-200 font-semibold">
                       Código do dia (Automação)
                     </Label>
