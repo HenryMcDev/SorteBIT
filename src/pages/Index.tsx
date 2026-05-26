@@ -20,7 +20,7 @@ const Index = () => {
       <div className="absolute inset-0 bg-gradient-to-br from-school-blue-50/30 via-white to-school-yellow-50/30 pointer-events-none dark:hidden"></div>
 
       {isAuthenticated && studentUser && (
-        <StudentNavbar studentName={studentUser.name} onLogout={logout} />
+        <StudentNavbar studentName={studentUser.name} bitcash={studentUser.bitcash} onLogout={logout} />
       )}
 
       <div className="relative z-10">

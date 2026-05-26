@@ -83,6 +83,33 @@ export type Database = {
         }
         Relationships: []
       }
+      premios: {
+        Row: {
+          descricao: string
+          estoque: number
+          foto: string
+          id: number
+          nome: string
+          valor: number
+        }
+        Insert: {
+          descricao?: string
+          estoque?: number
+          foto?: string
+          id?: number
+          nome: string
+          valor: number
+        }
+        Update: {
+          descricao?: string
+          estoque?: number
+          foto?: string
+          id?: number
+          nome?: string
+          valor?: number
+        }
+        Relationships: []
+      }
       student_codes: {
         Row: {
           class_name: string

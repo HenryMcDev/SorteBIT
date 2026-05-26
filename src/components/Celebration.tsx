@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { Coins } from 'lucide-react';
 
 interface CelebrationProps {
   nome: string;
@@ -74,6 +75,17 @@ const Celebration = ({ nome, onClose }: CelebrationProps) => {
         <p className="success-highlight dark:text-school-blue-300">
           A BIA já validou tudo por aqui! ✨
         </p>
+
+        {/* Aviso visual BITCash */}
+        <div className="mt-6 mb-4 mx-auto w-full max-w-[280px] p-3 rounded-2xl bg-gradient-to-br from-yellow-300 to-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.5)] border border-yellow-200 flex items-center gap-3 animate-in zoom-in duration-500 delay-300">
+          <div className="w-10 h-10 rounded-full bg-white/30 flex items-center justify-center shrink-0 shadow-inner">
+            <Coins className="w-6 h-6 text-yellow-900" />
+          </div>
+          <div className="text-left flex-1">
+            <p className="text-xs font-bold text-yellow-900/70 uppercase tracking-wide leading-none">Você ganhou</p>
+            <p className="text-lg font-black text-yellow-950 leading-tight">+10 BITCash</p>
+          </div>
+        </div>
 
         {onClose && (
           <button onClick={onClose} className="success-button dark:bg-school-yellow-400 dark:text-school-blue-950"> SAIR </button>

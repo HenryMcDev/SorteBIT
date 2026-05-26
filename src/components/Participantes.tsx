@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { RefreshCw, Users, AlertCircle } from 'lucide-react';
+import { RefreshCw, Users, AlertCircle, Coins } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
 interface Participant {
   name: string;
   count: number;
+  bitcash: number;
 }
 
 const Participantes = () => {
@@ -18,32 +19,53 @@ const Participantes = () => {
     setIsLoading(true);
     setErrorMsg(null);
     try {
-      const { data, error } = await supabase
-        .from('lottery_participations')
-        .select('name');
+      const [participationsRes, estudantesRes] = await Promise.all([
+        supabase.from('lottery_participations').select('name'),
+        supabase.from('estudantes' as any).select('nome_completo, bitcash')
+      ]);
 
-      if (error) {
-        throw error;
-      }
+      if (participationsRes.error) throw participationsRes.error;
+      if (estudantesRes.error) throw estudantesRes.error;
 
-      if (data) {
-        // Lógica de agrupamento e soma
-        const counts: Record<string, number> = {};
-        data.forEach((row) => {
-          const name = row.name?.trim() || 'Desconhecido';
-          counts[name] = (counts[name] || 0) + 1;
-        });
+      const participationsData = participationsRes.data || [];
+      const estudantesData = estudantesRes.data || [];
 
-        // Converter para array e ordenar (alfabético ou por quantidade, escolhemos alfabético)
-        const grouped = Object.entries(counts).map(([name, count]) => ({
-          name,
-          count,
-        }));
+      // Mapa de estudantes indexado pelo nome_completo (ignorando maiúsculas/minúsculas e espaços) para busca rápida na mesclagem
+      const estudantesMap = new Map();
+      estudantesData.forEach((est: any) => {
+        if (est.nome_completo) {
+          const cleanName = est.nome_completo.trim().toLowerCase();
+          estudantesMap.set(cleanName, est);
+        }
+      });
 
-        grouped.sort((a, b) => a.name.localeCompare(b.name));
+      // Lógica de agrupamento, soma e mesclagem em memória
+      const counts: Record<string, { count: number; bitcash: number }> = {};
+      participationsData.forEach((row: any) => {
+        const rawName = row.name?.trim() || 'Desconhecido';
+        const cleanName = rawName.toLowerCase();
+        
+        const est = estudantesMap.get(cleanName);
+        // Usa o nome_completo formatado correto se encontrado, ou o rawName como fallback
+        const name = est?.nome_completo?.trim() || rawName;
+        const bitcash = est?.bitcash || 0;
+        
+        if (!counts[name]) {
+          counts[name] = { count: 0, bitcash };
+        }
+        counts[name].count += 1;
+      });
 
-        setParticipants(grouped);
-      }
+      // Converter para array e ordenar alfabeticamente
+      const grouped = Object.entries(counts).map(([name, stats]) => ({
+        name,
+        count: stats.count,
+        bitcash: stats.bitcash,
+      }));
+
+      grouped.sort((a, b) => a.name.localeCompare(b.name));
+
+      setParticipants(grouped);
     } catch (error: any) {
       console.error('Erro ao buscar participantes:', error);
       setErrorMsg(error?.message || 'Erro inesperado de comunicação com o Supabase.');
@@ -91,6 +113,9 @@ const Participantes = () => {
                 <th className="sticky top-0 z-10 bg-zinc-50/95 dark:bg-zinc-900/95 backdrop-blur-sm px-6 py-4 text-sm font-semibold text-zinc-600 dark:text-zinc-300 shadow-[0_1px_0_0_rgba(228,228,231,0.8)] dark:shadow-[0_1px_0_0_rgba(39,39,42,0.8)]">
                   Participante
                 </th>
+                <th className="sticky top-0 z-10 bg-zinc-50/95 dark:bg-zinc-900/95 backdrop-blur-sm px-6 py-4 text-sm font-semibold text-zinc-600 dark:text-zinc-300 text-center shadow-[0_1px_0_0_rgba(228,228,231,0.8)] dark:shadow-[0_1px_0_0_rgba(39,39,42,0.8)]">
+                  Saldo BITCash
+                </th>
                 <th className="sticky top-0 z-10 bg-zinc-50/95 dark:bg-zinc-900/95 backdrop-blur-sm px-6 py-4 text-sm font-semibold text-zinc-600 dark:text-zinc-300 text-right md:text-center w-1/3 shadow-[0_1px_0_0_rgba(228,228,231,0.8)] dark:shadow-[0_1px_0_0_rgba(39,39,42,0.8)]">
                   Total de Cupons / Participações
                 </th>
@@ -105,6 +130,12 @@ const Participantes = () => {
                   >
                     <td className="px-6 py-4 text-sm font-medium text-zinc-800 dark:text-zinc-200">
                       {p.name}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-yellow-100/80 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20 text-yellow-800 dark:text-yellow-400 rounded-lg shadow-sm">
+                        <Coins className="w-4 h-4" />
+                        <span className="font-bold text-sm">{p.bitcash}</span>
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-right md:text-center">
                       <span className="inline-flex items-center justify-center px-3.5 py-1.5 text-xs font-bold rounded-full bg-blue-100/80 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 border border-blue-200/50 dark:border-blue-500/30 shadow-sm">

@@ -69,7 +69,7 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
 
       setIsTermsOpen(false);
       toast({ title: "Termos Aceitos", description: "Obrigado por aceitar os termos de uso!" });
-      
+
       // Atualiza o estado local temporariamente caso o hook demore
       if (studentUser) {
         studentUser.termos_aceitos = true;
@@ -247,7 +247,6 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
         // Envolvemos toda a lógica de serialização e fetch em um try-catch robusto
         const payload = JSON.stringify({
           nome: name.trim(),
-          telefone: phone.replace(/\D/g, ''),
           codigo: studentCode.trim(),
           fotoBase64: photo,
         });
@@ -586,8 +585,8 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
             type="button"
             onClick={() => setActiveTab('sorteio')}
             className={`flex-1 py-3 px-4 rounded-full text-sm md:text-base font-bold transition-all duration-300 ${activeTab === 'sorteio'
-                ? 'bg-school-blue-600 text-white shadow-md'
-                : 'text-gray-500 dark:text-zinc-400 hover:text-school-blue-600 dark:hover:text-white'
+              ? 'bg-school-blue-600 text-white shadow-md'
+              : 'text-gray-500 dark:text-zinc-400 hover:text-school-blue-600 dark:hover:text-white'
               }`}
           >
             Participar
@@ -596,8 +595,8 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
             type="button"
             onClick={() => setActiveTab('mural')}
             className={`flex-1 py-3 px-4 rounded-full text-sm md:text-base font-bold transition-all duration-300 ${activeTab === 'mural'
-                ? 'bg-school-blue-600 text-white shadow-md'
-                : 'text-gray-500 dark:text-zinc-400 hover:text-school-blue-600 dark:hover:text-white'
+              ? 'bg-school-blue-600 text-white shadow-md'
+              : 'text-gray-500 dark:text-zinc-400 hover:text-school-blue-600 dark:hover:text-white'
               }`}
           >
             Feedback do sorteio
@@ -875,14 +874,14 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
         )}
 
         {/* Terms Modal */}
-        <Dialog 
-          open={isTermsOpen} 
+        <Dialog
+          open={isTermsOpen}
           onOpenChange={(open) => {
             if (studentUser?.termos_aceitos === false) return;
             setIsTermsOpen(open);
           }}
         >
-          <DialogContent 
+          <DialogContent
             className="max-w-2xl max-h-[85vh] flex flex-col"
             onInteractOutside={(e) => {
               if (studentUser?.termos_aceitos === false) e.preventDefault();
@@ -897,7 +896,7 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
                 Última atualização: 13 de maio de 2026
               </DialogDescription>
             </DialogHeader>
-            <ScrollArea className="flex-1 pr-4">
+            <div className="overflow-y-auto flex-1 pr-2 max-h-[60vh]">
               <div className="space-y-4 text-sm text-school-blue-700 dark:text-zinc-400/80 leading-relaxed">
                 <p>
                   Ao prosseguir com a participação no SorteBIT, o(a) aluno(a) declara, para todos os fins, que leu, compreendeu e concordou integralmente com as disposições deste Termo.
@@ -962,19 +961,19 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
                   <p>7.2. Em caso de divergência interpretativa, prevalecerá a versão mais recente disponibilizada no ambiente oficial do SorteBIT.</p>
                 </div>
               </div>
-            </ScrollArea>
+            </div>
             <div className="pt-4 border-t mt-auto flex justify-end">
               {studentUser?.termos_aceitos === false ? (
-                <Button 
-                  onClick={handleAcceptTerms} 
-                  disabled={isAcceptingTerms} 
+                <Button
+                  onClick={handleAcceptTerms}
+                  disabled={isAcceptingTerms}
                   className="bg-school-blue-600 hover:bg-school-blue-700 w-full sm:w-auto"
                 >
                   {isAcceptingTerms ? 'Processando...' : 'Li e Aceito os Termos'}
                 </Button>
               ) : (
-                <Button 
-                  onClick={() => setIsTermsOpen(false)} 
+                <Button
+                  onClick={() => setIsTermsOpen(false)}
                   className="bg-school-blue-600 hover:bg-school-blue-700"
                 >
                   Fechar e Voltar

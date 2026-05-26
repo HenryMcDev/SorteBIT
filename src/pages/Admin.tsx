@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Dice1, Crown, Lock, Key, LogOut, Eye, EyeOff, Loader2, CheckCircle2, XCircle, ShieldCheck, Copy, CheckCheck, RefreshCw, MessageSquareWarning } from 'lucide-react';
+import { Dice1, Crown, Lock, Key, LogOut, Eye, EyeOff, Loader2, CheckCircle2, XCircle, ShieldCheck, Copy, CheckCheck, RefreshCw, MessageSquareWarning, Gift } from 'lucide-react';
 import { useAdmAuth } from '@/hooks/useAdmAuth';
 import { useToast } from '@/hooks/use-toast';
 import ClassCodeManager from '@/components/ClassCodeManager';
 import { supabase } from '@/integrations/supabase/client';
 import Participantes from '@/components/Participantes';
 import FeedbackModeration from '@/components/FeedbackModeration';
+import CadastroPremios from '@/components/CadastroPremios';
 import { Link } from 'react-router-dom';
 
 const formatCPF = (value: string) => {
@@ -42,7 +43,7 @@ const Admin = () => {
   const [regState, setRegState] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
 
   // Admin Panel State
-  const [activeTab, setActiveTab] = useState<'lottery' | 'codes' | 'moderacao'>('lottery');
+  const [activeTab, setActiveTab] = useState<'lottery' | 'codes' | 'moderacao' | 'premios'>('lottery');
   const { toast } = useToast();
 
   // Admin Code Generator State
@@ -453,6 +454,17 @@ const Admin = () => {
               <MessageSquareWarning className="w-4 h-4 mr-2" />
               Moderação
             </Button>
+            <Button
+              onClick={() => setActiveTab('premios')}
+              variant={activeTab === 'premios' ? 'default' : 'outline'}
+              className={`flex-1 min-w-32 transition-none ${activeTab === 'premios'
+                ? 'bg-school-blue-600 text-white hover:bg-school-blue-600 hover:text-white'
+                : 'border-school-blue-600 text-school-blue-600 dark:text-zinc-400 bg-transparent hover:bg-transparent dark:bg-slate-800 dark:hover:bg-slate-800 hover:text-school-blue-600 dark:hover:text-zinc-400'
+                }`}
+            >
+              <Gift className="w-4 h-4 mr-2" />
+              Cadastro de Prêmios
+            </Button>
           </div>
         </div>
 
@@ -526,6 +538,12 @@ const Admin = () => {
         {activeTab === 'moderacao' && (
           <div className="mt-6">
             <FeedbackModeration />
+          </div>
+        )}
+
+        {activeTab === 'premios' && (
+          <div className="mt-6">
+            <CadastroPremios />
           </div>
         )}
       </div>

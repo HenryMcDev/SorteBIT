@@ -8,6 +8,7 @@ interface StudentUser {
   name: string;
   cpf: string;
   termos_aceitos?: boolean;
+  bitcash?: number;
 }
 
 const STORAGE_KEY = 'bit_student_session';
@@ -52,10 +53,10 @@ export const useStudentAuth = () => {
       if (!studentUser?.cpf) return;
 
       try {
-        // Alterado de 'nome' para 'nome_completo' para bater com o banco de dados
+        // Alterado de 'nome' para 'nome_completo' para bater com o banco de dados e adicionado 'bitcash'
         const { data, error } = await supabase
           .from('estudantes' as any)
-          .select('nome_completo, termos_aceitos')
+          .select('nome_completo, termos_aceitos, bitcash')
           .eq('cpf', studentUser.cpf)
           .maybeSingle();
 
@@ -66,9 +67,9 @@ export const useStudentAuth = () => {
         // Ajustado para ler a propriedade correta do resultado da consulta
         if (result && isMounted) {
           const updatedName = result.nome_completo || studentUser.name;
-          // Atualizamos apenas se houve mudança no nome ou nos termos
-          if (updatedName !== studentUser.name || result.termos_aceitos !== studentUser.termos_aceitos) {
-            setStudentUser(prev => prev ? { ...prev, name: updatedName, termos_aceitos: result.termos_aceitos } : null);
+          // Atualizamos apenas se houve mudança no nome, termos ou bitcash
+          if (updatedName !== studentUser.name || result.termos_aceitos !== studentUser.termos_aceitos || result.bitcash !== studentUser.bitcash) {
+            setStudentUser(prev => prev ? { ...prev, name: updatedName, termos_aceitos: result.termos_aceitos, bitcash: result.bitcash } : null);
           }
         }
       } catch (err) {
