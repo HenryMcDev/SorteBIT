@@ -104,10 +104,9 @@ const ClassCodeManager = () => {
           </div>
           <Button
             onClick={loadCurrentCode}
-            variant="outline"
             size="sm"
             disabled={isLoading}
-            className="border-school-blue-300 dark:border-slate-600 text-school-blue-700 dark:text-school-blue-300"
+            className="bg-school-blue-500 hover:bg-school-blue-600 text-white shadow-md transition-all duration-200 border-0"
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Atualizar

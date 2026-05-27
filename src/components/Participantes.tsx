@@ -98,7 +98,7 @@ const Participantes = () => {
         <Button
           onClick={fetchParticipants}
           disabled={isLoading}
-          className="bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200 shadow-md transition-all duration-200 rounded-xl px-6 h-12 w-full sm:w-auto active:scale-[0.98]"
+          className="bg-school-blue-500 hover:bg-school-blue-600 text-white shadow-md transition-all duration-200 rounded-xl px-6 h-12 w-full sm:w-auto active:scale-[0.98] border-0"
         >
           <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
           Atualizar Lista

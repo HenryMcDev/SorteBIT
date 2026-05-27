@@ -125,8 +125,7 @@ const FeedbackModeration = () => {
           <Button
             onClick={fetchPendentes}
             disabled={isLoading}
-            variant="outline"
-            className="flex items-center gap-2 border-school-blue-200 text-school-blue-700 hover:bg-school-blue-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:bg-zinc-900 shadow-sm"
+            className="flex items-center gap-2 bg-school-blue-500 hover:bg-school-blue-600 text-white shadow-md transition-all duration-200 border-0"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             Atualizar Dados
