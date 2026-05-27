@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Dice1, Crown, Lock, Key, LogOut, Eye, EyeOff, Loader2, CheckCircle2, XCircle, ShieldCheck, Copy, CheckCheck, RefreshCw, MessageSquareWarning, Gift } from 'lucide-react';
+import { Dice1, Crown, Lock, Key, LogOut, Eye, EyeOff, Loader2, CheckCircle2, XCircle, ShieldCheck, Copy, CheckCheck, RefreshCw, MessageSquareWarning, Gift, User, Home } from 'lucide-react';
 import { useAdmAuth } from '@/hooks/useAdmAuth';
 import { useToast } from '@/hooks/use-toast';
 import ClassCodeManager from '@/components/ClassCodeManager';
@@ -600,33 +600,43 @@ const Admin = () => {
       <div className="max-w-4xl mx-auto px-4">
         {/* Cabeçalho Administrativo */}
         <div className="flex justify-between items-center mb-8 bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-zinc-800">
-          <div className="flex items-center space-x-4">
-            <Link to="/">
-              <img
-                src="/img/logo.png"
-                alt="Logo da Escola"
-                className="h-10 w-auto object-contain block dark:hidden"
-              />
-              <img
-                src="/img/logo_branca.png"
-                alt="Logo da Escola"
-                className="h-10 w-auto object-contain hidden dark:block"
-              />
-            </Link>
-            <div>
-              <h1 className="text-xl font-bold text-school-blue-800 dark:text-white">Painel Master</h1>
-              <p className="text-sm text-school-blue-600 dark:text-zinc-400">Acesso Restrito</p>
+          
+          <div className="flex items-center gap-4">
+            {/* Ícone de Perfil Azul e Nome (Dinâmico da tabela admin_user) */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-school-blue-500/20 border border-school-blue-500/30 flex items-center justify-center shrink-0">
+                <User className="w-5 h-5 text-school-blue-600 dark:text-school-blue-400" />
+              </div>
+              <div className="flex flex-col truncate">
+                <span className="text-[10px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-semibold leading-tight">
+                  Bem-vindo(a),
+                </span>
+                {isLoading ? (
+                  <div className="h-4 w-24 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse mt-1"></div>
+                ) : (
+                  <span className="text-sm font-semibold text-zinc-900 dark:text-white truncate max-w-[140px] sm:max-w-[200px] leading-tight">
+                    {adminUser?.name?.split(' ')[0] || 'Administrador'}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Divisor e Título (oculto em telas muito pequenas) */}
+            <div className="hidden sm:block pl-4 ml-2 border-l border-gray-200 dark:border-zinc-700">
+              <h1 className="text-sm font-bold text-school-blue-800 dark:text-white leading-tight uppercase tracking-wide">Painel Master</h1>
+              <p className="text-xs text-school-blue-600 dark:text-zinc-400">Acesso Restrito</p>
             </div>
           </div>
-          <Button
-            onClick={logout}
-            variant="outline"
-            size="sm"
-            className="border-school-blue-600 text-school-blue-600 dark:text-zinc-400 dark:border-zinc-700 hover:bg-school-blue-50 dark:hover:bg-zinc-800 dark:bg-zinc-900"
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Sair
-          </Button>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={logout}
+              className="flex items-center justify-center w-10 h-10 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 dark:text-red-400 hover:bg-red-500/20 hover:text-red-600 dark:hover:text-red-300 active:scale-90 transition-all duration-200 shadow-sm shrink-0"
+              title="Sair"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         <div className="mb-6">
