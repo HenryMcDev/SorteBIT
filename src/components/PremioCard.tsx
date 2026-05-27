@@ -58,15 +58,15 @@ export const PremioCard = ({ premio, studentBitcash, onResgatar }: PremioCardPro
 
       <div className="flex flex-col flex-grow p-5 space-y-4">
         <div className="flex-grow space-y-1">
-          <h3 className="text-lg font-bold text-school-blue-900 dark:text-zinc-100 line-clamp-2">
+          <h3 className="text-lg font-bold text-school-blue-900 dark:text-zinc-100 line-clamp-2 break-words" style={{ wordBreak: 'break-word' }}>
             {premio.nome}
           </h3>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 line-clamp-2">
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 line-clamp-2 break-words" style={{ wordBreak: 'break-word' }}>
             {premio.descricao || "Nenhuma descrição disponível para este item."}
           </p>
         </div>
 
-        <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-zinc-800">
+        <div className="flex items-center justify-between flex-wrap gap-3 pt-3 border-t border-gray-100 dark:border-zinc-800">
           <div className="flex flex-col">
             <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Custo</span>
             <div className="flex items-center gap-1.5">
@@ -86,7 +86,7 @@ export const PremioCard = ({ premio, studentBitcash, onResgatar }: PremioCardPro
                   <Button
                     onClick={() => onResgatar(premio.id)}
                     disabled={isDisabled}
-                    className={`rounded-xl shadow-md transition-all ${
+                    className={`rounded-xl shadow-md transition-all whitespace-normal h-auto min-h-[2.5rem] py-2 text-center ${
                       isOutOfStock
                         ? 'bg-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 cursor-not-allowed'
                         : isInsufficientFunds 
@@ -94,8 +94,8 @@ export const PremioCard = ({ premio, studentBitcash, onResgatar }: PremioCardPro
                           : 'bg-school-blue-600 hover:bg-school-blue-700 text-white hover:scale-105'
                     }`}
                   >
-                    <ShoppingBag className="w-4 h-4 mr-2" />
-                    {buttonText}
+                    <ShoppingBag className="w-4 h-4 mr-2 shrink-0" />
+                    <span>{buttonText}</span>
                   </Button>
                 </div>
               </TooltipTrigger>

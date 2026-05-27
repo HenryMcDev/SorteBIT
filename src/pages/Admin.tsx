@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dice1, Crown, Lock, Key, LogOut, Eye, EyeOff, Loader2, CheckCircle2, XCircle, ShieldCheck, Copy, CheckCheck, RefreshCw, MessageSquareWarning, Gift } from 'lucide-react';
@@ -23,7 +23,18 @@ const Admin = () => {
   const { adminUser, isAdmin, isLoading, login, logout } = useAdmAuth();
 
   // Auth screen mode
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot'>('login');
+
+  // Forgot Password State
+  const [forgotIdentifier, setForgotIdentifier] = useState('');
+  const [forgotCode, setForgotCode] = useState('');
+  const [forgotNewPassword, setForgotNewPassword] = useState('');
+  const [forgotState, setForgotState] = useState<'idle' | 'submitting' | 'success'>('idle');
+  const [forgotPhase, setForgotPhase] = useState(1);
+  const [forgotEmailMasked, setForgotEmailMasked] = useState('');
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [forgotDebugError, setForgotDebugError] = useState('');
 
   // Login State
   const [loginUsername, setLoginUsername] = useState('');
@@ -101,6 +112,94 @@ const Admin = () => {
     setTimeout(() => setAdminCodeCopied(false), 2000);
   };
 
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (timeLeft > 0) {
+      timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [timeLeft]);
+
+  const handleForgotSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotState('submitting');
+    setForgotDebugError('');
+    try {
+      const { data } = await supabase.from('admin_user' as any).select('email').eq('cpf', forgotIdentifier.replace(/\D/g, '')).maybeSingle();
+      if (!data) {
+        toast({ title: 'CPF não encontrado', description: 'Não localizamos um administrador com este CPF.', variant: 'destructive' });
+        setForgotState('idle');
+        return;
+      }
+      const email = (data as any).email || '';
+      let maskedEmail = 'seu e-mail cadastrado';
+      if (email && email.includes('@')) {
+        const [username, domain] = email.split('@');
+        maskedEmail = `${username.charAt(0)}***@${domain}`;
+      }
+      setForgotEmailMasked(maskedEmail);
+      setForgotEmail(email);
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email);
+      if (resetError) {
+        const errorText = JSON.stringify(resetError, Object.getOwnPropertyNames(resetError), 2);
+        console.error('Erro ao enviar email de reset:', resetError);
+        alert(`Erro no Supabase Auth:\nMensagem: ${resetError.message}\nStatus: ${resetError.status}\n\nObjeto Completo:\n${errorText}`);
+        setForgotDebugError(errorText);
+        toast({ title: 'Erro', description: 'Ocorreu um erro ao enviar o e-mail de recuperação.', variant: 'destructive' });
+        setForgotState('idle');
+        return;
+      }
+      setForgotPhase(2);
+      setTimeLeft(60);
+      setForgotState('idle');
+      toast({ title: 'Código enviado!', description: `Enviamos o código para ${maskedEmail}.` });
+    } catch (err) {
+      console.error(err);
+      setForgotState('idle');
+      toast({ title: 'Erro de conexão', description: 'Não foi possível enviar a solicitação.', variant: 'destructive' });
+    }
+  };
+
+  const handlePhase2Submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (forgotCode.length !== 8) {
+      toast({ title: 'Código inválido', description: 'Digite o código de 8 dígitos.', variant: 'destructive' });
+      return;
+    }
+    if (forgotNewPassword.length < 8) {
+      toast({ title: 'Senha curta', description: 'A nova senha deve ter pelo menos 8 caracteres.', variant: 'destructive' });
+      return;
+    }
+    setForgotState('submitting');
+    try {
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        email: forgotEmail,
+        token: forgotCode,
+        type: 'recovery'
+      });
+      if (verifyError) {
+        toast({ title: 'Código incorreto ou expirado', description: 'O código inserido é inválido ou já expirou.', variant: 'destructive' });
+        setForgotState('idle');
+        return;
+      }
+      
+      const { error: updateError } = await supabase.auth.updateUser({ password: forgotNewPassword });
+      if (updateError) throw updateError;
+      
+      setForgotState('success');
+    } catch (err) {
+      console.error(err);
+      setForgotState('idle');
+      toast({ title: 'Erro', description: 'Não foi possível atualizar a senha.', variant: 'destructive' });
+    }
+  };
+
+  const handleResendCode = async () => {
+    if (timeLeft > 0) return;
+    const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+    await handleForgotSubmit(fakeEvent);
+  };
+
   const WEBHOOK_URL = 'https://bitn8n.infinityflowapp.com/webhook/admin-sortebit';
 
   const handleLoginSubmit = async () => {
@@ -108,12 +207,12 @@ const Admin = () => {
       return;
     }
     setLoginError('');
-    const success = await login(loginUsername, loginPassword);
-    if (success) {
+    const result = await login(loginUsername, loginPassword);
+    if (result.success) {
       setLoginUsername('');
       setLoginPassword('');
     } else {
-      setLoginError('Email ou senha incorretos. Tente novamente.');
+      setLoginError(result.error || 'Email ou senha incorretos. Tente novamente.');
     }
   };
 
@@ -203,8 +302,8 @@ const Admin = () => {
             {/* Mode toggle tabs */}
             <div className="flex border-b border-zinc-800">
               <button
-                onClick={() => setAuthMode('login')}
-                className={`flex-1 py-4 text-sm font-semibold transition-all duration-200 ${authMode === 'login'
+                onClick={() => { setAuthMode('login'); setForgotPhase(1); }}
+                className={`flex-1 py-4 text-sm font-semibold transition-all duration-200 ${authMode === 'login' || authMode === 'forgot'
                   ? 'text-white border-b-2 border-blue-500 bg-zinc-900/50'
                   : 'text-zinc-500 hover:text-zinc-300'
                   }`}
@@ -257,7 +356,12 @@ const Admin = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <label htmlFor="loginPassword" className="block text-sm font-medium text-zinc-300">Senha</label>
+                    <div className="flex justify-between items-center">
+                      <label htmlFor="loginPassword" className="block text-sm font-medium text-zinc-300">Senha</label>
+                      <button type="button" onClick={() => { setAuthMode('forgot'); setForgotPhase(1); setForgotState('idle'); setForgotIdentifier(''); }} className="text-xs font-semibold text-blue-400 hover:text-blue-300 hover:underline">
+                        Esqueci minha senha
+                      </button>
+                    </div>
                     <div className="relative">
                       <input
                         id="loginPassword"
@@ -370,6 +474,112 @@ const Admin = () => {
                         </button>
                       </form>
                     </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── FORGOT PASSWORD FORM ── */}
+              {authMode === 'forgot' && (
+                <div className="space-y-6">
+                  <div className="text-center mb-6">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-600/20 border border-blue-500/30 mb-3">
+                      <Lock className="w-6 h-6 text-blue-400" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-white tracking-tight">Recuperar Senha</h2>
+                    <p className="mt-1 text-sm text-zinc-400">{forgotPhase === 1 ? 'Informe seu CPF para iniciar.' : `Código enviado para ${forgotEmailMasked}`}</p>
+                  </div>
+
+                  {forgotDebugError && (
+                    <div className="bg-red-600 text-white p-4 rounded-xl mb-6 overflow-auto max-h-64 text-xs font-mono whitespace-pre-wrap break-words shadow-lg border-2 border-red-800">
+                      <strong className="text-sm">Falha Supabase Auth (Debug):</strong>
+                      <div className="mt-2">{forgotDebugError}</div>
+                    </div>
+                  )}
+
+                  {forgotState === 'success' ? (
+                    <div className="flex flex-col items-center justify-center py-4 space-y-4 text-center">
+                      <div className="w-16 h-16 rounded-full bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center">
+                        <CheckCircle2 className="w-8 h-8 text-emerald-400" />
+                      </div>
+                      <h3 className="text-lg font-bold text-white">Senha atualizada!</h3>
+                      <p className="text-zinc-400 text-sm max-w-xs">Você já pode realizar o login com sua nova senha.</p>
+                      <button onClick={() => setAuthMode('login')} className="mt-4 w-full h-12 rounded-xl font-bold text-sm text-white bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 transition-colors">Voltar para o login</button>
+                    </div>
+                  ) : (
+                    <form onSubmit={forgotPhase === 1 ? handleForgotSubmit : handlePhase2Submit} className="space-y-4">
+                      {forgotPhase === 1 ? (
+                        <div className="space-y-2">
+                          <label htmlFor="forgotIdentifier" className="block text-sm font-medium text-zinc-300">CPF</label>
+                          <input
+                            id="forgotIdentifier"
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="000.000.000-00"
+                            value={forgotIdentifier}
+                            onChange={(e) => setForgotIdentifier(formatCPF(e.target.value || ''))}
+                            disabled={forgotState === 'submitting'}
+                            maxLength={14}
+                            className="w-full h-12 rounded-xl bg-zinc-900 border border-zinc-700 px-4 text-white placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 disabled:opacity-50"
+                          />
+                        </div>
+                      ) : (
+                        <>
+                          <div className="space-y-2">
+                            <label htmlFor="forgotCode" className="block text-sm font-medium text-zinc-300">Código de Segurança</label>
+                            <input
+                              id="forgotCode"
+                              type="text"
+                              inputMode="numeric"
+                              placeholder="00000000"
+                              value={forgotCode}
+                              onChange={(e) => setForgotCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                              disabled={forgotState === 'submitting'}
+                              maxLength={8}
+                              className="w-full h-12 rounded-xl bg-zinc-900 border border-zinc-700 px-4 text-center text-xl tracking-widest font-mono text-white placeholder-zinc-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 disabled:opacity-50"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label htmlFor="forgotNewPassword" className="block text-sm font-medium text-zinc-300">Nova Senha</label>
+                            <input
+                              id="forgotNewPassword"
+                              type="password"
+                              placeholder="Mínimo 8 caracteres"
+                              value={forgotNewPassword}
+                              onChange={(e) => setForgotNewPassword(e.target.value)}
+                              disabled={forgotState === 'submitting'}
+                              className="w-full h-12 rounded-xl bg-zinc-900 border border-zinc-700 px-4 text-white placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 disabled:opacity-50"
+                            />
+                          </div>
+                        </>
+                      )}
+                      <button
+                        type="submit"
+                        disabled={forgotState === 'submitting' || (forgotPhase === 1 ? !forgotIdentifier.trim() : (forgotCode.length !== 8 || forgotNewPassword.length < 8))}
+                        className="w-full h-12 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed hover:opacity-90 active:scale-[0.98]"
+                        style={{ background: 'linear-gradient(135deg, #2563eb, #4f46e5)', boxShadow: '0 0 24px rgba(59,130,246,0.25)' }}
+                      >
+                        {forgotState === 'submitting' ? (<><Loader2 className="w-4 h-4 animate-spin" /> {forgotPhase === 1 ? 'Processando...' : 'Verificando...'}</>) : (forgotPhase === 1 ? 'Recuperar Acesso' : 'Confirmar e Redefinir Senha')}
+                      </button>
+                      
+                      {forgotPhase === 2 && (
+                        <button 
+                          type="button" 
+                          onClick={handleResendCode}
+                          disabled={timeLeft > 0 || forgotState === 'submitting'}
+                          className={`w-full h-12 rounded-xl font-bold text-sm transition-all duration-200 disabled:cursor-not-allowed ${
+                            timeLeft > 0 
+                              ? 'text-zinc-500 cursor-not-allowed' 
+                              : 'bg-zinc-800 text-white hover:bg-zinc-700 border border-zinc-700 active:scale-[0.98]'
+                          }`}
+                        >
+                          {timeLeft > 0 ? `Aguarde ${timeLeft}s para reenviar` : 'Reenviar Código'}
+                        </button>
+                      )}
+
+                      <button type="button" onClick={() => { if (forgotPhase === 2) { setForgotPhase(1); setForgotState('idle'); } else { setAuthMode('login'); } }} className="w-full h-12 rounded-xl font-bold text-sm text-zinc-500 hover:text-zinc-300 transition-colors">
+                        {forgotPhase === 2 ? 'Voltar' : 'Voltar para o login'}
+                      </button>
+                    </form>
                   )}
                 </div>
               )}

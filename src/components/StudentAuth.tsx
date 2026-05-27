@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { Key, ShieldCheck, Lock, Loader2, EyeOff, Eye, XCircle, CheckCircle2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 
@@ -13,17 +14,17 @@ const formatCPF = (value: string) => {
 
 interface StudentAuthProps {
   isLoading: boolean;
-  login: (cpf: string, pass: string) => Promise<boolean>;
+  login: (cpf: string, pass: string) => Promise<{ success: boolean; error?: string }>;
   register: (name: string, cpf: string, email: string, pass: string) => Promise<boolean>;
 }
 
 const StudentAuth = ({ isLoading, login, register }: StudentAuthProps) => {
   const { toast } = useToast();
 
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot'>('login');
 
   // Login State
-  const [loginCpf, setLoginCpf] = useState('');
+  const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
@@ -38,20 +39,121 @@ const StudentAuth = ({ isLoading, login, register }: StudentAuthProps) => {
   const [showRegConfirm, setShowRegConfirm] = useState(false);
   const [regState, setRegState] = useState<'idle' | 'submitting' | 'success'>('idle');
 
+  // Forgot Password State
+  const [forgotIdentifier, setForgotIdentifier] = useState('');
+  const [forgotCode, setForgotCode] = useState('');
+  const [forgotNewPassword, setForgotNewPassword] = useState('');
+  const [forgotState, setForgotState] = useState<'idle' | 'submitting' | 'success'>('idle');
+  const [forgotPhase, setForgotPhase] = useState(1);
+  const [forgotEmailMasked, setForgotEmailMasked] = useState('');
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [forgotDebugError, setForgotDebugError] = useState('');
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (timeLeft > 0) {
+      timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [timeLeft]);
+
   const handleLoginSubmit = async () => {
     try {
-      if (!loginCpf.trim() || !loginPassword.trim()) {
+      if (!loginEmail.trim() || !loginPassword.trim()) {
         return;
       }
       setLoginError('');
-      const success = await login(loginCpf, loginPassword);
-      if (!success) {
-        setLoginError('CPF ou senha incorretos. Tente novamente.');
+      const result = await login(loginEmail, loginPassword);
+      if (!result.success) {
+        setLoginError(result.error || 'E-mail ou senha incorretos. Tente novamente.');
       }
     } catch (err) {
       console.error(err);
       setLoginError('Ocorreu um erro inesperado. Tente novamente.');
     }
+  };
+
+  const handleForgotSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotState('submitting');
+    setForgotDebugError('');
+    try {
+      const { data } = await supabase.from('estudantes' as any).select('email').eq('cpf', forgotIdentifier.replace(/\D/g, '')).maybeSingle();
+      if (!data) {
+        toast({ title: 'CPF não encontrado', description: 'Não localizamos um cadastro com este CPF.', variant: 'destructive' });
+        setForgotState('idle');
+        return;
+      }
+      const email = (data as any).email || '';
+      let maskedEmail = 'seu e-mail cadastrado';
+      if (email && email.includes('@')) {
+        const [username, domain] = email.split('@');
+        maskedEmail = `${username.charAt(0)}***@${domain}`;
+      }
+      setForgotEmailMasked(maskedEmail);
+      setForgotEmail(email);
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email);
+      if (resetError) {
+        const errorText = JSON.stringify(resetError, Object.getOwnPropertyNames(resetError), 2);
+        console.error('Erro ao enviar email de reset:', resetError);
+        alert(`Erro no Supabase Auth:\nMensagem: ${resetError.message}\nStatus: ${resetError.status}\n\nObjeto Completo:\n${errorText}`);
+        setForgotDebugError(errorText);
+        toast({ title: 'Erro', description: 'Ocorreu um erro ao enviar o e-mail de recuperação.', variant: 'destructive' });
+        setForgotState('idle');
+        return;
+      }
+      setForgotPhase(2);
+      setTimeLeft(60);
+      setForgotState('idle');
+      toast({ title: 'Código enviado!', description: `Enviamos o código para ${maskedEmail}.` });
+    } catch (err) {
+      console.error(err);
+      setForgotState('idle');
+      toast({ title: 'Erro de conexão', description: 'Não foi possível enviar a solicitação.', variant: 'destructive' });
+    }
+  };
+
+  const handlePhase2Submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (forgotCode.length !== 8) {
+      toast({ title: 'Código inválido', description: 'Digite o código de 8 dígitos.', variant: 'destructive' });
+      return;
+    }
+    if (forgotNewPassword.length < 8) {
+      toast({ title: 'Senha curta', description: 'A nova senha deve ter pelo menos 8 caracteres.', variant: 'destructive' });
+      return;
+    }
+    setForgotState('submitting');
+    try {
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        email: forgotEmail,
+        token: forgotCode,
+        type: 'recovery'
+      });
+      if (verifyError) {
+        toast({ title: 'Código incorreto ou expirado', description: 'O código inserido é inválido ou já expirou.', variant: 'destructive' });
+        setForgotState('idle');
+        return;
+      }
+      const { error: updateError } = await supabase.auth.updateUser({ password: forgotNewPassword });
+      
+      if (updateError) throw updateError;
+      
+      setForgotState('success');
+    } catch (err: any) {
+      console.error(err);
+      setForgotState('idle');
+      
+      const errorMessage = err?.message || 'Não foi possível atualizar a senha.';
+      toast({ title: 'Erro ao atualizar', description: errorMessage, variant: 'destructive' });
+    }
+  };
+
+  const handleResendCode = async () => {
+    if (timeLeft > 0) return;
+    const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+    await handleForgotSubmit(fakeEvent);
   };
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
@@ -77,7 +179,7 @@ const StudentAuth = ({ isLoading, login, register }: StudentAuthProps) => {
       setRegState('submitting');
 
       const success = await register(regFullName, regCpf, regEmail, regPassword);
-      
+
       if (success) {
         setRegState('success');
       } else {
@@ -96,8 +198,8 @@ const StudentAuth = ({ isLoading, login, register }: StudentAuthProps) => {
         {/* Mode toggle tabs */}
         <div className="flex border-b border-zinc-200 dark:border-zinc-800">
           <button
-            onClick={() => setAuthMode('login')}
-            className={`flex-1 py-4 text-sm font-semibold transition-all duration-200 ${authMode === 'login'
+            onClick={() => { setAuthMode('login'); setForgotPhase(1); }}
+            className={`flex-1 py-4 text-sm font-semibold transition-all duration-200 ${authMode === 'login' || authMode === 'forgot'
               ? 'text-school-blue-600 dark:text-white border-b-2 border-school-blue-500 bg-zinc-50 dark:bg-zinc-900/50'
               : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
               }`}
@@ -126,7 +228,7 @@ const StudentAuth = ({ isLoading, login, register }: StudentAuthProps) => {
                   <Lock className="w-6 h-6 text-school-blue-600 dark:text-blue-400" />
                 </div>
                 <h2 className="text-2xl font-bold text-school-blue-800 dark:text-white tracking-tight">Acesso do Aluno</h2>
-                <p className="mt-1 text-sm text-school-blue-600 dark:text-zinc-400">Entre com seu CPF e senha cadastrados.</p>
+                <p className="mt-1 text-sm text-school-blue-600 dark:text-zinc-400">Entre com seu e-mail e senha cadastrados.</p>
               </div>
 
               {loginError && (
@@ -137,22 +239,25 @@ const StudentAuth = ({ isLoading, login, register }: StudentAuthProps) => {
               )}
 
               <div className="space-y-2">
-                <label htmlFor="loginCpf" className="block text-sm font-medium text-school-blue-700 dark:text-zinc-300">CPF</label>
+                <label htmlFor="loginEmail" className="block text-sm font-medium text-school-blue-700 dark:text-zinc-300">E-mail</label>
                 <input
-                  id="loginCpf"
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="000.000.000-00"
-                  value={loginCpf}
-                  onChange={(e) => { setLoginCpf(formatCPF(e.target.value || '')); setLoginError(''); }}
+                  id="loginEmail"
+                  type="email"
+                  placeholder="aluno@email.com"
+                  value={loginEmail}
+                  onChange={(e) => { setLoginEmail(e.target.value || ''); setLoginError(''); }}
                   disabled={isLoading}
-                  maxLength={14}
                   className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 px-4 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-school-blue-500/50 focus:border-school-blue-500 disabled:opacity-50"
                 />
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="loginPassword" className="block text-sm font-medium text-school-blue-700 dark:text-zinc-300">Senha</label>
+                <div className="flex justify-between items-center">
+                  <label htmlFor="loginPassword" className="block text-sm font-medium text-school-blue-700 dark:text-zinc-300">Senha</label>
+                  <button type="button" onClick={() => { setAuthMode('forgot'); setForgotPhase(1); setForgotState('idle'); setForgotIdentifier(''); }} className="text-xs font-semibold text-school-blue-600 dark:text-school-blue-400 hover:underline">
+                    Esqueci minha senha
+                  </button>
+                </div>
                 <div className="relative">
                   <input
                     id="loginPassword"
@@ -172,7 +277,7 @@ const StudentAuth = ({ isLoading, login, register }: StudentAuthProps) => {
 
               <button
                 onClick={handleLoginSubmit}
-                disabled={isLoading || !loginCpf.trim() || !loginPassword.trim()}
+                disabled={isLoading || !loginEmail.trim() || !loginPassword.trim()}
                 className="w-full h-12 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed hover:opacity-90 active:scale-[0.98] bg-school-blue-600 notranslate"
                 style={{ boxShadow: '0 4px 14px 0 rgba(37, 99, 235, 0.39)' }}
               >
@@ -241,7 +346,7 @@ const StudentAuth = ({ isLoading, login, register }: StudentAuthProps) => {
                         </p>
                       )}
                     </div>
-                    
+
                     <button
                       type="submit"
                       disabled={regState === 'submitting'}
@@ -254,6 +359,111 @@ const StudentAuth = ({ isLoading, login, register }: StudentAuthProps) => {
                     </button>
                   </form>
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* ── FORGOT PASSWORD FORM ── */}
+          {authMode === 'forgot' && (
+            <div className="space-y-6">
+              <div className="text-center mb-6">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-school-blue-50 dark:bg-blue-600/20 border border-school-blue-100 dark:border-blue-500/30 mb-3">
+                  <Lock className="w-6 h-6 text-school-blue-600 dark:text-blue-400" />
+                </div>
+                <h2 className="text-2xl font-bold text-school-blue-800 dark:text-white tracking-tight">Recuperar Senha</h2>
+                <p className="mt-1 text-sm text-school-blue-600 dark:text-zinc-400">{forgotPhase === 1 ? 'Informe seu CPF para iniciar.' : `Código enviado para ${forgotEmailMasked}`}</p>
+              </div>
+
+              {forgotDebugError && (
+                <div className="bg-red-600 text-white p-4 rounded-xl mb-6 overflow-auto max-h-64 text-xs font-mono whitespace-pre-wrap break-words shadow-lg border-2 border-red-800">
+                  <strong className="text-sm">Falha Supabase Auth (Debug):</strong>
+                  <div className="mt-2">{forgotDebugError}</div>
+                </div>
+              )}
+
+              {forgotState === 'success' ? (
+                <div className="flex flex-col items-center justify-center py-4 space-y-4 text-center">
+                  <div className="w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-600/20 border border-emerald-100 dark:border-emerald-500/30 flex items-center justify-center">
+                    <CheckCircle2 className="w-8 h-8 text-emerald-500 dark:text-emerald-400" />
+                  </div>
+                  <h3 className="text-lg font-bold text-school-blue-800 dark:text-white">Senha atualizada!</h3>
+                  <p className="text-school-blue-600 dark:text-zinc-400 text-sm max-w-xs">Você já pode realizar o login com sua nova senha.</p>
+                  <button onClick={() => setAuthMode('login')} className="mt-4 w-full h-12 rounded-xl font-bold text-sm text-school-blue-600 bg-school-blue-50 dark:bg-zinc-800 dark:text-blue-400 hover:bg-school-blue-100 transition-colors">Voltar para o login</button>
+                </div>
+              ) : (
+                <form onSubmit={forgotPhase === 1 ? handleForgotSubmit : handlePhase2Submit} className="space-y-4">
+                  {forgotPhase === 1 ? (
+                    <div className="space-y-2">
+                      <label htmlFor="forgotIdentifier" className="block text-sm font-medium text-school-blue-700 dark:text-zinc-300">CPF</label>
+                      <input
+                        id="forgotIdentifier"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="000.000.000-00"
+                        value={forgotIdentifier}
+                        onChange={(e) => setForgotIdentifier(formatCPF(e.target.value || ''))}
+                        disabled={forgotState === 'submitting'}
+                        maxLength={14}
+                        className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 px-4 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-school-blue-500/50 focus:border-school-blue-500 disabled:opacity-50"
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        <label htmlFor="forgotCode" className="block text-sm font-medium text-school-blue-700 dark:text-zinc-300">Código de Segurança</label>
+                        <input
+                          id="forgotCode"
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="00000000"
+                          value={forgotCode}
+                          onChange={(e) => setForgotCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                          disabled={forgotState === 'submitting'}
+                          maxLength={8}
+                          className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 px-4 text-center text-xl tracking-widest font-mono text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-school-blue-500/50 focus:border-school-blue-500 disabled:opacity-50"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label htmlFor="forgotNewPassword" className="block text-sm font-medium text-school-blue-700 dark:text-zinc-300">Nova Senha</label>
+                        <input
+                          id="forgotNewPassword"
+                          type="password"
+                          placeholder="Mínimo 8 caracteres"
+                          value={forgotNewPassword}
+                          onChange={(e) => setForgotNewPassword(e.target.value)}
+                          disabled={forgotState === 'submitting'}
+                          className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 px-4 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-school-blue-500/50 focus:border-school-blue-500 disabled:opacity-50"
+                        />
+                      </div>
+                    </>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={forgotState === 'submitting' || (forgotPhase === 1 ? !forgotIdentifier.trim() : (forgotCode.length !== 8 || forgotNewPassword.length < 6))}
+                    className="w-full h-12 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed hover:opacity-90 active:scale-[0.98] bg-school-blue-600"
+                  >
+                    {forgotState === 'submitting' ? (<><Loader2 className="w-4 h-4 animate-spin" /> {forgotPhase === 1 ? 'Processando...' : 'Verificando...'}</>) : (forgotPhase === 1 ? 'Recuperar Acesso' : 'Confirmar e Redefinir Senha')}
+                  </button>
+                  
+                  {forgotPhase === 2 && (
+                    <button 
+                      type="button" 
+                      onClick={handleResendCode}
+                      disabled={timeLeft > 0 || forgotState === 'submitting'}
+                      className={`w-full h-12 rounded-xl font-bold text-sm transition-all duration-200 disabled:cursor-not-allowed ${
+                        timeLeft > 0 
+                          ? 'text-school-blue-600/50 dark:text-school-blue-400/50 cursor-not-allowed' 
+                          : 'bg-school-blue-100 text-school-blue-700 hover:bg-school-blue-200 dark:bg-school-blue-900/50 dark:text-school-blue-300 dark:hover:bg-school-blue-900 active:scale-[0.98]'
+                      }`}
+                    >
+                      {timeLeft > 0 ? `Aguarde ${timeLeft}s para reenviar` : 'Reenviar Código'}
+                    </button>
+                  )}
+
+                  <button type="button" onClick={() => { if (forgotPhase === 2) { setForgotPhase(1); setForgotState('idle'); } else { setAuthMode('login'); } }} className="w-full h-12 rounded-xl font-bold text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors">
+                    {forgotPhase === 2 ? 'Voltar' : 'Cancelar'}
+                  </button>
+                </form>
               )}
             </div>
           )}

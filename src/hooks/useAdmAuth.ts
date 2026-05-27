@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AdminUser {
   id: string;
@@ -42,39 +43,66 @@ export const useAdmAuth = () => {
     }
   }, [adminUser]);
 
-  const login = async (name: string, password: string): Promise<boolean> => {
+  const login = async (identifier: string, password: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
     try {
-      const trimmedName = name.trim();
+      const emailLower = identifier.trim().toLowerCase();
 
-      const resposta = await axios.post(WEBHOOK_URL, {
-        Ação: 'Login',
-        email: trimmedName,
-        senha: password,
+      // 1. Primeira ação: Autenticação nativa com Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: emailLower,
+        password: password,
       });
 
-      if (resposta.data?.status && !resposta.data.status.toLowerCase().includes('error')) {
-        const user: AdminUser = {
-          id: resposta.data?.id ?? `adm-${trimmedName}`,
-          name: trimmedName,
-          isAdmin: true,
-        };
-        setAdminUser(user);
+      if (authError || !authData.user) {
+        let errorMessage = 'Falha na autenticação. Verifique suas credenciais.';
+        if (authError?.message.includes('Invalid login credentials')) {
+          errorMessage = 'Credenciais inválidas. Verifique seu e-mail e senha.';
+        } else if (authError?.message.includes('Email not confirmed')) {
+          errorMessage = 'E-mail não confirmado ou conta bloqueada.';
+        }
+
         toast({
-          title: 'Sucesso',
-          description: 'Acesso administrativo concedido!',
+          title: 'Acesso negado',
+          description: errorMessage,
+          variant: 'destructive',
         });
-        return true;
+        return { success: false, error: errorMessage };
       }
 
-      const mensagem: string =
-        resposta.data?.mensagem?.toString().trim() || 'Falha na autenticação';
+      // 2. Consulta secundária na tabela administradores para checar privilégio
+      const { data: adminData, error: fetchError } = await supabase
+        .from('admin_user' as any)
+        .select('id, nome, email, role')
+        .eq('email', authData.user.email?.toLowerCase() || emailLower)
+        .maybeSingle();
+
+      // Validar se retornou algo e se a role é a esperada
+      if (fetchError || !adminData || (adminData as any).role !== 'admin') {
+        await supabase.auth.signOut();
+        toast({
+          title: 'Acesso negado',
+          description: 'Sua conta não possui privilégios administrativos.',
+          variant: 'destructive',
+        });
+        return { success: false, error: 'Sua conta não possui privilégios administrativos.' };
+      }
+
+      // 3. Sucesso: armazenar sessão
+      const user: AdminUser = {
+        id: (adminData as any).id,
+        name: (adminData as any).nome || (adminData as any).email,
+        isAdmin: true,
+      };
+      
+      setAdminUser(user);
+      
       toast({
-        title: 'Acesso negado',
-        description: mensagem,
-        variant: 'destructive',
+        title: 'Sucesso',
+        description: 'Acesso administrativo concedido!',
       });
-      return false;
+      return { success: true };
+
     } catch (err) {
       console.error('Erro ao autenticar administrador:', err);
       toast({
@@ -82,7 +110,7 @@ export const useAdmAuth = () => {
         description: 'Não foi possível conectar ao servidor de autenticação.',
         variant: 'destructive',
       });
-      return false;
+      return { success: false, error: 'Erro interno ou de conexão.' };
     } finally {
       setIsLoading(false);
     }

@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Gift, Save, Loader2, Image as ImageIcon, X, Pencil } from 'lucide-react';
+import ListaPremios from './ListaPremios';
 
 const CadastroPremios = () => {
   const [nome, setNome] = useState('');
@@ -142,7 +143,8 @@ const CadastroPremios = () => {
   };
 
   return (
-    <Card className="p-6 md:p-8 shadow-xl border-0 dark:border dark:border-zinc-800 bg-white dark:bg-zinc-950 rounded-2xl max-w-2xl mx-auto">
+    <div className="space-y-8">
+      <Card className="p-6 md:p-8 shadow-xl border-0 dark:border dark:border-zinc-800 bg-white dark:bg-zinc-950 rounded-2xl max-w-2xl mx-auto">
       <div className="space-y-6">
         <div className="flex items-center gap-3 border-b border-gray-100 dark:border-zinc-800 pb-4">
           <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-school-yellow-500/20 border border-school-yellow-500/30">
@@ -308,6 +310,11 @@ const CadastroPremios = () => {
         </form>
       </div>
     </Card>
+    
+    <div className="max-w-2xl mx-auto w-full">
+      <ListaPremios />
+    </div>
+    </div>
   );
 };
 

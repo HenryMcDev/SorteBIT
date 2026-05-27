@@ -84,39 +84,65 @@ export const useStudentAuth = () => {
     };
   }, [studentUser?.cpf]);
 
-  const login = async (cpf: string, password: string): Promise<boolean> => {
+  const login = async (identifier: string, password: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
     try {
-      const cleanCpf = cpf.replace(/\D/g, '');
+      const emailLower = identifier.trim().toLowerCase();
 
-      const resposta = await axios.post(WEBHOOK_URL, {
-        Ação: 'Login',
-        cpf: cleanCpf,
-        senha: password,
+      // 1. Autenticação nativa com Supabase Auth usando o e-mail
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: emailLower,
+        password: password,
       });
 
-      if (resposta.data?.autenticado === true && resposta.data?.status === 'aprovado') {
-        const user: StudentUser = {
-          id: resposta.data?.id ?? `student-${cleanCpf}`,
-          name: resposta.data?.nome ?? 'Aluno',
-          cpf: cleanCpf,
-        };
-        setStudentUser(user);
+      if (authError || !authData.user) {
+        let errorMessage = 'Falha na autenticação. Verifique suas credenciais.';
+        if (authError?.message.includes('Invalid login credentials')) {
+          errorMessage = 'Credenciais inválidas. Verifique seu e-mail e senha.';
+        } else if (authError?.message.includes('Email not confirmed')) {
+          errorMessage = 'Conta bloqueada ou não confirmada.';
+        }
+
         toast({
-          title: 'Sucesso',
-          description: 'Login realizado com sucesso!',
+          title: 'Acesso negado',
+          description: errorMessage,
+          variant: 'destructive',
         });
-        return true;
+        return { success: false, error: errorMessage };
       }
 
-      const mensagem: string =
-        resposta.data?.mensagem?.toString().trim() || 'Falha na autenticação';
+      // 2. Consulta assíncrona na tabela estudantes após o login bem-sucedido
+      const { data: estudante, error: fetchError } = await supabase
+        .from('estudantes' as any)
+        .select('id, nome_completo, cpf')
+        .eq('email', emailLower)
+        .maybeSingle();
+
+      if (fetchError || !estudante) {
+        await supabase.auth.signOut();
+        toast({
+          title: 'Usuário não encontrado',
+          description: 'Sua conta não possui um perfil de estudante vinculado.',
+          variant: 'destructive',
+        });
+        return { success: false, error: 'Sua conta não possui um perfil de estudante vinculado.' };
+      }
+
+      // 3. Sucesso absoluto: armazenar sessão
+      const user: StudentUser = {
+        id: (estudante as any).id || authData.user.id,
+        name: (estudante as any).nome_completo || 'Aluno',
+        cpf: (estudante as any).cpf,
+      };
+      
+      setStudentUser(user);
+      
       toast({
-        title: 'Acesso negado',
-        description: mensagem,
-        variant: 'destructive',
+        title: 'Sucesso',
+        description: 'Login realizado com sucesso!',
       });
-      return false;
+      return { success: true };
+      
     } catch (err) {
       console.error('Erro ao autenticar aluno:', err);
       toast({
@@ -124,7 +150,7 @@ export const useStudentAuth = () => {
         description: 'Não foi possível conectar ao servidor de autenticação.',
         variant: 'destructive',
       });
-      return false;
+      return { success: false, error: 'Erro interno ou de conexão.' };
     } finally {
       setIsLoading(false);
     }
@@ -172,7 +198,10 @@ export const useStudentAuth = () => {
     }
   };
 
-  const logout = () => setStudentUser(null);
+  const logout = () => {
+    setStudentUser(null);
+    window.location.href = '/';
+  };
 
   return {
     studentUser,
