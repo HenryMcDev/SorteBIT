@@ -801,11 +801,16 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
                         // @ts-expect-error - zoom might not be typed in all environments
                         if (capabilities && capabilities.zoom) {
                           // @ts-expect-error
-                          zoomLimitsRef.current = { min: capabilities.zoom.min || 1, max: capabilities.zoom.max || 3 };
+                          const minZoom = capabilities.zoom.min || 1;
+                          // @ts-expect-error
+                          const maxZoom = capabilities.zoom.max || 3;
+                          
+                          zoomLimitsRef.current = { min: minZoom, max: maxZoom };
+                          setZoom(minZoom);
                           
                           track.applyConstraints({
                             // @ts-expect-error - zoom might not be typed in all environments
-                            advanced: [{ zoom: zoom }]
+                            advanced: [{ zoom: minZoom }]
                           }).catch(e => console.error("Erro ao configurar zoom inicial:", e));
                         }
                       }
@@ -818,7 +823,7 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
                 {/* Texto Instrucional Topo */}
                 <div className="absolute top-20 left-1/2 -translate-x-1/2 w-11/12 max-w-[340px] px-6 py-3 bg-black/60 rounded-full backdrop-blur-md z-10 text-center shadow-lg border border-white/10 animate-in fade-in slide-in-from-top-4 duration-500">
                   <p className="text-white font-medium text-sm md:text-base tracking-wide leading-tight">
-                    Posicione seu rosto e o uniforme para a validação
+                    Posicione seu rosto e o uniforme dentro da marcação
                   </p>
                 </div>
 
