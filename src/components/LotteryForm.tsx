@@ -43,6 +43,8 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
   const [zoom, setZoom] = useState(1.0);
   const [tempoRestante, setTempoRestante] = useState<string>('');
   const [alreadyParticipated, setAlreadyParticipated] = useState(false);
+  const videoTrackRef = useRef<MediaStreamTrack | null>(null);
+  const zoomLimitsRef = useRef({ min: 1, max: 3 });
   const [terminoFixo, setTerminoFixo] = useState<number | null>(null);
   const [isGracePeriod, setIsGracePeriod] = useState(true);
   const [isTermsOpen, setIsTermsOpen] = useState(false);
@@ -724,7 +726,7 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
                           <Button
                             type="button"
                             onClick={retakePhoto}
-                            className="absolute top-3 right-3 w-10 h-10 p-0 rounded-full bg-red-50 dark:bg-red-950/300 hover:bg-red-600 text-white shadow-[0_0_10px_rgba(0,0,0,0.5)] border-2 border-white flex items-center justify-center opacity-90 hover:opacity-100 transition-all hover:scale-110"
+                            className="absolute top-3 right-3 w-10 h-10 p-0 rounded-full bg-red-500 hover:bg-red-600 text-white shadow-[0_0_15px_rgba(0,0,0,0.5)] border-2 border-white dark:border-zinc-800 flex items-center justify-center transition-all hover:scale-110"
                             title="Excluir foto"
                           >
                             <X className="w-6 h-6" />
@@ -778,95 +780,110 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
 
         {/* Camera Overlay */}
         {isCameraOpen && (
-          <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center sm:p-6 backdrop-blur-md">
+          <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center sm:p-6 backdrop-blur-none">
             <Card className="w-full h-full sm:h-auto max-w-md bg-black border-0 sm:border sm:border-gray-800 sm:rounded-[2rem] overflow-hidden shadow-2xl relative flex flex-col">
 
-              {/* Header */}
-              <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-20 bg-gradient-to-b from-black/80 to-transparent">
-                <div className="flex items-center gap-2 px-4 py-2 bg-black/50 rounded-full border border-white/10 backdrop-blur-md">
-                  <Camera className="w-4 h-4 text-school-yellow-500 dark:text-school-yellow-400" />
-                  <span className="text-white font-medium text-sm">Validar Uniforme</span>
-                </div>
-                <Button
-                  type="button"
-                  onClick={() => setIsCameraOpen(false)}
-                  className="w-10 h-10 rounded-full bg-black/50 hover:bg-black/80 text-white border border-white/20 flex items-center justify-center p-0 backdrop-blur-md transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </Button>
-              </div>
-
-              {/* Viewfinder */}
-              <div
-                className="relative w-full bg-[#050505] flex items-center justify-center mt-auto mb-auto"
-                style={{ aspectRatio: '9 / 16', maxHeight: '100vh' }}
-              >
+              {/* Viewfinder - Tela Cheia */}
+              <div className="relative w-full flex-1 flex items-center justify-center overflow-hidden bg-black">
                 <Webcam
                   audio={false}
                   ref={webcamRef}
                   mirrored={false}
                   screenshotFormat="image/jpeg"
-                  screenshotQuality={0.5}
+                  screenshotQuality={0.8}
                   videoConstraints={{ facingMode: "user" }}
                   onUserMedia={(stream) => {
                     const track = stream.getVideoTracks()[0];
-                    if (track && typeof track.getCapabilities === 'function') {
-                      const capabilities = track.getCapabilities();
-                      // @ts-expect-error - zoom might not be typed in all environments
-                      if (capabilities && capabilities.zoom) {
-                        track.applyConstraints({
-                          // @ts-expect-error - zoom might not be typed in all environments
-                          advanced: [{ zoom: capabilities.zoom.min || 1 }]
-                        }).catch(e => console.error("Erro ao configurar zoom:", e));
+                    if (track) {
+                      videoTrackRef.current = track;
+                      if (typeof track.getCapabilities === 'function') {
+                        const capabilities = track.getCapabilities();
+                        // @ts-expect-error - zoom might not be typed in all environments
+                        if (capabilities && capabilities.zoom) {
+                          // @ts-expect-error
+                          zoomLimitsRef.current = { min: capabilities.zoom.min || 1, max: capabilities.zoom.max || 3 };
+                          
+                          track.applyConstraints({
+                            // @ts-expect-error - zoom might not be typed in all environments
+                            advanced: [{ zoom: zoom }]
+                          }).catch(e => console.error("Erro ao configurar zoom inicial:", e));
+                        }
                       }
                     }
                   }}
-                  className="w-full h-full object-contain origin-center transition-transform duration-200"
-                  style={{ transform: `scale(${zoom}) scaleX(1)` }}
+                  className="absolute inset-0 w-full h-full object-cover origin-center"
+                  style={{ transform: 'scaleX(-1)' }}
                 />
 
-                {/* Linhas de Grade de Composição (Grid) */}
-                <div className="absolute inset-0 pointer-events-none opacity-[0.15]">
-                  <div className="w-full h-full border border-white/50 flex flex-col justify-between">
-                    <div className="w-full h-[33.33%] border-b border-white/50"></div>
-                    <div className="w-full h-[33.33%] border-b border-white/50"></div>
+                {/* Texto Instrucional Topo */}
+                <div className="absolute top-20 left-1/2 -translate-x-1/2 w-11/12 max-w-[340px] px-6 py-3 bg-black/60 rounded-full backdrop-blur-md z-10 text-center shadow-lg border border-white/10 animate-in fade-in slide-in-from-top-4 duration-500">
+                  <p className="text-white font-medium text-sm md:text-base tracking-wide leading-tight">
+                    Posicione seu rosto e o uniforme para a validação
+                  </p>
+                </div>
+
+                {/* Controle de Zoom Vertical (Lateral Direita) */}
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-3 bg-black/40 py-4 px-2 rounded-full backdrop-blur-md border border-white/10 z-20 shadow-lg animate-in fade-in slide-in-from-right-4">
+                  <span className="text-white font-bold text-lg leading-none select-none">+</span>
+                  <div className="h-40 w-6 flex items-center justify-center touch-none">
+                    <input
+                      type="range"
+                      min={zoomLimitsRef.current?.min || 1}
+                      max={zoomLimitsRef.current?.max || 3}
+                      step="0.1"
+                      value={zoom}
+                      onChange={(e) => {
+                        const newZoom = parseFloat(e.target.value);
+                        setZoom(newZoom);
+                        if (videoTrackRef.current) {
+                          videoTrackRef.current.applyConstraints({
+                            // @ts-expect-error
+                            advanced: [{ zoom: newZoom }]
+                          }).catch(err => console.error("Erro ao aplicar zoom:", err));
+                        }
+                      }}
+                      className="w-40 h-1.5 bg-white/30 rounded-lg appearance-none cursor-pointer accent-white transform -rotate-90 origin-center"
+                    />
                   </div>
-                  <div className="absolute inset-0 w-full h-full border border-transparent flex justify-between">
-                    <div className="h-full w-[33.33%] border-r border-white/50"></div>
-                    <div className="h-full w-[33.33%] border-r border-white/50"></div>
-                  </div>
+                  <span className="text-white font-bold text-xl leading-none select-none">-</span>
+                  <span className="text-white/70 text-[9px] font-bold uppercase tracking-widest mt-1 select-none">Zoom</span>
                 </div>
               </div>
 
               {/* Bottom Controls */}
-              <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center pb-8 pt-20 px-6 bg-gradient-to-t from-black via-black/90 to-transparent z-20">
-
-                {/* Zoom Control */}
-                <div className="flex items-center gap-4 w-full max-w-[280px] mb-8 bg-black/60 p-4 rounded-2xl backdrop-blur-md border border-white/10 shadow-lg">
-                  <span className="text-white font-bold text-xl select-none">-</span>
-                  <input
-                    type="range"
-                    min="1"
-                    max="3"
-                    step="0.1"
-                    value={zoom}
-                    onChange={(e) => setZoom(parseFloat(e.target.value))}
-                    className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-school-yellow-500"
-                  />
-                  <span className="text-white font-bold text-xl select-none">+</span>
+              <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between pb-8 pt-24 px-8 bg-gradient-to-t from-black via-black/80 to-transparent z-20 pointer-events-none">
+                {/* Close Button (Left) */}
+                <div className="relative flex-1 flex justify-start pointer-events-auto">
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setIsCameraOpen(false);
+                      videoTrackRef.current = null;
+                    }}
+                    className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-black/60 hover:bg-red-500/90 text-white border-2 border-white/30 flex items-center justify-center p-0 backdrop-blur-md transition-all hover:scale-110 hover:border-red-400 shadow-lg"
+                    title="Fechar Câmera"
+                  >
+                    <X className="w-6 h-6 md:w-7 md:h-7" />
+                  </Button>
                 </div>
 
-                {/* Capture Button */}
-                <Button
-                  type="button"
-                  onClick={() => {
-                    capturePhoto();
-                    setIsCameraOpen(false);
-                  }}
-                  className="rounded-full w-20 h-20 flex items-center justify-center bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 dark:text-white shadow-[0_0_20px_rgba(250,204,21,0.4)] border-4 border-white transition-all transform hover:scale-105 active:scale-95"
-                >
-                  <Camera className="w-10 h-10" />
-                </Button>
+                {/* Capture Button (Center) */}
+                <div className="relative flex-none flex items-center justify-center pointer-events-auto">
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      capturePhoto();
+                      setIsCameraOpen(false);
+                      videoTrackRef.current = null;
+                    }}
+                    className="relative z-10 rounded-full w-20 h-20 flex items-center justify-center bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-800 shadow-[0_0_30px_rgba(250,204,21,0.5)] border-4 border-white transition-all transform hover:scale-105 active:scale-95"
+                  >
+                    <Camera className="w-10 h-10" />
+                  </Button>
+                </div>
+
+                {/* Spacer (Right) */}
+                <div className="flex-1"></div>
               </div>
 
             </Card>
