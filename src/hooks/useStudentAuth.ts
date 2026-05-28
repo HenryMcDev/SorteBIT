@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { isValidCPF } from '@/utils/cpfValidator';
 
 interface StudentUser {
   id: string;
@@ -32,6 +33,29 @@ export const useStudentAuth = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  const [cpfValue, setCpfValue] = useState('');
+  const [cpfError, setCpfError] = useState('');
+
+  const handleCPFChange = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 11);
+    const masked = digits
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+
+    setCpfValue(masked);
+
+    if (digits.length === 11) {
+      if (!isValidCPF(digits)) {
+        setCpfError('CPF inválido');
+      } else {
+        setCpfError('');
+      }
+    } else {
+      if (cpfError) setCpfError('');
+    }
+  };
 
   useEffect(() => {
     if (studentUser) {
@@ -210,5 +234,9 @@ export const useStudentAuth = () => {
     login,
     register,
     logout,
+    cpfValue,
+    cpfError,
+    handleCPFChange,
+    setCpfValue,
   };
 };

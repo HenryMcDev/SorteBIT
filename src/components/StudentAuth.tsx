@@ -16,9 +16,13 @@ interface StudentAuthProps {
   isLoading: boolean;
   login: (cpf: string, pass: string) => Promise<{ success: boolean; error?: string }>;
   register: (name: string, cpf: string, email: string, pass: string) => Promise<boolean>;
+  cpfValue: string;
+  cpfError: string;
+  handleCPFChange: (value: string) => void;
+  setCpfValue: (value: string) => void;
 }
 
-const StudentAuth = ({ isLoading, login, register }: StudentAuthProps) => {
+const StudentAuth = ({ isLoading, login, register, cpfValue, cpfError, handleCPFChange, setCpfValue }: StudentAuthProps) => {
   const { toast } = useToast();
 
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot'>('login');
@@ -31,7 +35,6 @@ const StudentAuth = ({ isLoading, login, register }: StudentAuthProps) => {
 
   // Register State
   const [regFullName, setRegFullName] = useState('');
-  const [regCpf, setRegCpf] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
@@ -159,12 +162,16 @@ const StudentAuth = ({ isLoading, login, register }: StudentAuthProps) => {
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (!regFullName.trim() || !regCpf.trim() || !regEmail.trim() || !regPassword.trim() || !regConfirmPassword.trim()) {
+      if (!regFullName.trim() || !cpfValue.trim() || !regEmail.trim() || !regPassword.trim() || !regConfirmPassword.trim()) {
         toast({ title: 'Campos obrigatórios', description: 'Preencha todos os campos para se registrar.', variant: 'destructive' });
         return;
       }
-      if (regCpf.replace(/\D/g, '').length !== 11) {
+      if (cpfValue.replace(/\D/g, '').length !== 11) {
         toast({ title: 'CPF inválido', description: 'Digite um CPF completo com 11 dígitos.', variant: 'destructive' });
+        return;
+      }
+      if (cpfError) {
+        toast({ title: 'CPF inválido', description: 'Corrija o erro no CPF antes de enviar.', variant: 'destructive' });
         return;
       }
       if (regPassword !== regConfirmPassword) {
@@ -178,7 +185,7 @@ const StudentAuth = ({ isLoading, login, register }: StudentAuthProps) => {
 
       setRegState('submitting');
 
-      const success = await register(regFullName, regCpf, regEmail, regPassword);
+      const success = await register(regFullName, cpfValue, regEmail, regPassword);
 
       if (success) {
         setRegState('success');
@@ -315,7 +322,10 @@ const StudentAuth = ({ isLoading, login, register }: StudentAuthProps) => {
                     </div>
                     <div className="space-y-2">
                       <label htmlFor="regCpf" className="block text-sm font-medium text-school-blue-700 dark:text-zinc-300">CPF <span className="text-red-500">*</span></label>
-                      <input id="regCpf" type="text" inputMode="numeric" autoComplete="off" placeholder="000.000.000-00" value={regCpf} onChange={(e) => setRegCpf(formatCPF(e.target.value || ''))} disabled={regState === 'submitting'} maxLength={14} className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 px-4 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-school-blue-500/50 focus:border-school-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" />
+                      <input id="regCpf" type="text" inputMode="numeric" autoComplete="off" placeholder="000.000.000-00" value={cpfValue} onChange={(e) => handleCPFChange(e.target.value)} disabled={regState === 'submitting'} maxLength={14} className={`w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border ${cpfError ? 'border-red-500 focus:ring-red-500/50 focus:border-red-500' : 'border-zinc-200 dark:border-zinc-700 focus:ring-school-blue-500/50 focus:border-school-blue-500'} px-4 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed`} />
+                      {cpfError && (
+                        <p className="text-xs text-red-500 dark:text-red-400 font-medium mt-1">{cpfError}</p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <label htmlFor="regEmail" className="block text-sm font-medium text-school-blue-700 dark:text-zinc-300">E-mail <span className="text-red-500">*</span></label>

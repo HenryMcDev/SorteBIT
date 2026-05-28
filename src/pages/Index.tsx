@@ -9,7 +9,7 @@ import { useStudentAuth } from '@/hooks/useStudentAuth';
 
 const Index = () => {
   const isMobile = useMobileDetection();
-  const { studentUser, isAuthenticated, isLoading, login, register, logout } = useStudentAuth();
+  const { studentUser, isAuthenticated, isLoading, login, register, logout, cpfValue, cpfError, handleCPFChange, setCpfValue } = useStudentAuth();
 
   if (!isMobile) {
     return <DesktopBlocker />;
@@ -30,7 +30,15 @@ const Index = () => {
           {isAuthenticated && studentUser ? (
             <LotteryForm studentUser={studentUser} />
           ) : (
-            <StudentAuth isLoading={isLoading} login={login} register={register} />
+            <StudentAuth 
+              isLoading={isLoading} 
+              login={login} 
+              register={register} 
+              cpfValue={cpfValue}
+              cpfError={cpfError}
+              handleCPFChange={handleCPFChange}
+              setCpfValue={setCpfValue}
+            />
           )}
         </main>
 
