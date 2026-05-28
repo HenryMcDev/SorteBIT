@@ -17,7 +17,7 @@ const SCHOOL_COORDINATES = {
   latitude: -19.59876692284,
   longitude: -46.93668532359792
 };
-const ALLOWED_RADIUS_METERS = 700;
+const ALLOWED_RADIUS_METERS = 1000;
 
 // Função para calcular a distância entre duas coordenadas usando a fórmula de Haversine
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
