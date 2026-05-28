@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Dice1, Crown, Lock, Key, LogOut, Eye, EyeOff, Loader2, CheckCircle2, XCircle, ShieldCheck, Copy, CheckCheck, RefreshCw, MessageSquareWarning, Gift, User, Home } from 'lucide-react';
+import { Dice1, Crown, Lock, Key, LogOut, Eye, EyeOff, Loader2, CheckCircle2, XCircle, ShieldCheck, Copy, CheckCheck, RefreshCw, MessageSquareWarning, Gift, User, Home, Users } from 'lucide-react';
 import { useAdmAuth } from '@/hooks/useAdmAuth';
 import { useToast } from '@/hooks/use-toast';
 import ClassCodeManager from '@/components/ClassCodeManager';
@@ -182,10 +182,10 @@ const Admin = () => {
         setForgotState('idle');
         return;
       }
-      
+
       const { error: updateError } = await supabase.auth.updateUser({ password: forgotNewPassword });
       if (updateError) throw updateError;
-      
+
       setForgotState('success');
     } catch (err) {
       console.error(err);
@@ -196,7 +196,7 @@ const Admin = () => {
 
   const handleResendCode = async () => {
     if (timeLeft > 0) return;
-    const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+    const fakeEvent = { preventDefault: () => { } } as React.FormEvent;
     await handleForgotSubmit(fakeEvent);
   };
 
@@ -560,17 +560,16 @@ const Admin = () => {
                       >
                         {forgotState === 'submitting' ? (<><Loader2 className="w-4 h-4 animate-spin" /> {forgotPhase === 1 ? 'Processando...' : 'Verificando...'}</>) : (forgotPhase === 1 ? 'Recuperar Acesso' : 'Confirmar e Redefinir Senha')}
                       </button>
-                      
+
                       {forgotPhase === 2 && (
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           onClick={handleResendCode}
                           disabled={timeLeft > 0 || forgotState === 'submitting'}
-                          className={`w-full h-12 rounded-xl font-bold text-sm transition-all duration-200 disabled:cursor-not-allowed ${
-                            timeLeft > 0 
-                              ? 'text-zinc-500 cursor-not-allowed' 
+                          className={`w-full h-12 rounded-xl font-bold text-sm transition-all duration-200 disabled:cursor-not-allowed ${timeLeft > 0
+                              ? 'text-zinc-500 cursor-not-allowed'
                               : 'bg-zinc-800 text-white hover:bg-zinc-700 border border-zinc-700 active:scale-[0.98]'
-                          }`}
+                            }`}
                         >
                           {timeLeft > 0 ? `Aguarde ${timeLeft}s para reenviar` : 'Reenviar Código'}
                         </button>
@@ -600,7 +599,7 @@ const Admin = () => {
       <div className="max-w-4xl mx-auto px-4">
         {/* Cabeçalho Administrativo */}
         <div className="flex justify-between items-center mb-8 bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-zinc-800">
-          
+
           <div className="flex items-center gap-4">
             {/* Ícone de Perfil Azul e Nome (Dinâmico da tabela admin_user) */}
             <div className="flex items-center gap-3">
@@ -643,48 +642,39 @@ const Admin = () => {
           <div className="flex flex-wrap gap-2 bg-white dark:bg-zinc-950 rounded-lg p-2 shadow-lg">
             <Button
               onClick={() => setActiveTab('lottery')}
-              variant={activeTab === 'lottery' ? 'default' : 'outline'}
-              className={`flex-1 min-w-32 transition-none ${activeTab === 'lottery'
-                ? 'bg-school-blue-600 text-white hover:bg-school-blue-600 hover:text-white'
-                : 'border-school-blue-600 text-school-blue-600 dark:text-zinc-400 bg-transparent hover:bg-transparent dark:bg-slate-800 dark:hover:bg-slate-800 hover:text-school-blue-600 dark:hover:text-zinc-400'
-                }`}
+              className="flex-1 min-w-32 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-white bg-school-blue-600 hover:bg-school-blue-700 transition-all duration-200"
             >
-              <Dice1 className="w-4 h-4 mr-2" />
+              <Users className="h-5 w-5" />
               Participantes
             </Button>
             <Button
               onClick={() => setActiveTab('codes')}
-              variant={activeTab === 'codes' ? 'default' : 'outline'}
-              className={`flex-1 min-w-32 transition-none ${activeTab === 'codes'
-                ? 'bg-school-blue-600 text-white hover:bg-school-blue-600 hover:text-white'
-                : 'border-school-blue-600 text-school-blue-600 dark:text-zinc-400 bg-transparent hover:bg-transparent dark:bg-slate-800 dark:hover:bg-slate-800 hover:text-school-blue-600 dark:hover:text-zinc-400'
-                }`}
+              className="flex-1 min-w-32 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-white bg-school-blue-600 hover:bg-school-blue-700 transition-all duration-200"
             >
-              <Crown className="w-4 h-4 mr-2" />
+              <Crown className="w-4 h-4" />
               Códigos
             </Button>
             <Button
               onClick={() => setActiveTab('moderacao')}
-              variant={activeTab === 'moderacao' ? 'default' : 'outline'}
-              className={`flex-1 min-w-32 transition-none ${activeTab === 'moderacao'
-                ? 'bg-school-blue-600 text-white hover:bg-school-blue-600 hover:text-white'
-                : 'border-school-blue-600 text-school-blue-600 dark:text-zinc-400 bg-transparent hover:bg-transparent dark:bg-slate-800 dark:hover:bg-slate-800 hover:text-school-blue-600 dark:hover:text-zinc-400'
-                }`}
+              className="flex-1 min-w-32 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-white bg-school-blue-600 hover:bg-school-blue-700 transition-all duration-200"
             >
-              <MessageSquareWarning className="w-4 h-4 mr-2" />
+              <MessageSquareWarning className="w-4 h-4" />
               Moderação
             </Button>
             <Button
               onClick={() => setActiveTab('premios')}
-              variant={activeTab === 'premios' ? 'default' : 'outline'}
-              className={`flex-1 min-w-32 transition-none ${activeTab === 'premios'
-                ? 'bg-school-blue-600 text-white hover:bg-school-blue-600 hover:text-white'
-                : 'border-school-blue-600 text-school-blue-600 dark:text-zinc-400 bg-transparent hover:bg-transparent dark:bg-slate-800 dark:hover:bg-slate-800 hover:text-school-blue-600 dark:hover:text-zinc-400'
-                }`}
+              className="flex-1 min-w-32 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-white bg-school-blue-600 hover:bg-school-blue-700 transition-all duration-200"
             >
-              <Gift className="w-4 h-4 mr-2" />
+              <Gift className="w-4 h-4" />
               Cadastro de Prêmios
             </Button>
+            <Link
+              to="/admin/jackpot"
+              className="flex-1 min-w-32 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-white bg-school-blue-600 hover:bg-school-blue-700 transition-all duration-200"
+            >
+              <Crown className="w-4 h-4" />
+              Sorteio Jackpot
+            </Link>
           </div>
         </div>
 

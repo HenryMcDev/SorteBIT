@@ -9,6 +9,8 @@ import Admin from "./pages/Admin";
 import AdminRegister from "./pages/AdminRegister";
 import NotFound from "./pages/NotFound";
 import Vitrine from "./pages/Vitrine";
+import AdminPrivateRoute from "./components/AdminPrivateRoute";
+import AdminJackpot from "@/pages/AdminJackpot";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +41,11 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/admin/registro" element={<AdminRegister />} />
+          <Route path="/admin/jackpot" element={
+            <AdminPrivateRoute>
+              <AdminJackpot />
+            </AdminPrivateRoute>
+          } />
           <Route path="/vitrine" element={<Vitrine />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
