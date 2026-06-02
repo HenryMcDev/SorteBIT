@@ -249,24 +249,40 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
 
       setSubmissionState('processando');
       try {
-        const payload = JSON.stringify({
-          nome: name.trim(),
-          codigo: studentCode.trim(),
-          fotoBase64: photo,
-        });
+        // Converte base64 para Blob para envio multipart/form-data
+        const base64Data = photo.split(',')[1];
+        const contentType = photo.split(',')[0].split(':')[1].split(';')[0];
+        const byteCharacters = atob(base64Data);
+        const byteArrays = [];
+
+        for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+          const slice = byteCharacters.slice(offset, offset + 512);
+          const byteNumbers = new Array(slice.length);
+          for (let i = 0; i < slice.length; i++) {
+            byteNumbers[i] = slice.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          byteArrays.push(byteArray);
+        }
+        
+        const blob = new Blob(byteArrays, { type: contentType });
+
+        const formData = new FormData();
+        formData.append('nome', name.trim());
+        formData.append('codigo', studentCode.trim());
+        formData.append('foto', blob, 'selfie.jpg');
 
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token || '';
 
         let webhookResponse: Response;
         try {
-          webhookResponse = await fetch(`${getBackendUrl()}/api/sorteio`, {
+          webhookResponse = await fetch(`${getBackendUrl()}/api/produto`, {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`,
             },
-            body: payload,
+            body: formData,
           });
         } catch (fetchErr: any) {
           console.error("Fetch error:", fetchErr);
