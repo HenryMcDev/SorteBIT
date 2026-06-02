@@ -13,7 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
-import { getBackendUrl } from '../utils/backendUrl';
+// import { getBackendUrl } from '../utils/backendUrl';
 
 
 interface StudentUser {
@@ -244,6 +244,8 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
     setPhone(formatted);
   };
 
+  const BACKEND_URL = 'https://api.infinityflowapp.com';
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -310,7 +312,7 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
 
         let webhookResponse: Response;
         try {
-          webhookResponse = await fetch(`${getBackendUrl()}/api/produto`, {
+          webhookResponse = await fetch(`${BACKEND_URL}/api/produto`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token}`,
