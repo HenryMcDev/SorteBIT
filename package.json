@@ -7,7 +7,6 @@
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
-    "start": "serve -s dist -l 3000",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -50,7 +49,6 @@
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.2",
     "react-webcam": "^7.2.0",
-    "serve": "^14.2.6",
     "sonner": "^1.5.0",
     "tailwind-merge": "^2.5.2",
     "tailwindcss-animate": "^1.0.7"
