@@ -13,7 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
-import { getBackendUrl } from '@/utils/backendUrl';
+import { getBackendUrl } from '../utils/backendUrl';
 
 
 interface StudentUser {
@@ -55,8 +55,12 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (studentUser && studentUser.termos_aceitos === false) {
-      setIsTermsOpen(true);
+    try {
+      if (studentUser && studentUser.termos_aceitos === false) {
+        setIsTermsOpen(true);
+      }
+    } catch (err) {
+      console.warn('Silent error in terms useEffect:', err);
     }
   }, [studentUser?.termos_aceitos]);
 
@@ -87,110 +91,130 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
   };
 
   useEffect(() => {
-    if (studentUser?.name) {
-      setName(studentUser.name);
+    try {
+      if (studentUser?.name) {
+        setName(studentUser.name);
+      }
+    } catch (err) {
+      console.warn('Silent error in name useEffect:', err);
     }
   }, [studentUser?.name]);
 
   useEffect(() => {
-    const fetchDailyCode = async () => {
-      try {
-        const todayStr = new Date().toISOString().split('T')[0];
+    try {
+      const fetchDailyCode = async () => {
+        try {
+          const todayStr = new Date().toISOString().split('T')[0];
 
-        // Removemos o filtro de data rigoroso via string para evitar bugs de fuso horário (UTC vs GMT-3)
-        // e simplesmente ordenamos para capturar a chave de acesso mais recente gerada pelo professor.
-        const { data, error } = await supabase
-          .from('daily_codes')
-          .select('code')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+          // Removemos o filtro de data rigoroso via string para evitar bugs de fuso horário (UTC vs GMT-3)
+          // e simplesmente ordenamos para capturar a chave de acesso mais recente gerada pelo professor.
+          const { data, error } = await supabase
+            .from('daily_codes')
+            .select('code')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
-        if (error) {
-          console.error('Erro ao buscar o código diário:', error);
-          return;
+          if (error) {
+            console.error('Erro ao buscar o código diário:', error);
+            return;
+          }
+
+          if (data?.code) {
+            setStudentCode(data.code);
+          }
+        } catch (err) {
+          console.error('Falha inesperada ao buscar código:', err);
         }
+      };
 
-        if (data?.code) {
-          setStudentCode(data.code);
-        }
-      } catch (err) {
-        console.error('Falha inesperada ao buscar código:', err);
-      }
-    };
-
-    fetchDailyCode();
+      fetchDailyCode();
+    } catch (err) {
+      console.warn('Silent error in fetchDailyCode useEffect:', err);
+    }
   }, []);
 
   useEffect(() => {
-    // Única consulta de sincronia ao banco de dados local na inicialização
-    const savedExpiration = localStorage.getItem('bit_expiration_time');
-    if (savedExpiration) {
-      const expirationTime = parseInt(savedExpiration, 10);
-      const remainingMs = expirationTime - Date.now();
-      if (remainingMs > 0) {
-        setTerminoFixo(performance.now() + remainingMs);
-        setAlreadyParticipated(true);
-      } else {
-        localStorage.removeItem('bit_expiration_time');
-      }
-    } else {
-      // Fallback para manter compatibilidade com usuários que possuam o localStorage antigo
-      const today = new Date().toDateString();
-      if (localStorage.getItem('bit_participacao_concluida') === today) {
-        const agora = new Date();
-        const meiaNoite = new Date();
-        meiaNoite.setHours(23, 59, 59, 999);
-        const remainingMs = meiaNoite.getTime() - agora.getTime();
+    try {
+      // Única consulta de sincronia ao banco de dados local na inicialização
+      const savedExpiration = localStorage.getItem('bit_expiration_time');
+      if (savedExpiration) {
+        const expirationTime = parseInt(savedExpiration, 10);
+        const remainingMs = expirationTime - Date.now();
         if (remainingMs > 0) {
           setTerminoFixo(performance.now() + remainingMs);
           setAlreadyParticipated(true);
-          localStorage.setItem('bit_expiration_time', (Date.now() + remainingMs).toString());
+        } else {
+          localStorage.removeItem('bit_expiration_time');
+        }
+      } else {
+        // Fallback para manter compatibilidade com usuários que possuam o localStorage antigo
+        const today = new Date().toDateString();
+        if (localStorage.getItem('bit_participacao_concluida') === today) {
+          const agora = new Date();
+          const meiaNoite = new Date();
+          meiaNoite.setHours(23, 59, 59, 999);
+          const remainingMs = meiaNoite.getTime() - agora.getTime();
+          if (remainingMs > 0) {
+            setTerminoFixo(performance.now() + remainingMs);
+            setAlreadyParticipated(true);
+            localStorage.setItem('bit_expiration_time', (Date.now() + remainingMs).toString());
+          }
         }
       }
+    } catch (err) {
+      console.warn('Silent error in sync expiration useEffect:', err);
     }
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsGracePeriod(false);
-    }, 10000);
-    return () => clearTimeout(timer);
+    try {
+      const timer = setTimeout(() => {
+        setIsGracePeriod(false);
+      }, 10000);
+      return () => clearTimeout(timer);
+    } catch (err) {
+      console.warn('Silent error in grace period useEffect:', err);
+    }
   }, []);
 
   useEffect(() => {
-    if (!alreadyParticipated || terminoFixo === null) {
-      setTempoRestante('');
-      return;
-    }
-
-    const atualizarCronometro = () => {
-      // Subtrai o tempo de execução atual do ponto de término fixo (alta performance, imune a mudanças de data/hora do SO durante o uso)
-      const agoraPerf = performance.now();
-      const diferenca = terminoFixo - agoraPerf;
-
-      if (diferenca > 0) {
-        const horas = Math.floor((diferenca / (1000 * 60 * 60)) % 24);
-        const minutos = Math.floor((diferenca / 1000 / 60) % 60);
-        const segundos = Math.floor((diferenca / 1000) % 60);
-
-        setTempoRestante(
-          `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`
-        );
-      } else {
-        setTempoRestante('00:00:00');
-        localStorage.removeItem('bit_expiration_time');
-        localStorage.removeItem('bit_participacao_concluida');
-        setAlreadyParticipated(false);
-        setTerminoFixo(null);
+    try {
+      if (!alreadyParticipated || terminoFixo === null) {
+        setTempoRestante('');
+        return;
       }
-    };
 
-    atualizarCronometro(); // Atualiza o visual imediatamente
-    const timer = setInterval(atualizarCronometro, 1000); // Otimizado: atualiza estritamente uma vez por segundo
+      const atualizarCronometro = () => {
+        // Subtrai o tempo de execução atual do ponto de término fixo (alta performance, imune a mudanças de data/hora do SO durante o uso)
+        const agoraPerf = performance.now();
+        const diferenca = terminoFixo - agoraPerf;
 
-    // Limpa o lixo de memória ao desmontar o componente
-    return () => clearInterval(timer);
+        if (diferenca > 0) {
+          const horas = Math.floor((diferenca / (1000 * 60 * 60)) % 24);
+          const minutos = Math.floor((diferenca / 1000 / 60) % 60);
+          const segundos = Math.floor((diferenca / 1000) % 60);
+
+          setTempoRestante(
+            `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`
+          );
+        } else {
+          setTempoRestante('00:00:00');
+          localStorage.removeItem('bit_expiration_time');
+          localStorage.removeItem('bit_participacao_concluida');
+          setAlreadyParticipated(false);
+          setTerminoFixo(null);
+        }
+      };
+
+      atualizarCronometro(); // Atualiza o visual imediatamente
+      const timer = setInterval(atualizarCronometro, 1000); // Otimizado: atualiza estritamente uma vez por segundo
+
+      // Limpa o lixo de memória ao desmontar o componente
+      return () => clearInterval(timer);
+    } catch (err) {
+      console.warn('Silent error in cronometro useEffect:', err);
+    }
   }, [alreadyParticipated, terminoFixo]);
 
   const capturePhoto = useCallback(() => {
@@ -249,23 +273,32 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
 
       setSubmissionState('processando');
       try {
-        // Converte base64 para Blob para envio multipart/form-data
-        const base64Data = photo.split(',')[1];
-        const contentType = photo.split(',')[0].split(':')[1].split(';')[0];
-        const byteCharacters = atob(base64Data);
-        const byteArrays = [];
+        const base64ToBlobAsync = async (base64Str: string): Promise<Blob> => {
+          return new Promise((resolve, reject) => {
+            try {
+              const base64Data = base64Str.split(',')[1];
+              const contentType = base64Str.split(',')[0].split(':')[1].split(';')[0];
+              const byteCharacters = atob(base64Data);
+              const byteArrays = [];
 
-        for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-          const slice = byteCharacters.slice(offset, offset + 512);
-          const byteNumbers = new Array(slice.length);
-          for (let i = 0; i < slice.length; i++) {
-            byteNumbers[i] = slice.charCodeAt(i);
-          }
-          const byteArray = new Uint8Array(byteNumbers);
-          byteArrays.push(byteArray);
-        }
-        
-        const blob = new Blob(byteArrays, { type: contentType });
+              for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+                const slice = byteCharacters.slice(offset, offset + 512);
+                const byteNumbers = new Array(slice.length);
+                for (let i = 0; i < slice.length; i++) {
+                  byteNumbers[i] = slice.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                byteArrays.push(byteArray);
+              }
+              
+              resolve(new Blob(byteArrays, { type: contentType }));
+            } catch (e) {
+              reject(e);
+            }
+          });
+        };
+
+        const blob = await base64ToBlobAsync(photo);
 
         const formData = new FormData();
         formData.append('nome', name.trim());
