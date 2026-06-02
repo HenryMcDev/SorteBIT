@@ -37,6 +37,7 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [errorType, setErrorType] = useState<string | null>(null);
   const [photoValidationError, setPhotoValidationError] = useState<string | null>(null);
+  const [debugError, setDebugError] = useState<string | null>(null);
   const [tentativasRestantes, setTentativasRestantes] = useState(3);
   const [tentativasCodigo, setTentativasCodigo] = useState(3);
   const [generatedTicket, setGeneratedTicket] = useState<string | null>(null);
@@ -240,6 +241,7 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
 
     setSubmissionState('enviando');
     setPhotoValidationError(null); // Limpa alertas anteriores
+    setDebugError(null);
 
     try {
       let isSuccess = false;
@@ -247,7 +249,6 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
 
       setSubmissionState('processando');
       try {
-        // Envolvemos toda a lógica de serialização e fetch em um try-catch robusto
         const payload = JSON.stringify({
           nome: name.trim(),
           codigo: studentCode.trim(),
@@ -257,16 +258,36 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token || '';
 
-        const webhookResponse = await fetch(`${getBackendUrl()}/api/sorteio`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: payload,
-        });
+        let webhookResponse: Response;
+        try {
+          webhookResponse = await fetch(`${getBackendUrl()}/api/sorteio`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: payload,
+          });
+        } catch (fetchErr: any) {
+          console.error("Fetch error:", fetchErr);
+          const fetchErrName = fetchErr?.name || 'FetchError';
+          const fetchErrMsg = fetchErr?.message || String(fetchErr);
+          setDebugError(`Exceção: ${fetchErrName}\nMensagem Interna: ${fetchErrMsg}\nStatus HTTP: N/A (Falha de DNS ou CORS)`);
+          setSubmissionState('erro');
+          return;
+        }
 
-        const responseData = await webhookResponse.json();
+        let responseData;
+        try {
+          responseData = await webhookResponse.json();
+        } catch (jsonErr: any) {
+          console.error("JSON parse error:", jsonErr);
+          const jsonErrName = jsonErr?.name || 'ParseError';
+          const jsonErrMsg = jsonErr?.message || String(jsonErr);
+          setDebugError(`Exceção: ${jsonErrName}\nMensagem Interna: ${jsonErrMsg}\nStatus HTTP: ${webhookResponse.status}`);
+          setSubmissionState('erro');
+          return;
+        }
 
         if (responseData.sucesso === true) {
           isSuccess = true;
@@ -361,9 +382,10 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
           return;
         }
       } catch (error: any) {
-        console.error("Webhook error:", error);
-        // Atualiza estado de erro ao invés de manipular o DOM
-        setPhotoValidationError("Não foi possível conectar ao servidor. Verifique sua internet ou tente novamente mais tarde.");
+        console.error("Unknown Webhook logic error:", error);
+        const errName = error?.name || 'Erro Desconhecido';
+        const errMsg = error?.message || String(error);
+        setDebugError(`Exceção: ${errName}\nMensagem Interna: ${errMsg}\nStatus HTTP: Indeterminado`);
         setSubmissionState('erro');
         return;
       }
@@ -659,6 +681,26 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
                           style={{ width: `${locationProgress}%` }}
                         ></div>
                       </div>
+                    </div>
+                  )}
+
+                  {debugError && (
+                    <div className="bg-zinc-950 border-2 border-red-900 rounded-xl p-4 shadow-sm animate-in fade-in slide-in-from-top-2 overflow-auto text-left">
+                      <div className="flex gap-2 items-center mb-2">
+                        <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
+                        <h4 className="font-bold text-red-500 text-sm">Rastreamento Técnico</h4>
+                      </div>
+                      <pre className="text-red-400 text-xs font-mono whitespace-pre-wrap break-words">{debugError}</pre>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDebugError(null);
+                          setSubmissionState('idle');
+                        }}
+                        className="mt-3 w-full bg-red-900/50 hover:bg-red-900 text-red-200 text-sm font-bold py-2 rounded-lg transition-colors"
+                      >
+                        Fechar Depuração
+                      </button>
                     </div>
                   )}
 
