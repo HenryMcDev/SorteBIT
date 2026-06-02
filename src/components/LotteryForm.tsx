@@ -13,6 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
+import { getBackendUrl } from '@/utils/backendUrl';
 
 
 interface StudentUser {
@@ -253,10 +254,14 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
           fotoBase64: photo,
         });
 
-        const webhookResponse = await fetch('https://bitn8n.infinityflowapp.com/webhook/sortebit', {
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token || '';
+
+        const webhookResponse = await fetch(`${getBackendUrl()}/api/sorteio`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
           },
           body: payload,
         });

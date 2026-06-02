@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { getBackendUrl } from '@/utils/backendUrl';
 
 interface AdminUser {
   id: string;
@@ -10,7 +11,7 @@ interface AdminUser {
 }
 
 const STORAGE_KEY = 'school_admin_session';
-const WEBHOOK_URL = 'https://bitn8n.infinityflowapp.com/webhook/admin-sortebit';
+const WEBHOOK_URL = `${getBackendUrl()}/api/admin/register`;
 
 export const useAdmAuth = () => {
   const [adminUser, setAdminUser] = useState<AdminUser | null>(() => {

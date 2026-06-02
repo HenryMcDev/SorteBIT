@@ -29,7 +29,7 @@ const ClassCodeManager = () => {
         dateStyle: 'short',
         timeStyle: 'short'
       }).format(d);
-      
+
       return formatted.replace(/,?\s+/, ' às ');
     } catch {
       return dateString;
@@ -53,9 +53,9 @@ const ClassCodeManager = () => {
       const isFromToday = (dateString: string) => {
         const date = new Date(dateString.replace(/(Z|[+-]\d{2}(?::?\d{2})?)$/, ''));
         const today = new Date();
-        return date.getDate() === today.getDate() && 
-               date.getMonth() === today.getMonth() && 
-               date.getFullYear() === today.getFullYear();
+        return date.getDate() === today.getDate() &&
+          date.getMonth() === today.getMonth() &&
+          date.getFullYear() === today.getFullYear();
       };
 
       if (!latestCode || !isFromToday(latestCode.created_at)) {
@@ -64,7 +64,7 @@ const ClassCodeManager = () => {
         for (let i = 0; i < 6; i++) {
           newCode += chars.charAt(Math.floor(Math.random() * chars.length));
         }
-        
+
         const { data: newCodeData, error: insertError } = await supabase
           .from('daily_codes')
           .insert({ code: newCode })

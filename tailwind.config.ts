@@ -135,6 +135,12 @@ export default {
 				marquee: {
 					'0%': { transform: 'translateX(0%)' },
 					'100%': { transform: 'translateX(-100%)' }
+				},
+				floatBalloons: {
+					'0%': { transform: 'translateY(100vh)', opacity: '0' },
+					'10%': { opacity: '0.8' },
+					'90%': { opacity: '0.8' },
+					'100%': { transform: 'translateY(-120vh)', opacity: '0' }
 				}
 			},
 			animation: {
@@ -142,7 +148,8 @@ export default {
 				'accordion-up': 'accordion-up 0.2s ease-out',
 				'bounce-in': 'bounce-in 0.6s ease-out',
 				'pulse-subtle': 'pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-				marquee: 'marquee 30s linear infinite'
+				marquee: 'marquee 30s linear infinite',
+				floatBalloons: 'floatBalloons 5s linear infinite'
 			}
 		}
 	},

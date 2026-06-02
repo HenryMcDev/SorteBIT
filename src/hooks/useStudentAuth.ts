@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { isValidCPF } from '@/utils/cpfValidator';
+import { getBackendUrl } from '../utils/backendUrl';
 
 interface StudentUser {
   id: string;
@@ -13,7 +14,7 @@ interface StudentUser {
 }
 
 const STORAGE_KEY = 'bit_student_session';
-const WEBHOOK_URL = 'https://bitn8n.infinityflowapp.com/webhook/student-sortebit';
+const WEBHOOK_URL = `${getBackendUrl()}/api/student/register`;
 
 export const useStudentAuth = () => {
   const [studentUser, setStudentUser] = useState<StudentUser | null>(() => {
@@ -185,12 +186,25 @@ export const useStudentAuth = () => {
     try {
       const cleanCpf = cpf.replace(/\D/g, '');
 
-      const resposta = await axios.post(WEBHOOK_URL, {
-        Ação: 'Registro',
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+
+      if (!token) {
+        toast({ title: 'Acesso negado', description: 'Sessão inválida. Por favor, faça login novamente.', variant: 'destructive' });
+        return false;
+      }
+
+      const resposta = await axios.post(`${getBackendUrl()}/api/student/register`, {
+        acao: 'Registro',
         nome: name.trim(),
         cpf: cleanCpf,
         email: email.trim().toLowerCase(),
         senha: password,
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
       });
 
       if (resposta.data?.status && !String(resposta.data.status).toLowerCase().includes('error')) {
