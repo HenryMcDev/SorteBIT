@@ -13,7 +13,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
-// import { getBackendUrl } from '../utils/backendUrl';
 
 
 interface StudentUser {
@@ -37,7 +36,6 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [errorType, setErrorType] = useState<string | null>(null);
   const [photoValidationError, setPhotoValidationError] = useState<string | null>(null);
-  const [debugError, setDebugError] = useState<string | null>(null);
   const [tentativasRestantes, setTentativasRestantes] = useState(3);
   const [tentativasCodigo, setTentativasCodigo] = useState(3);
   const [generatedTicket, setGeneratedTicket] = useState<string | null>(null);
@@ -55,12 +53,8 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    try {
-      if (studentUser && studentUser.termos_aceitos === false) {
-        setIsTermsOpen(true);
-      }
-    } catch (err) {
-      console.warn('Silent error in terms useEffect:', err);
+    if (studentUser && studentUser.termos_aceitos === false) {
+      setIsTermsOpen(true);
     }
   }, [studentUser?.termos_aceitos]);
 
@@ -91,130 +85,110 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
   };
 
   useEffect(() => {
-    try {
-      if (studentUser?.name) {
-        setName(studentUser.name);
-      }
-    } catch (err) {
-      console.warn('Silent error in name useEffect:', err);
+    if (studentUser?.name) {
+      setName(studentUser.name);
     }
   }, [studentUser?.name]);
 
   useEffect(() => {
-    try {
-      const fetchDailyCode = async () => {
-        try {
-          const todayStr = new Date().toISOString().split('T')[0];
+    const fetchDailyCode = async () => {
+      try {
+        const todayStr = new Date().toISOString().split('T')[0];
 
-          // Removemos o filtro de data rigoroso via string para evitar bugs de fuso horário (UTC vs GMT-3)
-          // e simplesmente ordenamos para capturar a chave de acesso mais recente gerada pelo professor.
-          const { data, error } = await supabase
-            .from('daily_codes')
-            .select('code')
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+        // Removemos o filtro de data rigoroso via string para evitar bugs de fuso horário (UTC vs GMT-3)
+        // e simplesmente ordenamos para capturar a chave de acesso mais recente gerada pelo professor.
+        const { data, error } = await supabase
+          .from('daily_codes')
+          .select('code')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-          if (error) {
-            console.error('Erro ao buscar o código diário:', error);
-            return;
-          }
-
-          if (data?.code) {
-            setStudentCode(data.code);
-          }
-        } catch (err) {
-          console.error('Falha inesperada ao buscar código:', err);
+        if (error) {
+          console.error('Erro ao buscar o código diário:', error);
+          return;
         }
-      };
 
-      fetchDailyCode();
-    } catch (err) {
-      console.warn('Silent error in fetchDailyCode useEffect:', err);
-    }
+        if (data?.code) {
+          setStudentCode(data.code);
+        }
+      } catch (err) {
+        console.error('Falha inesperada ao buscar código:', err);
+      }
+    };
+
+    fetchDailyCode();
   }, []);
 
   useEffect(() => {
-    try {
-      // Única consulta de sincronia ao banco de dados local na inicialização
-      const savedExpiration = localStorage.getItem('bit_expiration_time');
-      if (savedExpiration) {
-        const expirationTime = parseInt(savedExpiration, 10);
-        const remainingMs = expirationTime - Date.now();
+    // Única consulta de sincronia ao banco de dados local na inicialização
+    const savedExpiration = localStorage.getItem('bit_expiration_time');
+    if (savedExpiration) {
+      const expirationTime = parseInt(savedExpiration, 10);
+      const remainingMs = expirationTime - Date.now();
+      if (remainingMs > 0) {
+        setTerminoFixo(performance.now() + remainingMs);
+        setAlreadyParticipated(true);
+      } else {
+        localStorage.removeItem('bit_expiration_time');
+      }
+    } else {
+      // Fallback para manter compatibilidade com usuários que possuam o localStorage antigo
+      const today = new Date().toDateString();
+      if (localStorage.getItem('bit_participacao_concluida') === today) {
+        const agora = new Date();
+        const meiaNoite = new Date();
+        meiaNoite.setHours(23, 59, 59, 999);
+        const remainingMs = meiaNoite.getTime() - agora.getTime();
         if (remainingMs > 0) {
           setTerminoFixo(performance.now() + remainingMs);
           setAlreadyParticipated(true);
-        } else {
-          localStorage.removeItem('bit_expiration_time');
+          localStorage.setItem('bit_expiration_time', (Date.now() + remainingMs).toString());
         }
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsGracePeriod(false);
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!alreadyParticipated || terminoFixo === null) {
+      setTempoRestante('');
+      return;
+    }
+
+    const atualizarCronometro = () => {
+      // Subtrai o tempo de execução atual do ponto de término fixo (alta performance, imune a mudanças de data/hora do SO durante o uso)
+      const agoraPerf = performance.now();
+      const diferenca = terminoFixo - agoraPerf;
+
+      if (diferenca > 0) {
+        const horas = Math.floor((diferenca / (1000 * 60 * 60)) % 24);
+        const minutos = Math.floor((diferenca / 1000 / 60) % 60);
+        const segundos = Math.floor((diferenca / 1000) % 60);
+
+        setTempoRestante(
+          `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`
+        );
       } else {
-        // Fallback para manter compatibilidade com usuários que possuam o localStorage antigo
-        const today = new Date().toDateString();
-        if (localStorage.getItem('bit_participacao_concluida') === today) {
-          const agora = new Date();
-          const meiaNoite = new Date();
-          meiaNoite.setHours(23, 59, 59, 999);
-          const remainingMs = meiaNoite.getTime() - agora.getTime();
-          if (remainingMs > 0) {
-            setTerminoFixo(performance.now() + remainingMs);
-            setAlreadyParticipated(true);
-            localStorage.setItem('bit_expiration_time', (Date.now() + remainingMs).toString());
-          }
-        }
+        setTempoRestante('00:00:00');
+        localStorage.removeItem('bit_expiration_time');
+        localStorage.removeItem('bit_participacao_concluida');
+        setAlreadyParticipated(false);
+        setTerminoFixo(null);
       }
-    } catch (err) {
-      console.warn('Silent error in sync expiration useEffect:', err);
-    }
-  }, []);
+    };
 
-  useEffect(() => {
-    try {
-      const timer = setTimeout(() => {
-        setIsGracePeriod(false);
-      }, 10000);
-      return () => clearTimeout(timer);
-    } catch (err) {
-      console.warn('Silent error in grace period useEffect:', err);
-    }
-  }, []);
+    atualizarCronometro(); // Atualiza o visual imediatamente
+    const timer = setInterval(atualizarCronometro, 1000); // Otimizado: atualiza estritamente uma vez por segundo
 
-  useEffect(() => {
-    try {
-      if (!alreadyParticipated || terminoFixo === null) {
-        setTempoRestante('');
-        return;
-      }
-
-      const atualizarCronometro = () => {
-        // Subtrai o tempo de execução atual do ponto de término fixo (alta performance, imune a mudanças de data/hora do SO durante o uso)
-        const agoraPerf = performance.now();
-        const diferenca = terminoFixo - agoraPerf;
-
-        if (diferenca > 0) {
-          const horas = Math.floor((diferenca / (1000 * 60 * 60)) % 24);
-          const minutos = Math.floor((diferenca / 1000 / 60) % 60);
-          const segundos = Math.floor((diferenca / 1000) % 60);
-
-          setTempoRestante(
-            `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`
-          );
-        } else {
-          setTempoRestante('00:00:00');
-          localStorage.removeItem('bit_expiration_time');
-          localStorage.removeItem('bit_participacao_concluida');
-          setAlreadyParticipated(false);
-          setTerminoFixo(null);
-        }
-      };
-
-      atualizarCronometro(); // Atualiza o visual imediatamente
-      const timer = setInterval(atualizarCronometro, 1000); // Otimizado: atualiza estritamente uma vez por segundo
-
-      // Limpa o lixo de memória ao desmontar o componente
-      return () => clearInterval(timer);
-    } catch (err) {
-      console.warn('Silent error in cronometro useEffect:', err);
-    }
+    // Limpa o lixo de memória ao desmontar o componente
+    return () => clearInterval(timer);
   }, [alreadyParticipated, terminoFixo]);
 
   const capturePhoto = useCallback(() => {
@@ -244,8 +218,6 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
     setPhone(formatted);
   };
 
-  const BACKEND_URL = 'https://api.infinityflowapp.com';
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -267,7 +239,6 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
 
     setSubmissionState('enviando');
     setPhotoValidationError(null); // Limpa alertas anteriores
-    setDebugError(null);
 
     try {
       let isSuccess = false;
@@ -275,70 +246,22 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
 
       setSubmissionState('processando');
       try {
-        const base64ToBlobAsync = async (base64Str: string): Promise<Blob> => {
-          return new Promise((resolve, reject) => {
-            try {
-              const base64Data = base64Str.split(',')[1];
-              const contentType = base64Str.split(',')[0].split(':')[1].split(';')[0];
-              const byteCharacters = atob(base64Data);
-              const byteArrays = [];
+        // Envolvemos toda a lógica de serialização e fetch em um try-catch robusto
+        const payload = JSON.stringify({
+          nome: name.trim(),
+          codigo: studentCode.trim(),
+          fotoBase64: photo,
+        });
 
-              for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-                const slice = byteCharacters.slice(offset, offset + 512);
-                const byteNumbers = new Array(slice.length);
-                for (let i = 0; i < slice.length; i++) {
-                  byteNumbers[i] = slice.charCodeAt(i);
-                }
-                const byteArray = new Uint8Array(byteNumbers);
-                byteArrays.push(byteArray);
-              }
-              
-              resolve(new Blob(byteArrays, { type: contentType }));
-            } catch (e) {
-              reject(e);
-            }
-          });
-        };
+        const webhookResponse = await fetch('https://bitn8n.infinityflowapp.com/webhook/sortebit', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: payload,
+        });
 
-        const blob = await base64ToBlobAsync(photo);
-
-        const formData = new FormData();
-        formData.append('nome', name.trim());
-        formData.append('codigo', studentCode.trim());
-        formData.append('foto', blob, 'selfie.jpg');
-
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token || '';
-
-        let webhookResponse: Response;
-        try {
-          webhookResponse = await fetch(`${BACKEND_URL}/api/produto`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-            body: formData,
-          });
-        } catch (fetchErr: any) {
-          console.error("Fetch error:", fetchErr);
-          const fetchErrName = fetchErr?.name || 'FetchError';
-          const fetchErrMsg = fetchErr?.message || String(fetchErr);
-          setDebugError(`Exceção: ${fetchErrName}\nMensagem Interna: ${fetchErrMsg}\nStatus HTTP: N/A (Falha de DNS ou CORS)`);
-          setSubmissionState('erro');
-          return;
-        }
-
-        let responseData;
-        try {
-          responseData = await webhookResponse.json();
-        } catch (jsonErr: any) {
-          console.error("JSON parse error:", jsonErr);
-          const jsonErrName = jsonErr?.name || 'ParseError';
-          const jsonErrMsg = jsonErr?.message || String(jsonErr);
-          setDebugError(`Exceção: ${jsonErrName}\nMensagem Interna: ${jsonErrMsg}\nStatus HTTP: ${webhookResponse.status}`);
-          setSubmissionState('erro');
-          return;
-        }
+        const responseData = await webhookResponse.json();
 
         if (responseData.sucesso === true) {
           isSuccess = true;
@@ -433,10 +356,9 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
           return;
         }
       } catch (error: any) {
-        console.error("Unknown Webhook logic error:", error);
-        const errName = error?.name || 'Erro Desconhecido';
-        const errMsg = error?.message || String(error);
-        setDebugError(`Exceção: ${errName}\nMensagem Interna: ${errMsg}\nStatus HTTP: Indeterminado`);
+        console.error("Webhook error:", error);
+        // Atualiza estado de erro ao invés de manipular o DOM
+        setPhotoValidationError("Não foi possível conectar ao servidor. Verifique sua internet ou tente novamente mais tarde.");
         setSubmissionState('erro');
         return;
       }
@@ -732,26 +654,6 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
                           style={{ width: `${locationProgress}%` }}
                         ></div>
                       </div>
-                    </div>
-                  )}
-
-                  {debugError && (
-                    <div className="bg-zinc-950 border-2 border-red-900 rounded-xl p-4 shadow-sm animate-in fade-in slide-in-from-top-2 overflow-auto text-left">
-                      <div className="flex gap-2 items-center mb-2">
-                        <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
-                        <h4 className="font-bold text-red-500 text-sm">Rastreamento Técnico</h4>
-                      </div>
-                      <pre className="text-red-400 text-xs font-mono whitespace-pre-wrap break-words">{debugError}</pre>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDebugError(null);
-                          setSubmissionState('idle');
-                        }}
-                        className="mt-3 w-full bg-red-900/50 hover:bg-red-900 text-red-200 text-sm font-bold py-2 rounded-lg transition-colors"
-                      >
-                        Fechar Depuração
-                      </button>
                     </div>
                   )}
 
