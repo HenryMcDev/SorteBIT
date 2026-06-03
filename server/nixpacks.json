@@ -1,0 +1,19 @@
+{
+    "phases": {
+        "setup": {
+            "pkgs": [
+                "nodejs",
+                "typescript"
+            ]
+        },
+        "build": {
+            "cmds": [
+                "npm ci",
+                "npx tsc"
+            ]
+        }
+    },
+    "start": {
+        "cmd": "node dist/index.js"
+    }
+}

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Eye, EyeOff, Loader2, CheckCircle2, XCircle, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Link, useNavigate } from 'react-router-dom';
-import { getBackendUrl } from '../utils/backendUrl';
 
 type SubmissionState = 'idle' | 'submitting' | 'success' | 'error';
 
@@ -34,8 +33,6 @@ const AdminRegister = () => {
   const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCpf(formatCPF(e.target.value));
   };
-
-  const WEBHOOK_URL = `${getBackendUrl()}/api/admin/register`;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,18 +76,14 @@ const AdminRegister = () => {
 
     setSubmissionState('submitting');
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30_000); // 30s timeout
-
     try {
       const response = await fetch(
-        WEBHOOK_URL,
+        'https://bitn8n.infinityflowapp.com/webhook/admin-sortebit',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          signal: controller.signal,
           body: JSON.stringify({
-            acao: 'cadastro_adm',
+            Ação: 'cadastro_adm',
             nome: fullName.trim(),
             cpf: cpf.replace(/\D/g, ''),
             email: email.trim().toLowerCase(),
@@ -122,19 +115,14 @@ const AdminRegister = () => {
         });
         setTimeout(() => setSubmissionState('idle'), 3000);
       }
-    } catch (err: unknown) {
-      const isAbort = err instanceof Error && err.name === 'AbortError';
+    } catch {
       setSubmissionState('error');
       toast({
-        title: isAbort ? 'Operação expirou' : 'Erro de conexão',
-        description: isAbort
-          ? 'A operação demorou mais que o esperado. Por favor, tente novamente.'
-          : 'Verifique sua conexão com a internet e tente novamente.',
+        title: 'Erro de conexão',
+        description: 'Verifique sua conexão com a internet e tente novamente.',
         variant: 'destructive',
       });
       setTimeout(() => setSubmissionState('idle'), 3000);
-    } finally {
-      clearTimeout(timeoutId);
     }
   };
 

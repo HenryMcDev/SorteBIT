@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dice1, Crown, Lock, Key, LogOut, Eye, EyeOff, Loader2, CheckCircle2, XCircle, ShieldCheck, Copy, CheckCheck, RefreshCw, MessageSquareWarning, Gift, User, Home, Users } from 'lucide-react';
@@ -10,7 +10,6 @@ import Participantes from '@/components/Participantes';
 import FeedbackModeration from '@/components/FeedbackModeration';
 import CadastroPremios from '@/components/CadastroPremios';
 import { Link } from 'react-router-dom';
-import { getBackendUrl } from '@/utils/backendUrl';
 
 const formatCPF = (value: string) => {
   const digits = value.replace(/\D/g, '').slice(0, 11);
@@ -201,7 +200,7 @@ const Admin = () => {
     await handleForgotSubmit(fakeEvent);
   };
 
-  const WEBHOOK_URL = 'https://bia-sortebit-backend.welzyz.easypanel.host/api/admin/register';
+  const WEBHOOK_URL = 'https://bitn8n.infinityflowapp.com/webhook/admin-sortebit';
 
   const handleLoginSubmit = async () => {
     if (!loginUsername.trim() || !loginPassword.trim()) {
@@ -243,21 +242,9 @@ const Admin = () => {
     const timeoutId = setTimeout(() => controller.abort(), 30_000); // 30s — período seguro de espera
 
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-
-      if (!token) {
-        toast({ title: 'Acesso negado', description: 'Sessão inválida. Por favor, faça login novamente.', variant: 'destructive' });
-        setRegState('idle');
-        return;
-      }
-
       const response = await fetch(WEBHOOK_URL, {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
         body: JSON.stringify({
           Ação: 'Registro',
@@ -476,8 +463,7 @@ const Admin = () => {
                           <input id="regCode" type="text" autoComplete="off" placeholder="Codigo" value={regCode} onChange={(e) => setRegCode(e.target.value.toUpperCase())} disabled={regState === 'submitting'} maxLength={8} className="w-full h-12 rounded-xl bg-zinc-900 border border-zinc-700 px-4 text-white placeholder-zinc-500 text-sm font-mono tracking-widest transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" />
                         </div>
                         <button
-                          type="button"
-                          onClick={handleRegisterSubmit}
+                          type="submit"
                           disabled={regState === 'submitting'}
                           className="mt-2 w-full h-12 rounded-xl font-semibold text-sm text-white flex items-center justify-center transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed hover:opacity-90 active:scale-[0.98]"
                           style={{ background: 'linear-gradient(135deg, #2563eb, #4f46e5)', boxShadow: '0 0 24px rgba(59,130,246,0.25)' }}

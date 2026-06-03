@@ -6,7 +6,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { getBackendUrl } from '@/utils/backendUrl';
 import { Gift, Save, Loader2, Image as ImageIcon, X, Pencil } from 'lucide-react';
 import ListaPremios from './ListaPremios';
 
@@ -98,15 +97,9 @@ const CadastroPremios = () => {
       if (fotoArquivo) {
         formData.append('foto', fotoArquivo);
       }
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token || '';
-      const backendUrl = getBackendUrl();
 
-      const response = await fetch(`${backendUrl}/api/produto`, {
+      const response = await fetch('https://bitn8n.infinityflowapp.com/webhook/produto', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
         body: formData,
       });
 
