@@ -4,10 +4,27 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { isValidCPF } from '@/utils/cpfValidator';
 
+// ── Validação de complexidade de senha ───────────────────────────────────────
+export interface PasswordStrength {
+  valid: boolean;
+  errors: string[];
+}
+
+export const validatePasswordStrength = (password: string): PasswordStrength => {
+  const errors: string[] = [];
+  if (password.length < 8) errors.push('Mínimo de 8 caracteres');
+  if (!/[A-Z]/.test(password)) errors.push('Pelo menos uma letra maiúscula');
+  if (!/[a-z]/.test(password)) errors.push('Pelo menos uma letra minúscula');
+  if (!/[0-9]/.test(password)) errors.push('Pelo menos um número');
+  if (!/[^A-Za-z0-9]/.test(password)) errors.push('Pelo menos um caractere especial (!@#$%)');
+  return { valid: errors.length === 0, errors };
+};
+
 interface StudentUser {
   id: string;
   name: string;
-  cpf: string;
+  // CPF não é salvo em localStorage — buscado via sessão do Supabase Auth quando necessário
+  cpf?: string;
   termos_aceitos?: boolean;
   bitcash?: number;
 }
@@ -74,24 +91,22 @@ export const useStudentAuth = () => {
     let isMounted = true;
 
     const fetchRealName = async () => {
-      if (!studentUser?.cpf) return;
+      if (!studentUser?.id) return;
 
       try {
-        // Alterado de 'nome' para 'nome_completo' para bater com o banco de dados e adicionado 'bitcash'
+        // Busca usando id do estudante para evitar vazamento de CPF
         const { data, error } = await supabase
           .from('estudantes' as any)
           .select('nome_completo, termos_aceitos, bitcash')
-          .eq('cpf', studentUser.cpf)
+          .eq('id', studentUser.id)
           .maybeSingle();
 
         if (error) throw error;
         
         const result = data as any;
         
-        // Ajustado para ler a propriedade correta do resultado da consulta
         if (result && isMounted) {
           const updatedName = result.nome_completo || studentUser.name;
-          // Atualizamos apenas se houve mudança no nome, termos ou bitcash
           if (updatedName !== studentUser.name || result.termos_aceitos !== studentUser.termos_aceitos || result.bitcash !== studentUser.bitcash) {
             setStudentUser(prev => prev ? { ...prev, name: updatedName, termos_aceitos: result.termos_aceitos, bitcash: result.bitcash } : null);
           }
@@ -106,7 +121,7 @@ export const useStudentAuth = () => {
     return () => {
       isMounted = false;
     };
-  }, [studentUser?.cpf]);
+  }, [studentUser?.id]);
 
   const login = async (identifier: string, password: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
@@ -138,7 +153,7 @@ export const useStudentAuth = () => {
       // 2. Consulta assíncrona na tabela estudantes após o login bem-sucedido
       const { data: estudante, error: fetchError } = await supabase
         .from('estudantes' as any)
-        .select('id, nome_completo, cpf')
+        .select('id, nome_completo')
         .eq('email', emailLower)
         .maybeSingle();
 
@@ -156,7 +171,6 @@ export const useStudentAuth = () => {
       const user: StudentUser = {
         id: (estudante as any).id || authData.user.id,
         name: (estudante as any).nome_completo || 'Aluno',
-        cpf: (estudante as any).cpf,
       };
       
       setStudentUser(user);
@@ -222,9 +236,15 @@ export const useStudentAuth = () => {
     }
   };
 
-  const logout = () => {
-    setStudentUser(null);
-    window.location.href = '/';
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // Ignora erros de rede no signOut — sessão local já será limpa
+    } finally {
+      setStudentUser(null);
+      window.location.href = '/';
+    }
   };
 
   return {

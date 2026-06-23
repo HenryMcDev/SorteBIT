@@ -20,7 +20,6 @@ interface Feedback {
 interface StudentUser {
   id: string;
   name: string;
-  cpf: string;
 }
 
 interface MuralProps {

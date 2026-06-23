@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -8,10 +8,27 @@ interface Teacher {
   isAdmin?: boolean;
 }
 
-// Credenciais fixas do administrador master
-const ADMIN_USERNAME = 'henrydev';
-const ADMIN_PASSWORD = '123321@';
 const STORAGE_KEY = 'school_teacher_session';
+
+// Rate limiting: máximo de 5 tentativas por 60 segundos por nome de usuário
+const loginAttempts = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_MAX = 5;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+
+function checkLoginRateLimit(username: string): { allowed: boolean; secondsLeft: number } {
+  const now = Date.now();
+  const key = username.toLowerCase().trim();
+  const entry = loginAttempts.get(key);
+  if (!entry || now > entry.resetAt) {
+    loginAttempts.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true, secondsLeft: 0 };
+  }
+  if (entry.count >= RATE_LIMIT_MAX) {
+    return { allowed: false, secondsLeft: Math.ceil((entry.resetAt - now) / 1000) };
+  }
+  entry.count++;
+  return { allowed: true, secondsLeft: 0 };
+}
 
 export const useTeacherAuth = () => {
   const [teacher, setTeacher] = useState<Teacher | null>(() => {
@@ -41,22 +58,18 @@ export const useTeacherAuth = () => {
     try {
       const trimmedName = name.trim();
 
-      // 1) Credencial fixa de administrador (acesso total, ignora geo/desktop)
-      if (trimmedName === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-        const adminTeacher: Teacher = {
-          id: 'admin-henrydev',
-          name: ADMIN_USERNAME,
-          isAdmin: true,
-        };
-        setTeacher(adminTeacher);
+      // ── Rate limiting ────────────────────────────────────────────────────
+      const { allowed, secondsLeft } = checkLoginRateLimit(trimmedName);
+      if (!allowed) {
         toast({
-          title: 'Sucesso',
-          description: 'Acesso administrativo concedido!',
+          title: 'Muitas tentativas',
+          description: `Aguarde ${secondsLeft} segundos antes de tentar novamente.`,
+          variant: 'destructive',
         });
-        return true;
+        return false;
       }
 
-      // 2) Professores cadastrados pelo admin
+      // ── Consulta à tabela teachers ───────────────────────────────────────
       const { data, error } = await supabase
         .from('teachers')
         .select('id, name, password_hash')

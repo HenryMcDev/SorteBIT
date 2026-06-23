@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Key, ShieldCheck, Lock, Loader2, EyeOff, Eye, XCircle, CheckCircle2 } from 'lucide-react';
+import { Key, ShieldCheck, Lock, Loader2, EyeOff, Eye, XCircle, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { validatePasswordStrength } from '@/hooks/useStudentAuth';
 
 const formatCPF = (value: string) => {
   const digits = value.replace(/\D/g, '').slice(0, 11);
@@ -182,6 +183,15 @@ const StudentAuth = ({ isLoading, login, register, cpfValue, cpfError, handleCPF
         toast({ title: 'Senha muito curta', description: 'A senha deve ter no mínimo 8 caracteres.', variant: 'destructive' });
         return;
       }
+      const pwStrength = validatePasswordStrength(regPassword);
+      if (!pwStrength.valid) {
+        toast({
+          title: 'Senha fraca',
+          description: pwStrength.errors.join(' • '),
+          variant: 'destructive',
+        });
+        return;
+      }
 
       setRegState('submitting');
 
@@ -334,11 +344,26 @@ const StudentAuth = ({ isLoading, login, register, cpfValue, cpfError, handleCPF
                     <div className="space-y-2">
                       <label htmlFor="regPassword" className="block text-sm font-medium text-school-blue-700 dark:text-zinc-300">Senha <span className="text-red-500">*</span></label>
                       <div className="relative">
-                        <input id="regPassword" type={showRegPassword ? 'text' : 'password'} autoComplete="new-password" placeholder="Mínimo 8 caracteres" value={regPassword} onChange={(e) => setRegPassword(e.target.value || '')} disabled={regState === 'submitting'} className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 px-4 pr-12 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-school-blue-500/50 focus:border-school-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" />
+                        <input id="regPassword" type={showRegPassword ? 'text' : 'password'} autoComplete="new-password" placeholder="Mín. 8 chars, maiúsc., número e símbolo" value={regPassword} onChange={(e) => setRegPassword(e.target.value || '')} disabled={regState === 'submitting'} className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 px-4 pr-12 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-school-blue-500/50 focus:border-school-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" />
                         <button type="button" onClick={() => setShowRegPassword(v => !v)} disabled={regState === 'submitting'} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors disabled:pointer-events-none">
                           {showRegPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                         </button>
                       </div>
+                      {/* Indicador de força de senha */}
+                      {regPassword.length > 0 && (() => {
+                        const { valid, errors } = validatePasswordStrength(regPassword);
+                        return (
+                          <div className={`text-xs rounded-lg px-3 py-2 mt-1 flex flex-col gap-1 ${valid ? 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800' : 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800'}` }>
+                            {valid ? (
+                              <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium"><CheckCircle2 className="w-3.5 h-3.5" /> Senha forte</span>
+                            ) : (
+                              errors.map((err, i) => (
+                                <span key={i} className="flex items-center gap-1 text-amber-700 dark:text-amber-400"><AlertCircle className="w-3.5 h-3.5 shrink-0" /> {err}</span>
+                              ))
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                     <div className="space-y-2">
                       <label htmlFor="regConfirmPassword" className="block text-sm font-medium text-school-blue-700 dark:text-zinc-300">Confirmar senha <span className="text-red-500">*</span></label>
@@ -449,7 +474,7 @@ const StudentAuth = ({ isLoading, login, register, cpfValue, cpfError, handleCPF
                   )}
                   <button
                     type="submit"
-                    disabled={forgotState === 'submitting' || (forgotPhase === 1 ? !forgotIdentifier.trim() : (forgotCode.length !== 8 || forgotNewPassword.length < 6))}
+                    disabled={forgotState === 'submitting' || (forgotPhase === 1 ? !forgotIdentifier.trim() : (forgotCode.length !== 8 || forgotNewPassword.length < 8))}
                     className="w-full h-12 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed hover:opacity-90 active:scale-[0.98] bg-school-blue-600"
                   >
                     {forgotState === 'submitting' ? (<><Loader2 className="w-4 h-4 animate-spin" /> {forgotPhase === 1 ? 'Processando...' : 'Verificando...'}</>) : (forgotPhase === 1 ? 'Recuperar Acesso' : 'Confirmar e Redefinir Senha')}

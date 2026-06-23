@@ -116,7 +116,15 @@ export const useAdmAuth = () => {
     }
   };
 
-  const logout = () => setAdminUser(null);
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // Ignora erros de rede no signOut — sessão local já será limpa
+    } finally {
+      setAdminUser(null);
+    }
+  };
 
   return {
     adminUser,

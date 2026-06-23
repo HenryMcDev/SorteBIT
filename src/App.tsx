@@ -11,6 +11,7 @@ import NotFound from "./pages/NotFound";
 import Vitrine from "./pages/Vitrine";
 import AdminPrivateRoute from "./components/AdminPrivateRoute";
 import AdminJackpot from "@/pages/AdminJackpot";
+import CookieBanner from "./components/CookieBanner";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +52,7 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
+      <CookieBanner />
     </TooltipProvider>
   </QueryClientProvider>
 );

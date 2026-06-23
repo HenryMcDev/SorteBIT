@@ -141,11 +141,8 @@ const Admin = () => {
       setForgotEmail(email);
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email);
       if (resetError) {
-        const errorText = JSON.stringify(resetError, Object.getOwnPropertyNames(resetError), 2);
         console.error('Erro ao enviar email de reset:', resetError);
-        alert(`Erro no Supabase Auth:\nMensagem: ${resetError.message}\nStatus: ${resetError.status}\n\nObjeto Completo:\n${errorText}`);
-        setForgotDebugError(errorText);
-        toast({ title: 'Erro', description: 'Ocorreu um erro ao enviar o e-mail de recuperação.', variant: 'destructive' });
+        toast({ title: 'Erro', description: 'Ocorreu um erro ao enviar o e-mail de recuperação. Tente novamente.', variant: 'destructive' });
         setForgotState('idle');
         return;
       }
@@ -488,13 +485,6 @@ const Admin = () => {
                     <h2 className="text-2xl font-bold text-white tracking-tight">Recuperar Senha</h2>
                     <p className="mt-1 text-sm text-zinc-400">{forgotPhase === 1 ? 'Informe seu CPF para iniciar.' : `Código enviado para ${forgotEmailMasked}`}</p>
                   </div>
-
-                  {forgotDebugError && (
-                    <div className="bg-red-600 text-white p-4 rounded-xl mb-6 overflow-auto max-h-64 text-xs font-mono whitespace-pre-wrap break-words shadow-lg border-2 border-red-800">
-                      <strong className="text-sm">Falha Supabase Auth (Debug):</strong>
-                      <div className="mt-2">{forgotDebugError}</div>
-                    </div>
-                  )}
 
                   {forgotState === 'success' ? (
                     <div className="flex flex-col items-center justify-center py-4 space-y-4 text-center">

@@ -18,7 +18,6 @@ import { supabase } from '@/integrations/supabase/client';
 interface StudentUser {
   id: string;
   name: string;
-  cpf: string;
   termos_aceitos?: boolean;
 }
 
@@ -59,13 +58,13 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
   }, [studentUser?.termos_aceitos]);
 
   const handleAcceptTerms = async () => {
-    if (!studentUser?.cpf) return;
+    if (!studentUser?.id) return;
     setIsAcceptingTerms(true);
     try {
       const { error } = await supabase
         .from('estudantes' as any)
         .update({ termos_aceitos: true })
-        .eq('cpf', studentUser.cpf);
+        .eq('id', studentUser.id);
 
       if (error) throw error;
 
@@ -775,7 +774,7 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
             </div>
           </Card>
         ) : (
-          <Mural studentUser={studentUser || { id: '', name: '', cpf: '' }} />
+          <Mural studentUser={studentUser || { id: '', name: '' }} />
         )}
 
         {/* Camera Overlay */}
