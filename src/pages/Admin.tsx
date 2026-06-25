@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Dice1, Crown, Lock, Key, LogOut, Eye, EyeOff, Loader2, CheckCircle2, XCircle, ShieldCheck, Copy, CheckCheck, RefreshCw, MessageSquareWarning, Gift, User, Home, Users } from 'lucide-react';
 import { useAdmAuth } from '@/hooks/useAdmAuth';
 import { useToast } from '@/hooks/use-toast';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import ClassCodeManager from '@/components/ClassCodeManager';
 import { supabase } from '@/integrations/supabase/client';
 import Participantes from '@/components/Participantes';
@@ -399,7 +400,7 @@ const Admin = () => {
                       <ShieldCheck className="w-6 h-6 text-blue-400" />
                     </div>
                     <h1 className="text-2xl font-bold text-white tracking-tight">Cadastro Administrativo</h1>
-                    <p className="mt-1 text-sm text-zinc-400">Crie a conta principal que gerenciará o acesso ao SorteBIT.</p>
+                    <p className="mt-1 text-sm text-zinc-400">Crie a conta principal que gerenciará o acesso ao Uniforme Premiado.</p>
                   </div>
 
                   {regState === 'success' ? (
@@ -576,7 +577,7 @@ const Admin = () => {
           </div>
 
           <p className="mt-6 text-center text-xs text-zinc-600">
-            Esta conta terá acesso total à gestão do SorteBIT.<br />
+            Esta conta terá acesso total à gestão do Uniforme Premiado.<br />
             O acesso de futuros usuários será liberado por meio de códigos internos.
           </p>
         </div>
@@ -618,6 +619,7 @@ const Admin = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <button
               onClick={logout}
               className="flex items-center justify-center w-10 h-10 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 dark:text-red-400 hover:bg-red-500/20 hover:text-red-600 dark:hover:text-red-300 active:scale-90 transition-all duration-200 shadow-sm shrink-0"

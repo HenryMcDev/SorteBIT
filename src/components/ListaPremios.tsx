@@ -179,7 +179,7 @@ const ListaPremios = () => {
                     <Input value={editNome} onChange={e => setEditNome(e.target.value)} disabled={isSaving} className="bg-zinc-50 dark:bg-zinc-900 border-gray-200 dark:border-zinc-800" />
                   </div>
                   <div className="space-y-2">
-                    <Label>Valor (BITCash)</Label>
+                    <Label>Valor (CashBIT)</Label>
                     <Input type="number" value={editValor} onChange={e => setEditValor(e.target.value)} disabled={isSaving} className="bg-zinc-50 dark:bg-zinc-900 border-gray-200 dark:border-zinc-800" />
                   </div>
                   <div className="space-y-2">
@@ -233,7 +233,7 @@ const ListaPremios = () => {
                     <h4 className="font-bold text-school-blue-900 dark:text-zinc-100 truncate">{premio.nome}</h4>
                     <p className="text-sm text-zinc-500 dark:text-zinc-400 truncate">{premio.descricao}</p>
                     <span className="inline-block mt-1 text-xs font-bold bg-school-yellow-100 dark:bg-yellow-500/20 text-yellow-800 dark:text-yellow-500 px-2 py-0.5 rounded-full">
-                      {premio.valor} BITCash
+                      {premio.valor} CashBIT
                     </span>
                   </div>
                   <div className="flex gap-2 shrink-0">

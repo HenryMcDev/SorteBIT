@@ -180,7 +180,7 @@ const AdminRegister = () => {
               Cadastro Administrativo
             </h1>
             <p className="mt-2 text-sm text-zinc-400 leading-relaxed">
-              Crie a conta principal que gerenciará o acesso ao sistema SorteBIT.
+              Crie a conta principal que gerenciará o acesso ao sistema Uniforme Premiado.
             </p>
           </div>
 
@@ -381,7 +381,7 @@ const AdminRegister = () => {
 
         {/* Footer note */}
         <p className="mt-6 text-center text-xs text-zinc-600">
-          Esta conta terá acesso total à gestão do SorteBIT.
+          Esta conta terá acesso total à gestão do Uniforme Premiado.
           <br />
           O acesso de futuros usuários será liberado por meio de códigos internos.
         </p>

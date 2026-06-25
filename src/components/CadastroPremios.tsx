@@ -76,7 +76,7 @@ const CadastroPremios = () => {
     if (isNaN(valorNumerico) || valorNumerico <= 0) {
       toast({
         title: "Valor inválido",
-        description: "Por favor, insira um valor válido em BITCash.",
+        description: "Por favor, insira um valor válido em CashBIT.",
         variant: "destructive"
       });
       return;
@@ -152,7 +152,7 @@ const CadastroPremios = () => {
           </div>
           <div>
             <h2 className="text-xl font-bold text-school-blue-800 dark:text-white">Cadastrar Novo Prêmio</h2>
-            <p className="text-sm text-school-blue-600 dark:text-zinc-400">Adicione produtos disponíveis para resgate com BITCash.</p>
+            <p className="text-sm text-school-blue-600 dark:text-zinc-400">Adicione produtos disponíveis para resgate com CashBIT.</p>
           </div>
         </div>
 
@@ -174,7 +174,7 @@ const CadastroPremios = () => {
 
           <div className="space-y-2">
             <Label htmlFor="valor" className="text-school-blue-700 dark:text-zinc-200 font-semibold">
-              Valor em BITCash <span className="text-red-500">*</span>
+              Valor em CashBIT <span className="text-red-500">*</span>
             </Label>
             <Input
               id="valor"

@@ -96,7 +96,7 @@ const Vitrine = () => {
             Vitrine de Prêmios
           </h1>
           <p className="text-zinc-500 dark:text-zinc-400 text-lg max-w-2xl">
-            Troque seus BITCash acumulados por prêmios incríveis. Escolha o seu favorito e faça o resgate!
+            Troque seus CashBIT acumulados por prêmios incríveis. Escolha o seu favorito e faça o resgate!
           </p>
         </div>
 
@@ -117,7 +117,7 @@ const Vitrine = () => {
             </div>
             <h2 className="text-2xl font-bold text-school-blue-900 dark:text-white mb-2">Vitrine Vazia</h2>
             <p className="text-zinc-500 dark:text-zinc-400 max-w-md">
-              Ainda não temos prêmios disponíveis para resgate no momento. Continue acumulando seus BITCash e volte em breve!
+              Ainda não temos prêmios disponíveis para resgate no momento. Continue acumulando seus CashBIT e volte em breve!
             </p>
           </div>
         ) : (

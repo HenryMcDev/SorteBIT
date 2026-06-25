@@ -83,7 +83,7 @@ const Celebration = ({ nome, onClose }: CelebrationProps) => {
           </div>
           <div className="text-left flex-1">
             <p className="text-xs font-bold text-yellow-900/70 uppercase tracking-wide leading-none">Você ganhou</p>
-            <p className="text-lg font-black text-yellow-950 leading-tight">+10 BITCash</p>
+            <p className="text-lg font-black text-yellow-950 leading-tight">+10 CashBIT</p>
           </div>
         </div>
 

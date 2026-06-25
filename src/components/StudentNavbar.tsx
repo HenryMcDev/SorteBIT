@@ -1,7 +1,8 @@
-import { LogOut, User, Coins, Store, Home, Menu, FileText } from 'lucide-react';
+import { LogOut, User, Coins, Store, Home, Menu, FileText, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
 import { TermosCondicoes } from './TermosCondicoes';
+import { ThemeToggle } from './ThemeToggle';
 
 interface StudentNavbarProps {
   studentName: string;
@@ -49,7 +50,7 @@ const StudentNavbar = ({ studentName, bitcash = 0, onLogout }: StudentNavbarProp
                   Saldo
                 </span>
                 <span className="text-sm font-black text-yellow-950 dark:text-white leading-tight">
-                  {bitcash} BITCash
+                  {bitcash} CashBIT
                 </span>
               </div>
             </div>
@@ -67,6 +68,14 @@ const StudentNavbar = ({ studentName, bitcash = 0, onLogout }: StudentNavbarProp
               title="Página Principal"
             >
               <Home className="w-5 h-5" />
+            </Link>
+
+            <Link
+              to="/avatar-creator"
+              className="flex items-center justify-center w-10 h-10 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-400 hover:bg-purple-500/20 active:scale-90 transition-all duration-200 shadow-sm shrink-0"
+              title="Crie seu avatar"
+            >
+              <Sparkles className="w-5 h-5" />
             </Link>
 
             <Link
@@ -96,7 +105,7 @@ const StudentNavbar = ({ studentName, bitcash = 0, onLogout }: StudentNavbarProp
             </div>
             <div className="flex flex-col truncate">
               <span className="text-[10px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-semibold">
-                SorteBIT
+                Uniforme Premiado
               </span>
               <span className="text-sm font-bold text-zinc-900 dark:text-white truncate">
                 Olá, {firstName}
@@ -137,7 +146,7 @@ const StudentNavbar = ({ studentName, bitcash = 0, onLogout }: StudentNavbarProp
                     Saldo Atual
                   </span>
                   <span className="text-xl font-black text-yellow-950 dark:text-white leading-tight">
-                    {bitcash} BITCash
+                    {bitcash} CashBIT
                   </span>
                 </div>
               </div>
@@ -150,6 +159,14 @@ const StudentNavbar = ({ studentName, bitcash = 0, onLogout }: StudentNavbarProp
                 >
                   <Home className="w-5 h-5 text-zinc-500" />
                   Página Principal
+                </Link>
+
+                <Link
+                  to="/avatar-creator"
+                  className="flex items-center gap-3 w-full p-3 rounded-lg bg-purple-500/10 text-purple-700 dark:text-purple-400 hover:bg-purple-500/20 font-medium transition-colors border border-purple-500/20"
+                >
+                  <Sparkles className="w-5 h-5 text-purple-500" />
+                  Crie seu avatar
                 </Link>
 
                 <Link
@@ -171,7 +188,11 @@ const StudentNavbar = ({ studentName, bitcash = 0, onLogout }: StudentNavbarProp
               </div>
 
               {/* Botão Sair */}
-              <div className="mt-auto pt-4 border-t border-zinc-200 dark:border-zinc-800">
+              <div className="mt-auto pt-4 border-t border-zinc-200 dark:border-zinc-800 flex flex-col gap-4">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Alternar Tema:</span>
+                  <ThemeToggle />
+                </div>
                 <button
                   onClick={onLogout}
                   className="flex items-center justify-center gap-2 w-full p-3 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 hover:text-red-700 dark:hover:text-red-300 font-bold transition-all border border-red-500/20"

@@ -114,7 +114,7 @@ const Participantes = () => {
                   Participante
                 </th>
                 <th className="sticky top-0 z-10 bg-zinc-50/95 dark:bg-zinc-900/95 backdrop-blur-sm px-6 py-4 text-sm font-semibold text-zinc-600 dark:text-zinc-300 text-center shadow-[0_1px_0_0_rgba(228,228,231,0.8)] dark:shadow-[0_1px_0_0_rgba(39,39,42,0.8)]">
-                  Saldo BITCash
+                  Saldo CashBIT
                 </th>
                 <th className="sticky top-0 z-10 bg-zinc-50/95 dark:bg-zinc-900/95 backdrop-blur-sm px-6 py-4 text-sm font-semibold text-zinc-600 dark:text-zinc-300 text-right md:text-center w-1/3 shadow-[0_1px_0_0_rgba(228,228,231,0.8)] dark:shadow-[0_1px_0_0_rgba(39,39,42,0.8)]">
                   Total de Cupons / Participações

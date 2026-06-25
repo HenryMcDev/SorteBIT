@@ -34,7 +34,7 @@ export const TermosCondicoes = ({ children }: TermosCondicoesProps) => {
             </span>
           </DialogTitle>
           <DialogDescription className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">
-            Por favor, leia atentamente as regras e condições para uso do SorteBIT.
+            Por favor, leia atentamente as regras e condições para uso do Uniforme Premiado.
           </DialogDescription>
         </DialogHeader>
 
@@ -43,7 +43,7 @@ export const TermosCondicoes = ({ children }: TermosCondicoesProps) => {
             <section>
               <h3 className="font-bold text-zinc-900 dark:text-white mb-2">1. Aceitação dos Termos</h3>
               <p>
-                Ao acessar e utilizar o SorteBIT, você concorda em cumprir e estar vinculado a estes Termos e Condições de Uso. Este sistema destina-se a fins pedagógicos e de engajamento escolar da instituição.
+                Ao acessar e utilizar o Uniforme Premiado, você concorda em cumprir e estar vinculado a estes Termos e Condições de Uso. Este sistema destina-se a fins pedagógicos e de engajamento escolar da instituição.
               </p>
             </section>
 
@@ -64,7 +64,7 @@ export const TermosCondicoes = ({ children }: TermosCondicoesProps) => {
             <section>
               <h3 className="font-bold text-zinc-900 dark:text-white mb-2">4. Proteção de Dados e LGPD</h3>
               <p>
-                Em conformidade com a Lei Geral de Proteção de Dados (LGPD), o SorteBIT coleta apenas as informações estritamente necessárias para a prestação dos serviços (como nome completo, endereço de e-mail e registro de participação). Seus dados não serão compartilhados com terceiros sem consentimento prévio e serão tratados de forma confidencial.
+                Em conformidade com a Lei Geral de Proteção de Dados (LGPD), o Uniforme Premiado coleta apenas as informações estritamente necessárias para a prestação dos serviços (como nome completo, endereço de e-mail e registro de participação). Seus dados não serão compartilhados com terceiros sem consentimento prévio e serão tratados de forma confidencial.
               </p>
             </section>
 

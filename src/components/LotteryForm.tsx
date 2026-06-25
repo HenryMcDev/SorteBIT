@@ -600,7 +600,7 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
               : 'text-gray-500 dark:text-zinc-400 hover:text-school-blue-600 dark:hover:text-white'
               }`}
           >
-            Feedback do sorteio
+            Feedback da Campanha
           </button>
         </div>
 
@@ -609,13 +609,9 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
             <div className="space-y-6">
               <div className="text-center space-y-2">
                 <h2 className="text-2xl md:text-3xl font-black text-school-blue-700 dark:text-white">
-                  Participe do Sorteio!
+                  Participe da Campanha!
                 </h2>
-                <p className="text-school-blue-600 dark:text-zinc-400">
-                  Preencha os dados e insira o código fornecido pelo seu professor
-                </p>
               </div>
-
               {alreadyParticipated ? (
                 <div className="bg-school-blue-50 dark:bg-slate-800 border border-school-blue-100 dark:border-slate-700 rounded-2xl p-6 shadow-sm animate-in fade-in slide-in-from-top-4 mt-6">
                   <div className="flex flex-col items-center text-center space-y-4">
@@ -920,12 +916,12 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
             <div className="overflow-y-auto flex-1 pr-2 max-h-[60vh]">
               <div className="space-y-4 text-sm text-school-blue-700 dark:text-zinc-400/80 leading-relaxed">
                 <p>
-                  Ao prosseguir com a participação no SorteBIT, o(a) aluno(a) declara, para todos os fins, que leu, compreendeu e concordou integralmente com as disposições deste Termo.
+                  Ao prosseguir com a participação no Uniforme Premiado, o(a) aluno(a) declara, para todos os fins, que leu, compreendeu e concordou integralmente com as disposições deste Termo.
                 </p>
 
                 <div>
                   <h3 className="font-bold text-school-blue-800 dark:text-white">1. Objeto</h3>
-                  <p>1.1. O presente Termo regula as condições de participação no sorteio denominado SorteBIT.</p>
+                  <p>1.1. O presente Termo regula as condições de participação no sorteio denominado Uniforme Premiado.</p>
                   <p>1.2. A participação está condicionada ao cumprimento cumulativo dos requisitos operacionais e das regras de elegibilidade aqui previstas.</p>
                 </div>
 
@@ -948,13 +944,13 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
                     <li>prevenção de fraude, duplicidade ou uso indevido do sistema;</li>
                     <li>conferência do cumprimento da regra de uniforme para elegibilidade no sorteio.</li>
                   </ul>
-                  <p className="mt-2">3.2. A captura da imagem constitui condição técnica essencial para participação no SorteBIT.</p>
+                  <p className="mt-2">3.2. A captura da imagem constitui condição técnica essencial para participação no Uniforme Premiado.</p>
                   <p>3.3. O envio de imagem incompatível com os critérios de validação poderá ensejar reprovação automática da participação.</p>
                 </div>
 
                 <div>
                   <h3 className="font-bold text-school-blue-800 dark:text-white">4. Regra de Elegibilidade por Uniforme</h3>
-                  <p>4.1. O SorteBIT é destinado exclusivamente a alunos(as) que estejam trajando uniforme institucional no momento da participação.</p>
+                  <p>4.1. O Uniforme Premiado é destinado exclusivamente a alunos(as) que estejam trajando uniforme institucional no momento da participação.</p>
                   <p>4.2. A ausência de uniforme, total ou parcial, conforme critérios de validação aplicáveis, acarreta inelegibilidade e consequente recusa da participação.</p>
                 </div>
 
@@ -972,14 +968,14 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
                     <li>a) prestou informações verídicas;</li>
                     <li>b) está ciente da obrigatoriedade de captura da imagem para validação;</li>
                     <li>c) está ciente da exigência de uniforme como requisito de elegibilidade;</li>
-                    <li>d) concorda com o processamento necessário dos dados inseridos e da imagem, estritamente para execução e segurança do SorteBIT.</li>
+                    <li>d) concorda com o processamento necessário dos dados inseridos e da imagem, estritamente para execução e segurança do Uniforme Premiado.</li>
                   </ul>
                 </div>
 
                 <div>
                   <h3 className="font-bold text-school-blue-800 dark:text-white">7. Disposições Finais</h3>
                   <p>7.1. Este Termo poderá ser atualizado a qualquer tempo para adequação operacional, técnica ou normativa, passando a vigorar a versão publicada no sistema.</p>
-                  <p>7.2. Em caso de divergência interpretativa, prevalecerá a versão mais recente disponibilizada no ambiente oficial do SorteBIT.</p>
+                  <p>7.2. Em caso de divergência interpretativa, prevalecerá a versão mais recente disponibilizada no ambiente oficial do Uniforme Premiado.</p>
                 </div>
               </div>
             </div>

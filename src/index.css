@@ -102,6 +102,10 @@
   }
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 /* Animação dos Balões */
 @keyframes subirBalao {
   0% { transform: translateY(110vh) rotate(0deg); opacity: 0; }
@@ -168,4 +172,72 @@
   font-weight: bold;
   cursor: pointer;
   box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+/* Animação de Flutuação */
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+  100% { transform: translateY(0px); }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+/* Animação de Texto Elegante com Gradiente Pulsante */
+@keyframes textShimmer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-text-shimmer {
+  background: linear-gradient(
+    to right,
+    #000000 20%,
+    #2563eb 40%,
+    #1d4ed8 60%,
+    #000000 80%
+  );
+  background-size: 200% auto;
+  color: transparent;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: textShimmer 6s linear infinite;
+}
+
+.dark .animate-text-shimmer {
+  background: linear-gradient(
+    to right,
+    #ffffff 20%,
+    #3b82f6 40%,
+    #60a5fa 60%,
+    #ffffff 80%
+  );
+  background-size: 200% auto;
+  color: transparent;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: textShimmer 6s linear infinite;
+}
+
+/* Animação Marquee Horizontal Sem Fim */
+@keyframes marquee {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
+}
+
+.animate-marquee {
+  display: flex;
+  white-space: nowrap;
+  width: max-content;
+  animation: marquee 25s linear infinite;
+}
+
+.marquee-container {
+  overflow: hidden;
+  width: 100%;
+  display: flex;
+  align-items: center;
 }

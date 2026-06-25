@@ -40,7 +40,7 @@ const isLocalOrigin = (originUrl: string): boolean => {
 };
 
 app.use(cors({
-  origin: (origin, callback) => {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
     if (!origin || allowedOrigins.includes(origin) || isLocalOrigin(origin)) {
       return callback(null, true);
     }
@@ -169,7 +169,7 @@ const forwardToN8N = async (url: string, body: any, res: express.Response) => {
 };
 
 // 1. Rota de Sorteio (Estudantes) - Autenticada
-app.post('/api/sorteio', validateSession, async (req, res) => {
+app.post('/api/sorteio', validateSession, async (req: express.Request, res: express.Response) => {
   const { nome, codigo, fotoBase64 } = req.body;
 
   if (!nome || !codigo || !fotoBase64) {
@@ -185,7 +185,7 @@ app.post('/api/sorteio', validateSession, async (req, res) => {
 });
 
 // 2. Rota de Registro de Administradores - Pública (Bypasses session check, validated by invite code)
-app.post('/api/admin/register', async (req, res) => {
+app.post('/api/admin/register', async (req: express.Request, res: express.Response) => {
   const acao = req.body.acao || req.body.Ação;
   const { nome, cpf, email, senha, codigo } = req.body;
 
@@ -211,7 +211,7 @@ app.post('/api/admin/register', async (req, res) => {
 });
 
 // 3. Rota de Registro de Estudantes - Pública (Bypasses session check)
-app.post('/api/student/register', async (req, res) => {
+app.post('/api/student/register', async (req: express.Request, res: express.Response) => {
   const acao = req.body.acao || req.body.Ação;
   const { nome, cpf, email, senha } = req.body;
 
@@ -236,7 +236,7 @@ app.post('/api/student/register', async (req, res) => {
 });
 
 // 4. Rota de Cadastro de Prêmios - Autenticada (Multipart FormData forwarding)
-app.post('/api/produto', validateSession, upload.single('foto'), async (req, res) => {
+app.post('/api/produto', validateSession, upload.single('foto'), async (req: express.Request, res: express.Response) => {
   const n8nUrl = process.env.N8N_WEBHOOK_PRODUTO_URL || '';
   const secretKey = process.env.X_SORTEBIT_SECRET || '';
 

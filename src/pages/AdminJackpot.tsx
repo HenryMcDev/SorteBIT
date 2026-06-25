@@ -452,7 +452,7 @@ const AdminJackpot = () => {
               <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider bg-yellow-500/20 text-yellow-500 rounded border border-yellow-500/30">
                 Master
               </span>
-              <h1 className="text-base sm:text-lg font-black tracking-tight uppercase text-zinc-100">Jackpot SorteBIT</h1>
+              <h1 className="text-base sm:text-lg font-black tracking-tight uppercase text-zinc-100">Jackpot Uniforme Premiado</h1>
             </div>
             <p className="text-xs text-zinc-500 hidden sm:block">Ambiente Seguro & Autenticado</p>
           </div>

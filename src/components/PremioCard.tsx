@@ -104,7 +104,7 @@ export const PremioCard = ({ premio, studentBitcash, onResgatar }: PremioCardPro
                   <p>
                     {isOutOfStock
                       ? 'Este prêmio está esgotado no momento.'
-                      : 'Você precisa acumular mais BITCash para resgatar.'}
+                      : 'Você precisa acumular mais CashBIT para resgatar.'}
                   </p>
                 </TooltipContent>
               )}

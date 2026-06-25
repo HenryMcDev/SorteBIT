@@ -1,21 +1,61 @@
 
+import React, { useState, useEffect } from 'react';
+
 const Header = () => {
+  const fullText = "Veio de uniforme? Envie sua foto e concorra a prêmios! Não fique de fora!";
+  const [displayText, setDisplayText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [typingSpeed, setTypingSpeed] = useState(70);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    
+    const handleType = () => {
+      if (!isDeleting) {
+        setDisplayText(fullText.substring(0, displayText.length + 1));
+        setTypingSpeed(70);
+        
+        if (displayText === fullText) {
+          // Pausa no final antes de começar a apagar
+          timer = setTimeout(() => setIsDeleting(true), 2500);
+          return;
+        }
+      } else {
+        setDisplayText(fullText.substring(0, displayText.length - 1));
+        setTypingSpeed(30); // Apaga mais rápido
+        
+        if (displayText === '') {
+          setIsDeleting(false);
+          // Pausa antes de reiniciar a digitação
+          timer = setTimeout(() => {}, 500);
+        }
+      }
+      
+      timer = setTimeout(handleType, typingSpeed);
+    };
+
+    timer = setTimeout(handleType, typingSpeed);
+    return () => clearTimeout(timer);
+  }, [displayText, isDeleting, typingSpeed]);
+
   return (
     <header className="text-center py-6 md:py-8 px-4 dark:bg-zinc-950 border-b border-transparent dark:border-zinc-800/50">
-      <div className="flex justify-center items-center mb-4 md:mb-6">
-        <img src="/img/logo.png" alt="Logo BIT" className="h-10 md:h-14 w-auto object-contain mr-3 block dark:hidden" />
-        <img src="/img/logo_branca.png" alt="Logo BIT" className="h-10 md:h-14 w-auto object-contain mr-3 hidden dark:block" />
-        <div className="text-black dark:text-white transition-colors text-lg md:text-2xl font-bold">BIT EDUCAÇÃO & NEGÓCIOS</div>
+      <div className="flex justify-center items-center mb-6">
+        <img 
+          src="/img/uniforme-premiado.webp" 
+          alt="Uniforme Premiado" 
+          className="h-36 md:h-48 w-auto object-contain mx-auto drop-shadow-md animate-float"
+        />
       </div>
       
-      <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold text-black dark:text-white transition-colors mb-3 md:mb-4 leading-tight px-2">
-        SorteBIT eu visto o UNIFORME
-      </h1>
-      
-      <p className="text-sm md:text-lg lg:text-xl text-black dark:text-white transition-colors max-w-2xl mx-auto leading-relaxed px-2">
-        Preencha seu nome, número de telefone e o codigo do sorteio para gerar automaticamente seu número da sorte. 
-        O sorteio será realizado todo final de mês na BIT!
-      </p>
+      <div className="max-w-2xl mx-auto px-2">
+        <div className="min-h-[70px] md:min-h-[80px] flex items-center justify-center">
+          <h1 className="text-xl md:text-2xl font-black mb-4 tracking-tight leading-snug text-school-blue-600 dark:text-white text-center">
+            {displayText}
+            <span className="animate-pulse border-r-2 border-school-blue-600 dark:border-white ml-1"></span>
+          </h1>
+        </div>
+      </div>
     </header>
   );
 };
