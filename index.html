@@ -38,7 +38,66 @@
 </head>
 
 <body>
-  <div id="root"></div>
+  <div id="root">
+    <style>
+      #splash-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: #09090b; /* Match manifest background_color */
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+      .splash-logo {
+        width: 120px;
+        height: 120px;
+        margin-bottom: 40px;
+        animation: splash-pulse 2s infinite ease-in-out;
+        filter: drop-shadow(0 0 20px rgba(234, 179, 8, 0.2)); /* subtle glow */
+      }
+      .splash-loader-container {
+        width: 220px;
+        height: 6px;
+        background-color: #27272a;
+        border-radius: 10px;
+        position: relative;
+        overflow: hidden;
+      }
+      .splash-loader-bar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 50%;
+        background: linear-gradient(90deg, #eab308, #f59e0b); /* bit colors */
+        border-radius: 10px;
+        animation: splash-loading 1.5s infinite ease-in-out;
+      }
+
+      @keyframes splash-pulse {
+        0% { transform: scale(0.95); opacity: 0.8; }
+        50% { transform: scale(1.05); opacity: 1; }
+        100% { transform: scale(0.95); opacity: 0.8; }
+      }
+
+      @keyframes splash-loading {
+        0% { left: -50%; }
+        100% { left: 100%; }
+      }
+    </style>
+    <div id="splash-screen">
+      <img src="/img/icon-512x512.png" alt="Carregando..." class="splash-logo" />
+      <div class="splash-loader-container">
+        <div class="splash-loader-bar"></div>
+      </div>
+    </div>
+  </div>
   <script type="module" src="/src/main.tsx"></script>
 </body>
 
