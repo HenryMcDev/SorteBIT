@@ -9,7 +9,7 @@ import Admin from "./pages/Admin";
 import AdminRegister from "./pages/AdminRegister";
 import NotFound from "./pages/NotFound";
 import Vitrine from "./pages/Vitrine";
-import AvatarCreator from "./pages/AvatarCreator";
+// import AvatarCreator from "./pages/AvatarCreator";
 import AdminPrivateRoute from "./components/AdminPrivateRoute";
 import AdminJackpot from "@/pages/AdminJackpot";
 import CookieBanner from "./components/CookieBanner";
@@ -78,7 +78,9 @@ const App = () => {
               </AdminPrivateRoute>
             } />
             <Route path="/vitrine" element={<Vitrine />} />
-            <Route path="/avatar-creator" element={<AvatarCreator />} />
+            {/* <Route path="/avatar-creator" element={<AvatarCreator />} /> */}
+            <Route path="/avatar" element={<Navigate to="/" replace />} />
+            <Route path="/avatar-creator" element={<Navigate to="/" replace />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

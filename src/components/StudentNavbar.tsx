@@ -70,13 +70,13 @@ const StudentNavbar = ({ studentName, bitcash = 0, onLogout }: StudentNavbarProp
               <Home className="w-5 h-5" />
             </Link>
 
-            <Link
+            {/* <Link
               to="/avatar-creator"
               className="flex items-center justify-center w-10 h-10 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-400 hover:bg-purple-500/20 active:scale-90 transition-all duration-200 shadow-sm shrink-0"
               title="Crie seu avatar"
             >
               <Sparkles className="w-5 h-5" />
-            </Link>
+            </Link> */}
 
             <Link
               to="/vitrine"
@@ -161,13 +161,13 @@ const StudentNavbar = ({ studentName, bitcash = 0, onLogout }: StudentNavbarProp
                   Página Principal
                 </Link>
 
-                <Link
+                {/* <Link
                   to="/avatar-creator"
                   className="flex items-center gap-3 w-full p-3 rounded-lg bg-purple-500/10 text-purple-700 dark:text-purple-400 hover:bg-purple-500/20 font-medium transition-colors border border-purple-500/20"
                 >
                   <Sparkles className="w-5 h-5 text-purple-500" />
                   Crie seu avatar
-                </Link>
+                </Link> */}
 
                 <Link
                   to="/vitrine"
