@@ -7,8 +7,6 @@
   <meta name="google" content="notranslate" />
 
   <!-- ═══ SECURITY HEADERS ═══════════════════════════════════════════════ -->
-  <!-- Previne clickjacking: impede que o app seja embutido em iframes externos -->
-  <meta http-equiv="X-Frame-Options" content="SAMEORIGIN" />
   <!-- Previne MIME-sniffing -->
   <meta http-equiv="X-Content-Type-Options" content="nosniff" />
   <!-- Controla informações do Referer enviadas a terceiros -->
@@ -16,12 +14,12 @@
   <!-- Content Security Policy: restringe origens de scripts e recursos -->
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
-    script-src 'self' 'unsafe-inline' 'unsafe-eval';
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net;
+    script-src-elem 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     font-src 'self' https://fonts.gstatic.com;
     img-src 'self' data: blob: https://*.supabase.co https://supabase.co;
-    connect-src 'self' https://*.supabase.co wss://*.supabase.co https://bitn8n.infinityflowapp.com https://openrouter.ai;
-    frame-ancestors 'self';
+    connect-src 'self' https://*.supabase.co wss://*.supabase.co https://bitn8n.infinityflowapp.com https://openrouter.ai https://bia-sortebit-backend.welzyz.easypanel.host;
     object-src 'none';
     base-uri 'self';
   " />
