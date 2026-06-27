@@ -11,21 +11,39 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface TermosCondicoesProps {
   children?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  footer?: React.ReactNode;
+  onInteractOutside?: (e: any) => void;
+  onEscapeKeyDown?: (e: any) => void;
 }
 
-export const TermosCondicoes = ({ children }: TermosCondicoesProps) => {
+export const TermosCondicoes = ({ 
+  children,
+  open,
+  onOpenChange,
+  footer,
+  onInteractOutside,
+  onEscapeKeyDown
+}: TermosCondicoesProps) => {
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        {children ? (
-          children
-        ) : (
-          <button className="underline hover:text-school-blue-500 font-semibold transition-colors focus:outline-none">
-            Termos e Condições
-          </button>
-        )}
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl w-[90vw] max-h-[85vh] flex flex-col p-6 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {(children !== undefined || open === undefined) && (
+        <DialogTrigger asChild>
+          {children ? (
+            children
+          ) : (
+            <button className="underline hover:text-school-blue-500 font-semibold transition-colors focus:outline-none">
+              Termos e Condições
+            </button>
+          )}
+        </DialogTrigger>
+      )}
+      <DialogContent 
+        className="max-w-2xl w-[90vw] max-h-[85vh] flex flex-col p-6 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl"
+        onInteractOutside={onInteractOutside}
+        onEscapeKeyDown={onEscapeKeyDown}
+      >
         <DialogHeader className="pb-4 border-b border-zinc-100 dark:border-zinc-800">
           <DialogTitle className="text-xl font-black text-zinc-900 dark:text-white flex items-center justify-between">
             <span>Termos e Condições de Uso</span>
@@ -185,6 +203,7 @@ export const TermosCondicoes = ({ children }: TermosCondicoesProps) => {
             </div>
           </div>
         </ScrollArea>
+        {footer}
       </DialogContent>
     </Dialog>
   );
