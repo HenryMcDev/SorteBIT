@@ -32,13 +32,13 @@ export const PremioCard = ({ premio, studentBitcash, onResgatar }: PremioCardPro
 
   return (
     <Card className="flex flex-col h-full overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 dark:bg-zinc-950 border border-gray-100 dark:border-zinc-800 rounded-2xl">
-      <div className="relative aspect-video w-full bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center overflow-hidden group">
+      <div className="relative w-full h-48 bg-muted/10 overflow-hidden group rounded-t-lg flex items-center justify-center">
         {premio.foto && !imgError ? (
           <img
             src={premio.foto}
             alt={premio.nome}
             loading="lazy"
-            className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+            className="w-full h-full object-cover object-center transition-transform duration-300 hover:scale-105 group-hover:scale-105"
             onError={() => setImgError(true)}
           />
         ) : (

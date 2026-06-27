@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
 import { useStudentAuth } from "@/hooks/useStudentAuth";
+import { useMobileDetection } from "@/hooks/useMobileDetection";
 import { supabase } from "@/integrations/supabase/client";
 import { PremioCard, Premio } from "@/components/PremioCard";
 import StudentNavbar from "@/components/StudentNavbar";
+import DesktopBlocker from "@/components/DesktopBlocker";
+import { Navigate } from "react-router-dom";
 import { PackageOpen, AlertCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -11,7 +14,8 @@ import { useToast } from "@/hooks/use-toast";
 const PREMIOS_BUCKET = 'premios_imagens';
 
 const Vitrine = () => {
-  const { studentUser, logout } = useStudentAuth();
+  const isMobile = useMobileDetection();
+  const { studentUser, isAuthenticated, logout } = useStudentAuth();
   const [premios, setPremios] = useState<Premio[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +58,14 @@ const Vitrine = () => {
   useEffect(() => {
     fetchPremios();
   }, []);
+
+  if (!isMobile) {
+    return <DesktopBlocker />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
 
   const handleResgatar = (id: number) => {
     // Apenas UI por enquanto

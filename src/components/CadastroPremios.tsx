@@ -1,13 +1,16 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Gift, Save, Loader2, Image as ImageIcon, X, Pencil } from 'lucide-react';
+import { Gift, Save, Loader2, Image as ImageIcon, X, Pencil, Crop } from 'lucide-react';
 import ListaPremios from './ListaPremios';
+import Cropper from 'react-easy-crop';
+import { getCroppedImg } from '@/utils/cropImage';
 
 const CadastroPremios = () => {
   const [nome, setNome] = useState('');
@@ -20,6 +23,14 @@ const CadastroPremios = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const { toast } = useToast();
+
+  // Estados para o Cropper
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState('');
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [isCropping, setIsCropping] = useState(false);
 
   const handleOtimizarDescricao = async () => {
     if (!nome.trim() || !descricao.trim()) {
@@ -56,6 +67,30 @@ const CadastroPremios = () => {
     } finally {
       setIsLoading(false);
       setIsVisible(true);
+    }
+  };
+
+  const onCropComplete = useCallback((_croppedArea: any, croppedAreaPixels: any) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const handleCropConfirm = async () => {
+    try {
+      setIsCropping(true);
+      const croppedFile = await getCroppedImg(imageToCrop, croppedAreaPixels);
+      if (croppedFile) {
+        setFotoArquivo(croppedFile);
+        setFotoPreview(URL.createObjectURL(croppedFile));
+        setCropModalOpen(false);
+        // Reseta o estado do crop
+        setZoom(1);
+        setCrop({ x: 0, y: 0 });
+      }
+    } catch (e) {
+      console.error(e);
+      toast({ title: "Erro no recorte", description: "Não foi possível cortar a imagem.", variant: "destructive" });
+    } finally {
+      setIsCropping(false);
     }
   };
 
@@ -107,7 +142,7 @@ const CadastroPremios = () => {
 
       // Captura a resposta exata que o n8n envia no Respond to Webhook6
       if (data.ProductExist === 'Existe') {
-        const errorMsg = "Este produto já foi cadastrado anteriormente no sistema, por favor utilize outro      identificador.";
+        const errorMsg = "Este produto já foi cadastrado anteriormente no sistema, por favor utilize outro identificador.";
         setServerError(errorMsg);
         toast({
           title: "Produto já cadastrado",
@@ -216,7 +251,7 @@ const CadastroPremios = () => {
           <div className="space-y-2">
             <Label htmlFor="fotoArquivo" className="text-school-blue-700 dark:text-zinc-200 font-semibold flex items-center gap-2">
               <ImageIcon className="w-4 h-4" />
-              Foto do Produto
+              Foto do Produto (Corte 4:3)
             </Label>
 
             <div className="relative h-48 md:h-56 rounded-xl border-2 border-dashed border-gray-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 flex justify-center items-center shadow-sm hover:border-school-blue-500 dark:hover:border-school-blue-500 hover:shadow-md transition-all duration-300 ease-in-out group overflow-hidden">
@@ -233,8 +268,8 @@ const CadastroPremios = () => {
                       }}
                     />
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center pointer-events-none">
-                      <ImageIcon className="w-8 h-8 text-white mb-2" />
-                      <span className="text-white font-medium text-sm">Clique ou arraste para trocar</span>
+                      <Crop className="w-8 h-8 text-white mb-2" />
+                      <span className="text-white font-medium text-sm">Clique ou arraste para trocar foto</span>
                     </div>
                   </div>
                   <button
@@ -256,7 +291,7 @@ const CadastroPremios = () => {
                     <ImageIcon className="w-6 h-6 text-school-blue-600 dark:text-school-blue-400" />
                   </div>
                   <span className="block text-school-blue-900 dark:text-zinc-200 font-semibold">Arraste e solte sua foto aqui</span>
-                  <span className="block text-zinc-500 dark:text-zinc-400 font-normal mt-1 text-sm">ou clique para procurar no computador</span>
+                  <span className="block text-zinc-500 dark:text-zinc-400 font-normal mt-1 text-sm">ou clique para procurar e recortar no computador</span>
                 </div>
               )}
 
@@ -269,12 +304,11 @@ const CadastroPremios = () => {
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) {
-                    setFotoArquivo(file);
-                    setFotoPreview(URL.createObjectURL(file));
-                  } else {
-                    setFotoArquivo(null);
-                    setFotoPreview('');
+                    setImageToCrop(URL.createObjectURL(file));
+                    setCropModalOpen(true);
                   }
+                  // Reseta o input para permitir selecionar o mesmo arquivo caso o usuário cancele
+                  e.target.value = '';
                 }}
                 disabled={isSubmitting}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed"
@@ -314,6 +348,53 @@ const CadastroPremios = () => {
     <div className="max-w-2xl mx-auto w-full">
       <ListaPremios />
     </div>
+
+    <Dialog open={cropModalOpen} onOpenChange={setCropModalOpen}>
+      <DialogContent className="sm:max-w-xl bg-white dark:bg-zinc-950 border dark:border-zinc-800 rounded-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-school-blue-800 dark:text-white text-xl">Recortar Foto do Produto (4:3)</DialogTitle>
+        </DialogHeader>
+        <div className="relative w-full h-[350px] md:h-[450px] bg-zinc-900 rounded-xl overflow-hidden shadow-inner">
+          <Cropper
+            image={imageToCrop}
+            crop={crop}
+            zoom={zoom}
+            aspect={4 / 3}
+            onCropChange={setCrop}
+            onZoomChange={setZoom}
+            onCropComplete={onCropComplete}
+            style={{
+              containerStyle: { background: '#18181b' }
+            }}
+          />
+        </div>
+        <div className="py-4 space-y-3">
+          <div className="flex justify-between items-center text-sm font-medium text-school-blue-700 dark:text-zinc-300">
+            <span>Menos Zoom</span>
+            <span>Mais Zoom</span>
+          </div>
+          <input
+            type="range"
+            value={zoom}
+            min={1}
+            max={3}
+            step={0.05}
+            onChange={(e) => setZoom(Number(e.target.value))}
+            className="w-full h-2 bg-school-blue-100 rounded-lg appearance-none cursor-pointer dark:bg-zinc-800 accent-school-blue-600"
+          />
+        </div>
+        <DialogFooter className="flex gap-2 sm:justify-between mt-2">
+          <Button variant="outline" onClick={() => setCropModalOpen(false)} className="w-full sm:w-auto rounded-xl border-gray-200 dark:border-zinc-700">
+            Cancelar
+          </Button>
+          <Button onClick={handleCropConfirm} disabled={isCropping} className="w-full sm:w-auto bg-school-blue-600 text-white hover:bg-school-blue-700 rounded-xl shadow-md">
+            {isCropping ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Crop className="w-4 h-4 mr-2" />}
+            Confirmar Recorte
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
     </div>
   );
 };

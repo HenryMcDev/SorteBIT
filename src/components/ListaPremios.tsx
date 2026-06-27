@@ -6,8 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, Trash2, Loader2, Save, X, Image as ImageIcon } from 'lucide-react';
+import { Pencil, Trash2, Loader2, Save, X, Image as ImageIcon, Crop } from 'lucide-react';
 import { Premio } from '@/components/PremioCard';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { useCallback } from 'react';
+import Cropper from 'react-easy-crop';
+import { getCroppedImg } from '@/utils/cropImage';
 
 // Nome do bucket no Supabase Storage onde as fotos dos prêmios são armazenadas
 const PREMIOS_BUCKET = 'premios_imagens';
@@ -25,6 +29,13 @@ const ListaPremios = () => {
   const [editFotoPreview, setEditFotoPreview] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
+
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState('');
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [isCropping, setIsCropping] = useState(false);
 
   const { toast } = useToast();
 
@@ -53,6 +64,29 @@ const ListaPremios = () => {
   useEffect(() => {
     fetchPremios();
   }, []);
+
+  const onCropComplete = useCallback((_croppedArea: any, croppedAreaPixels: any) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const handleCropConfirm = async () => {
+    try {
+      setIsCropping(true);
+      const croppedFile = await getCroppedImg(imageToCrop, croppedAreaPixels);
+      if (croppedFile) {
+        setEditFotoFile(croppedFile);
+        setEditFotoPreview(URL.createObjectURL(croppedFile));
+        setCropModalOpen(false);
+        setZoom(1);
+        setCrop({ x: 0, y: 0 });
+      }
+    } catch (e) {
+      console.error(e);
+      toast({ title: "Erro no recorte", description: "Não foi possível cortar a imagem.", variant: "destructive" });
+    } finally {
+      setIsCropping(false);
+    }
+  };
 
   const getPublicUrl = (fotoPath: string) => {
     if (!fotoPath) return '';
@@ -203,9 +237,10 @@ const ListaPremios = () => {
                         onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (file) {
-                            setEditFotoFile(file);
-                            setEditFotoPreview(URL.createObjectURL(file));
+                            setImageToCrop(URL.createObjectURL(file));
+                            setCropModalOpen(true);
                           }
+                          e.target.value = '';
                         }} 
                       />
                     </div>
@@ -250,6 +285,50 @@ const ListaPremios = () => {
           ))}
         </div>
       )}
+
+      <Dialog open={cropModalOpen} onOpenChange={setCropModalOpen}>
+        <DialogContent className="sm:max-w-xl bg-white dark:bg-zinc-950 border dark:border-zinc-800 rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-school-blue-800 dark:text-white text-xl">Recortar Foto do Produto (4:3)</DialogTitle>
+          </DialogHeader>
+          <div className="relative w-full h-[350px] md:h-[450px] bg-zinc-900 rounded-xl overflow-hidden shadow-inner">
+            <Cropper
+              image={imageToCrop}
+              crop={crop}
+              zoom={zoom}
+              aspect={4 / 3}
+              onCropChange={setCrop}
+              onZoomChange={setZoom}
+              onCropComplete={onCropComplete}
+              style={{ containerStyle: { background: '#18181b' } }}
+            />
+          </div>
+          <div className="py-4 space-y-3">
+            <div className="flex justify-between items-center text-sm font-medium text-school-blue-700 dark:text-zinc-300">
+              <span>Menos Zoom</span>
+              <span>Mais Zoom</span>
+            </div>
+            <input
+              type="range"
+              value={zoom}
+              min={1}
+              max={3}
+              step={0.05}
+              onChange={(e) => setZoom(Number(e.target.value))}
+              className="w-full h-2 bg-school-blue-100 rounded-lg appearance-none cursor-pointer dark:bg-zinc-800 accent-school-blue-600"
+            />
+          </div>
+          <DialogFooter className="flex gap-2 sm:justify-between mt-2">
+            <Button variant="outline" onClick={() => setCropModalOpen(false)} className="w-full sm:w-auto rounded-xl border-gray-200 dark:border-zinc-700">
+              Cancelar
+            </Button>
+            <Button onClick={handleCropConfirm} disabled={isCropping} className="w-full sm:w-auto bg-school-blue-600 text-white hover:bg-school-blue-700 rounded-xl shadow-md">
+              {isCropping ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Crop className="w-4 h-4 mr-2" />}
+              Confirmar Recorte
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
