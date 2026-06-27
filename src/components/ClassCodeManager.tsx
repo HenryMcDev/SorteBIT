@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Settings, RefreshCw, PlusCircle } from 'lucide-react';
+import { Settings } from 'lucide-react';
 
 
 interface DailyCode {
@@ -59,23 +58,10 @@ const ClassCodeManager = () => {
       };
 
       if (!latestCode || !isFromToday(latestCode.created_at)) {
-        const chars = '0123456789';
-        let newCode = '';
-        for (let i = 0; i < 6; i++) {
-          newCode += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-
-        const { data: newCodeData, error: insertError } = await supabase
-          .from('daily_codes')
-          .insert({ code: newCode })
-          .select('id, code, created_at')
-          .single();
-
-        if (insertError) throw insertError;
-        latestCode = newCodeData;
+        setCurrentCode(null);
+      } else {
+        setCurrentCode(latestCode);
       }
-
-      setCurrentCode(latestCode);
     } catch (error) {
       console.error('Erro ao carregar código do dia:', error);
       toast({
@@ -90,7 +76,31 @@ const ClassCodeManager = () => {
 
   useEffect(() => {
     loadCurrentCode();
-  }, []);
+
+    const channel = supabase
+      .channel('daily_codes_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'daily_codes',
+        },
+        (payload) => {
+          const newCode = payload.new as DailyCode;
+          setCurrentCode(newCode);
+          toast({
+            title: 'Novo Código Gerado',
+            description: `O código foi atualizado automaticamente: ${newCode.code}`,
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [toast]);
 
   return (
     <Card className="p-6 mb-6 bg-school-blue-50 dark:bg-slate-800 border-2 border-school-blue-200 dark:border-slate-700">
@@ -102,15 +112,6 @@ const ClassCodeManager = () => {
               Gerador de Código do Dia
             </h3>
           </div>
-          <Button
-            onClick={loadCurrentCode}
-            size="sm"
-            disabled={isLoading}
-            className="bg-school-blue-500 hover:bg-school-blue-600 text-white shadow-md transition-all duration-200 border-0"
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Atualizar
-          </Button>
         </div>
 
         <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-900 rounded-xl border-2 border-school-blue-100 dark:border-slate-700 shadow-inner">
