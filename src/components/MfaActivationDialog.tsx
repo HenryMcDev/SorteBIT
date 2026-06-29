@@ -132,8 +132,17 @@ export const MfaActivationDialog = ({ open, onOpenChange, onSuccess }: MfaActiva
       const handleStartMfaSetup = async () => {
         setSetupLoading(true);
         try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session || !session.access_token) {
+          // Garante a renovação do token do Supabase imediatamente antes da requisição externa
+          const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
+          
+          let token = refreshedSession?.access_token;
+
+          if (!token) {
+            const { data: { session } } = await supabase.auth.getSession();
+            token = session?.access_token;
+          }
+
+          if (!token) {
             toast({
               title: 'Erro de autenticação',
               description: 'Sessão ativa ou token de acesso não encontrado. Faça login novamente.',
@@ -143,12 +152,12 @@ export const MfaActivationDialog = ({ open, onOpenChange, onSuccess }: MfaActiva
             return;
           }
 
-          const token = session.access_token.trim();
+          const cleanToken = token.trim();
           const response = await fetch(`${getBackendUrl()}/api/mfa/setup`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
+              'Authorization': `Bearer ${cleanToken}`
             }
           });
 
@@ -178,7 +187,7 @@ export const MfaActivationDialog = ({ open, onOpenChange, onSuccess }: MfaActiva
           console.error('Erro ao iniciar setup do MFA:', err);
           toast({
             title: 'Erro de conexão',
-            description: 'Erro de comunicação com o servidor de autenticação.',
+            description: 'Erro de comunicação com o servidor de autenticação. Verifique os logs.',
             variant: 'destructive'
           });
           onOpenChange(false);
