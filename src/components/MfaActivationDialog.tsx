@@ -133,24 +133,33 @@ export const MfaActivationDialog = ({ open, onOpenChange, onSuccess }: MfaActiva
         setSetupLoading(true);
         try {
           const { data: { session } } = await supabase.auth.getSession();
-          if (!session) {
+          if (!session || !session.access_token) {
             toast({
               title: 'Erro de autenticação',
-              description: 'Você precisa estar autenticado para ativar o MFA.',
+              description: 'Sessão ativa ou token de acesso não encontrado. Faça login novamente.',
               variant: 'destructive'
             });
             onOpenChange(false);
             return;
           }
 
+          const token = session.access_token.trim();
           const response = await fetch(`${getBackendUrl()}/api/mfa/setup`, {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${session.access_token}`
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
             }
           });
 
-          const data = await response.json();
+          const responseText = await response.text();
+          let data;
+          try {
+            data = JSON.parse(responseText);
+          } catch {
+            data = { erro: responseText };
+          }
+
           if (response.ok && data.sucesso) {
             setSetupData({
               secret: data.secret,
@@ -217,18 +226,34 @@ export const MfaActivationDialog = ({ open, onOpenChange, onSuccess }: MfaActiva
     setVerificationLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session || !session.access_token) {
+        toast({
+          title: 'Erro de autenticação',
+          description: 'Sessão ou token de acesso não encontrado.',
+          variant: 'destructive'
+        });
+        setVerificationLoading(false);
+        return;
+      }
 
+      const token = session.access_token.trim();
       const response = await fetch(`${getBackendUrl()}/api/mfa/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ token: totpCode })
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        data = { erro: responseText };
+      }
+
       if (response.ok && data.sucesso) {
         toast({
           title: 'MFA Ativado!',

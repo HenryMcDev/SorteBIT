@@ -34,19 +34,35 @@ const StudentNavbar = ({ studentName, bitcash = 0, onLogout }: StudentNavbarProp
   const fetchMfaStatus = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session || !session.access_token) {
+        console.warn('Sessão ativa ou token de acesso não encontrado. Abortando consulta de status do MFA.');
+        setMfaLoading(false);
+        return;
+      }
 
+      const token = session.access_token.trim();
       const response = await fetch(`${getBackendUrl()}/api/mfa/status`, {
         headers: {
-          'Authorization': `Bearer ${session.access_token}`
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         }
       });
-      if (response.ok) {
-        const data = await response.json();
-        setIsMfaEnabled(data.mfa_enabled);
+
+      const responseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        data = { erro: responseText };
       }
-    } catch (err) {
-      console.error('Erro ao buscar status do MFA:', err);
+
+      if (response.ok && data.sucesso) {
+        setIsMfaEnabled(data.mfa_enabled);
+      } else {
+        console.error('Falha na resposta do status do MFA do servidor:', data.erro || data);
+      }
+    } catch (err: any) {
+      console.error('Erro de conexão ao buscar status do MFA:', err.message || err);
     } finally {
       setMfaLoading(false);
     }
