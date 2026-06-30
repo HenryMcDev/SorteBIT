@@ -1,13 +1,8 @@
-import { useState, useEffect } from 'react';
-import { LogOut, User, Coins, Store, Home, Menu, FileText, Shield, ShieldCheck } from 'lucide-react';
+import { LogOut, User, Coins, Store, Home, Menu, FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
 import { TermosCondicoes } from './TermosCondicoes';
 import { ThemeToggle } from './ThemeToggle';
-import { Button } from './ui/button';
-import { supabase } from '@/integrations/supabase/client';
-import { getBackendUrl } from '@/utils/backendUrl';
-import { MfaActivationDialog } from './MfaActivationDialog';
 
 interface StudentNavbarProps {
   studentName: string;
@@ -18,71 +13,12 @@ interface StudentNavbarProps {
 const StudentNavbar = ({ studentName, bitcash = 0, onLogout }: StudentNavbarProps) => {
   const firstName = studentName.split(' ')[0];
 
-  // Estados simplificados para MFA
-  const [isMfaEnabled, setIsMfaEnabled] = useState(false);
-  const [mfaLoading, setMfaLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
-
   // Data no padrão brasileiro
   const currentDate = new Date().toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: 'long',
     year: 'numeric'
   });
-
-  // Consulta status do MFA na inicialização
-  const fetchMfaStatus = async () => {
-    try {
-      // Força a atualização da sessão para garantir um token válido e evitar rejeição por expiração
-      const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
-      
-      let token = refreshedSession?.access_token;
-
-      if (!token) {
-        // Fallback caso o refresh não traga direto, tenta ler a sessão atual
-        const { data: { session } } = await supabase.auth.getSession();
-        token = session?.access_token;
-      }
-
-      if (!token) {
-        console.warn('Sessão ativa ou token de acesso não encontrado. Abortando consulta de status do MFA.');
-        setMfaLoading(false);
-        return;
-      }
-
-      const cleanToken = token.trim();
-      
-      const response = await fetch(`${getBackendUrl()}/api/mfa/status`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${cleanToken}`
-        }
-      });
-
-      const responseText = await response.text();
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch {
-        data = { erro: responseText };
-      }
-
-      if (response.ok && data.sucesso) {
-        setIsMfaEnabled(data.mfa_enabled);
-      } else {
-        console.error('Falha na resposta do status do MFA do servidor:', data.erro || data);
-      }
-    } catch (err: any) {
-      console.error('Erro de conexão ao buscar status do MFA:', err.message || err);
-    } finally {
-      setMfaLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchMfaStatus();
-  }, []);
 
   return (
     <>
@@ -121,38 +57,11 @@ const StudentNavbar = ({ studentName, bitcash = 0, onLogout }: StudentNavbarProp
               </div>
             </div>
             
-            {/* Lado Direito: Data, Botão MFA e Outras Ações */}
+            {/* Lado Direito: Data e Ações */}
             <div className="flex items-center gap-3">
               <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium whitespace-nowrap mr-2">
                 {currentDate}
               </span>
-              
-              {/* Botão MFA Desktop */}
-              {!mfaLoading && (
-                <Button
-                  type="button"
-                  onClick={isMfaEnabled ? undefined : () => setDialogOpen(true)}
-                  disabled={isMfaEnabled}
-                  variant={isMfaEnabled ? "outline" : "default"}
-                  className={`h-10 text-xs px-4 font-bold rounded-full transition-all duration-200 shadow-sm flex items-center gap-2 shrink-0 ${
-                    isMfaEnabled
-                      ? "border-emerald-500/35 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/5 cursor-default"
-                      : "bg-school-blue-500 hover:bg-school-blue-600 dark:bg-school-blue-600 dark:hover:bg-school-blue-700 text-white active:scale-95"
-                  }`}
-                >
-                  {isMfaEnabled ? (
-                    <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                  ) : (
-                    <Shield className="w-4 h-4" />
-                  )}
-                  <span className="hidden lg:inline">
-                    {isMfaEnabled ? "MFA Ativo" : "Ativar Autenticação em Duas Etapas"}
-                  </span>
-                  <span className="lg:hidden">
-                    {isMfaEnabled ? "MFA Ativo" : "Ativar MFA"}
-                  </span>
-                </Button>
-              )}
 
               <Link
                 to="/"
@@ -237,29 +146,6 @@ const StudentNavbar = ({ studentName, bitcash = 0, onLogout }: StudentNavbarProp
 
                 {/* Ações de Navegação */}
                 <div className="flex flex-col gap-3 flex-1 overflow-y-auto pr-1">
-                  
-                  {/* Botão MFA Mobile */}
-                  {!mfaLoading && (
-                    <Button
-                      type="button"
-                      onClick={isMfaEnabled ? undefined : () => setDialogOpen(true)}
-                      disabled={isMfaEnabled}
-                      variant={isMfaEnabled ? "outline" : "default"}
-                      className={`w-full p-6 text-sm font-bold flex items-center justify-center gap-2 rounded-xl transition-all duration-200 border shrink-0 ${
-                        isMfaEnabled
-                          ? "border-emerald-500/35 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 cursor-default hover:bg-emerald-500/5"
-                          : "bg-school-blue-500 hover:bg-school-blue-600 dark:bg-school-blue-600 dark:hover:bg-school-blue-700 text-white active:scale-98"
-                      }`}
-                    >
-                      {isMfaEnabled ? (
-                        <ShieldCheck className="w-5 h-5 text-emerald-500" />
-                      ) : (
-                        <Shield className="w-5 h-5" />
-                      )}
-                      {isMfaEnabled ? "MFA Ativado" : "Ativar Autenticação em Duas Etapas"}
-                    </Button>
-                  )}
-
                   <Link
                     to="/"
                     className="flex items-center gap-3 w-full p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-medium transition-colors border border-zinc-200/50 dark:border-zinc-700/50"
@@ -307,13 +193,6 @@ const StudentNavbar = ({ studentName, bitcash = 0, onLogout }: StudentNavbarProp
 
         </div>
       </div>
-
-      {/* MODAL CONFIGURAÇÃO DO MFA (MODULARIZADO) */}
-      <MfaActivationDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onSuccess={() => setIsMfaEnabled(true)}
-      />
     </>
   );
 };
