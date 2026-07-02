@@ -20,6 +20,8 @@ const StudentNavbar = ({ studentName, bitcash = 0, onLogout }: StudentNavbarProp
     year: 'numeric'
   });
 
+  const whatsappUrl = `https://wa.me/5534998843601?text=${encodeURIComponent("Olá, boa tarde. estou com problema com o Uniforme Premiado, gostaria de falar com o Henry.")}`;
+
   return (
     <>
       <div className="fixed top-0 left-0 right-0 z-50 bg-white/85 dark:bg-zinc-900/85 backdrop-blur-md border-b border-gray-200 dark:border-zinc-800 shadow-sm">
@@ -78,6 +80,17 @@ const StudentNavbar = ({ studentName, bitcash = 0, onLogout }: StudentNavbarProp
               >
                 <Store className="w-5 h-5" />
               </Link>
+
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 px-4 h-10 rounded-full bg-[#25D366] text-white hover:opacity-90 active:scale-90 transition-all duration-200 shadow-sm shrink-0 font-bold text-sm"
+                title="Falar com o Henry"
+              >
+                <img src="/img/icon-whatsapp.png" alt="WhatsApp" className="w-5 h-5" />
+                <span>WhatsApp</span>
+              </a>
 
               <button
                 onClick={onLogout}
@@ -161,6 +174,16 @@ const StudentNavbar = ({ studentName, bitcash = 0, onLogout }: StudentNavbarProp
                     <Store className="w-5 h-5 text-school-blue-500" />
                     Loja de Prêmios
                   </Link>
+
+                  <a
+                    href={whatsappUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 w-full p-3 rounded-lg bg-[#25D366] text-white hover:opacity-90 font-bold transition-all border border-[#25D366]/20 shadow-sm"
+                  >
+                    <img src="/img/icon-whatsapp.png" alt="WhatsApp" className="w-5 h-5" />
+                    <span>Suporte WhatsApp</span>
+                  </a>
                   
                   <TermosCondicoes>
                     <button

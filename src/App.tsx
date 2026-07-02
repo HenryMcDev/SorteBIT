@@ -13,6 +13,7 @@ import Vitrine from "./pages/Vitrine";
 import AdminPrivateRoute from "./components/AdminPrivateRoute";
 import AdminJackpot from "@/pages/AdminJackpot";
 import CookieBanner from "./components/CookieBanner";
+import BotaoFlutuanteWhatsapp from "./components/BotaoFlutuanteWhatsapp";
 
 const queryClient = new QueryClient();
 
@@ -86,6 +87,7 @@ const App = () => {
           </Routes>
         </BrowserRouter>
         <CookieBanner />
+        <BotaoFlutuanteWhatsapp />
       </TooltipProvider>
     </QueryClientProvider>
   );
