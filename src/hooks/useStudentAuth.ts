@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { isValidCPF } from '@/utils/cpfValidator';
+import { getBackendUrl } from '@/utils/backendUrl';
 
 // ── Validação de complexidade de senha ───────────────────────────────────────
 export interface PasswordStrength {
@@ -30,7 +31,7 @@ interface StudentUser {
 }
 
 const STORAGE_KEY = 'bit_student_session';
-const WEBHOOK_URL = 'https://bitn8n.infinityflowapp.com/webhook/student-sortebit';
+const REGISTER_URL = getBackendUrl() + '/api/student/register';
 
 export const useStudentAuth = () => {
   const [studentUser, setStudentUser] = useState<StudentUser | null>(() => {
@@ -199,7 +200,7 @@ export const useStudentAuth = () => {
     try {
       const cleanCpf = cpf.replace(/\D/g, '');
 
-      const resposta = await axios.post(WEBHOOK_URL, {
+      const resposta = await axios.post(REGISTER_URL, {
         Ação: 'Registro',
         nome: name.trim(),
         cpf: cleanCpf,
