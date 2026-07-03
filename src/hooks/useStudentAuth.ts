@@ -223,11 +223,12 @@ export const useStudentAuth = () => {
         variant: 'destructive',
       });
       return false;
-    } catch (err) {
-      console.error('Erro ao registrar aluno:', err);
+    } catch (error: any) {
+      console.error('Erro ao registrar aluno:', error);
+      const errorMessage = error.response?.data?.message || 'Falha no cadastro! Tente novamente.';
       toast({
-        title: 'Erro de conexão',
-        description: 'Verifique sua conexão com a internet e tente novamente.',
+        title: 'Erro no cadastro',
+        description: errorMessage,
         variant: 'destructive',
       });
       return false;

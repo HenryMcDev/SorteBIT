@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
-import { MapPin, MapPinOff, AlertCircle, Camera, RefreshCw, X, AlertTriangle, Clock } from 'lucide-react';
+import { MapPin, MapPinOff, AlertCircle, Camera, RefreshCw, X, AlertTriangle, Clock, HelpCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useLocationVerification } from '@/hooks/useLocationVerification';
 import Celebration from './Celebration';
@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { TermosCondicoes } from './TermosCondicoes';
+import { useNavigate } from 'react-router-dom';
 
 
 interface StudentUser {
@@ -27,6 +28,7 @@ interface LotteryFormProps {
 }
 
 const LotteryForm = ({ studentUser }: LotteryFormProps) => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'sorteio' | 'mural'>('sorteio');
   const [name, setName] = useState(studentUser?.name || '');
   const [studentCode, setStudentCode] = useState('');
@@ -634,7 +636,16 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
                   </div>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <>
+                  <Button
+                    type="button"
+                    onClick={() => navigate('/instrucoes', { state: { deFormulario: true } })}
+                    className="w-full py-6 bg-gradient-to-r from-school-blue-500 to-indigo-600 hover:from-school-blue-600 hover:to-indigo-700 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 mb-6"
+                  >
+                    <HelpCircle className="w-5 h-5" />
+                    <span>Instruções de Uso - Uniforme Premiado</span>
+                  </Button>
+                  <form onSubmit={handleSubmit} className="space-y-4">
                   {isLoading && (
                     <div className="w-full transition-all duration-300">
                       <div className="flex justify-between items-center mb-1">
@@ -754,6 +765,7 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
                     )}
                   </Button>
                 </form>
+                </>
               )}
 
               <div className="text-center pt-4">
