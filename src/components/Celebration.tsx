@@ -66,30 +66,32 @@ const Celebration = ({ nome, onClose }: CelebrationProps) => {
         </div>
       ))}
 
-      <div className="success-card dark:bg-zinc-950 dark:border-zinc-700" onClick={(e) => e.stopPropagation()}>
-        <h1 className="success-title dark:text-white">🥳 BOA SORTE!</h1>
-        <p className="success-text dark:text-zinc-300">
-          Participação confirmada, <strong>{nome}</strong>!<br />
-          A Equipe BIT te deseja sorte no sorteio
-        </p>
-        <p className="success-highlight dark:text-school-blue-300">
-          A BIA já validou tudo por aqui! ✨
-        </p>
+      <div className="success-card" onClick={(e) => e.stopPropagation()}>
+        <div className="relative z-10 flex flex-col items-center w-full">
+          <h1 className="success-title text-zinc-900 dark:text-white font-black">🥳 BOA SORTE!</h1>
+          <p className="success-text text-zinc-700 dark:text-zinc-300">
+            Participação confirmada, <strong>{nome}</strong>!<br />
+            A Equipe BIT te deseja sorte no sorteio
+          </p>
+          <p className="success-highlight text-school-blue-600 dark:text-school-blue-300">
+            A BIA já validou tudo por aqui! ✨
+          </p>
 
-        {/* Aviso visual BITCash */}
-        <div className="mt-6 mb-4 mx-auto w-full max-w-[280px] p-3 rounded-2xl bg-gradient-to-br from-yellow-300 to-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.5)] border border-yellow-200 flex items-center gap-3 animate-in zoom-in duration-500 delay-300">
-          <div className="w-10 h-10 rounded-full bg-white/30 flex items-center justify-center shrink-0 shadow-inner">
-            <Coins className="w-6 h-6 text-yellow-900" />
+          {/* Aviso visual BITCash */}
+          <div className="mt-6 mb-4 mx-auto w-full max-w-[280px] p-3 rounded-2xl bg-gradient-to-br from-yellow-300 to-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.5)] border border-yellow-200 flex items-center gap-3 animate-in zoom-in duration-500 delay-300">
+            <div className="w-10 h-10 rounded-full bg-white/30 flex items-center justify-center shrink-0 shadow-inner">
+              <Coins className="w-6 h-6 text-yellow-900" />
+            </div>
+            <div className="text-left flex-1">
+              <p className="text-xs font-bold text-yellow-900/70 uppercase tracking-wide leading-none">Você ganhou</p>
+              <p className="text-lg font-black text-yellow-950 leading-tight">+10 CashBIT</p>
+            </div>
           </div>
-          <div className="text-left flex-1">
-            <p className="text-xs font-bold text-yellow-900/70 uppercase tracking-wide leading-none">Você ganhou</p>
-            <p className="text-lg font-black text-yellow-950 leading-tight">+10 CashBIT</p>
-          </div>
+
+          {onClose && (
+            <button onClick={onClose} className="success-button dark:bg-school-yellow-400 dark:text-school-blue-950"> SAIR </button>
+          )}
         </div>
-
-        {onClose && (
-          <button onClick={onClose} className="success-button dark:bg-school-yellow-400 dark:text-school-blue-950"> SAIR </button>
-        )}
       </div>
     </div>
   );

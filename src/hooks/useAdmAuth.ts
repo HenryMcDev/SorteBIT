@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,6 +14,7 @@ const STORAGE_KEY = 'school_admin_session';
 const WEBHOOK_URL = 'https://bitn8n.infinityflowapp.com/webhook/admin-sortebit';
 
 export const useAdmAuth = () => {
+  const navigate = useNavigate();
   const [adminUser, setAdminUser] = useState<AdminUser | null>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -123,6 +125,7 @@ export const useAdmAuth = () => {
       // Ignora erros de rede no signOut — sessão local já será limpa
     } finally {
       setAdminUser(null);
+      navigate('/');
     }
   };
 

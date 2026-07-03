@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,6 +35,7 @@ const STORAGE_KEY = 'bit_student_session';
 const REGISTER_URL = getBackendUrl() + '/api/student/register';
 
 export const useStudentAuth = () => {
+  const navigate = useNavigate();
   const [studentUser, setStudentUser] = useState<StudentUser | null>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -245,7 +247,7 @@ export const useStudentAuth = () => {
       // Ignora erros de rede no signOut — sessão local já será limpa
     } finally {
       setStudentUser(null);
-      window.location.href = '/';
+      navigate('/');
     }
   };
 

@@ -19,6 +19,11 @@ export const CookieBanner = () => {
     setIsVisible(false);
   };
 
+  const handleDecline = () => {
+    localStorage.setItem('lgpd_accepted', 'false');
+    setIsVisible(false);
+  };
+
   if (!isVisible) return null;
 
   return (
@@ -44,6 +49,13 @@ export const CookieBanner = () => {
             </div>
           </div>
           <div className="flex items-center justify-end gap-2.5">
+            <Button
+              onClick={handleDecline}
+              variant="outline"
+              className="h-10 px-6 font-bold text-xs border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-all active:scale-[0.98]"
+            >
+              Recusar
+            </Button>
             <Button
               onClick={handleAccept}
               className="h-10 px-6 font-bold text-xs bg-school-blue-600 hover:bg-school-blue-700 text-white rounded-xl shadow-md transition-all active:scale-[0.98]"

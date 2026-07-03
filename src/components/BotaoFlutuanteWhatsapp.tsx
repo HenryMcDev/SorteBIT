@@ -30,7 +30,7 @@ const BotaoFlutuanteWhatsapp = () => {
   }, []);
 
   return (
-    <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-center">
+    <div className="fixed bottom-6 right-6 z-[99] flex flex-col items-center">
       <style>{`
         @keyframes tooltipFade {
           0% { opacity: 0; transform: translateY(8px) scale(0.95); }
