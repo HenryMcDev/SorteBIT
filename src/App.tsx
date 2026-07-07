@@ -15,6 +15,7 @@ import AdminPrivateRoute from "./components/AdminPrivateRoute";
 import AdminJackpot from "@/pages/AdminJackpot";
 import CookieBanner from "./components/CookieBanner";
 import BotaoFlutuanteWhatsapp from "./components/BotaoFlutuanteWhatsapp";
+import { supabase } from "@/integrations/supabase/client";
 
 const queryClient = new QueryClient();
 
@@ -62,6 +63,41 @@ const App = () => {
     };
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
+  useEffect(() => {
+    let timerId: any;
+
+    const resetarCronometro = () => {
+      if (timerId) clearTimeout(timerId);
+      timerId = setTimeout(async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        const hasAdminSession = !!localStorage.getItem('school_admin_session');
+        const hasStudentSession = !!localStorage.getItem('bit_student_session');
+        if (session || hasAdminSession || hasStudentSession) {
+          await supabase.auth.signOut();
+          localStorage.removeItem('school_admin_session');
+          localStorage.removeItem('bit_student_session');
+          alert('Sessão expirada por inatividade.');
+          window.location.href = '/';
+        }
+      }, 15 * 60 * 1000);
+    };
+
+    resetarCronometro();
+
+    window.addEventListener('mousemove', resetarCronometro);
+    window.addEventListener('keydown', resetarCronometro);
+    window.addEventListener('click', resetarCronometro);
+    window.addEventListener('scroll', resetarCronometro);
+
+    return () => {
+      window.removeEventListener('mousemove', resetarCronometro);
+      window.removeEventListener('keydown', resetarCronometro);
+      window.removeEventListener('click', resetarCronometro);
+      window.removeEventListener('scroll', resetarCronometro);
+      if (timerId) clearTimeout(timerId);
+    };
   }, []);
 
   return (

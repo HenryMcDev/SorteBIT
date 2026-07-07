@@ -18,6 +18,7 @@ const Vitrine = () => {
   const { studentUser, isAuthenticated, logout } = useStudentAuth();
   const [premios, setPremios] = useState<Premio[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -67,12 +68,131 @@ const Vitrine = () => {
     return <Navigate to="/" replace />;
   }
 
-  const handleResgatar = (id: number) => {
-    // Apenas UI por enquanto
-    toast({
-      title: "Resgate em processamento",
-      description: "Funcionalidade de resgate será conectada ao sistema em breve!",
-    });
+  const handleResgatar = async (id: number) => {
+    if (!studentUser?.id) return;
+    if (isProcessing) return;
+
+    const premio = premios.find(p => p.id === id);
+    if (!premio) {
+      toast({
+        title: "Erro",
+        description: "Prêmio não encontrado.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const custoPremio = premio.valor;
+    const premioId = premio.id;
+
+    if (premio.estoque !== null && premio.estoque <= 0) {
+      toast({
+        title: "Produto esgotado",
+        description: "Este prêmio não está mais disponível no estoque.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      // 1. Não confie no localStorage! Busca o saldo REAL e atualizado do banco de dados agora mesmo
+      const { data: estudanteReal, error: erroEstudante } = await supabase
+        .from('estudantes' as any)
+        .select('bitcash')
+        .eq('id', studentUser.id)
+        .maybeSingle();
+
+      if (erroEstudante || !estudanteReal) {
+        toast({
+          title: "Erro ao verificar dados",
+          description: "Erro ao verificar seus dados. Tente novamente.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const bitcashReal = (estudanteReal as any).bitcash || 0;
+
+      // 2. Compara com o saldo vindo direto do BANCO DE DADOS
+      if (bitcashReal < custoPremio) {
+        toast({
+          title: "Saldo insuficiente",
+          description: `Saldo insuficiente! Seu saldo real é ${bitcashReal} CashBIT.`,
+          variant: "destructive",
+        });
+
+        // Correção de segurança: Atualiza o localStorage do espertinho com o valor real para travar a tela dele
+        const dadosLocais = JSON.parse(localStorage.getItem('bit_student_session') || '{}');
+        dadosLocais.bitcash = bitcashReal;
+        localStorage.setItem('bit_student_session', JSON.stringify(dadosLocais));
+        
+        // Recarrega a página para atualizar o estado do auth e travar a tela
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+        return; // Barra o resgate aqui!
+      }
+
+      // 3. Se o saldo do banco for suficiente, aí sim processa o resgate
+      const novoSaldoNum = bitcashReal - custoPremio;
+
+      // Atualiza o saldo no banco de dados subtraindo o valor correto
+      const { error: updateError } = await supabase
+        .from('estudantes' as any)
+        .update({ bitcash: novoSaldoNum } as any)
+        .eq('id', studentUser.id);
+
+      if (updateError) throw updateError;
+
+      // Atualiza o estoque do prêmio se aplicável
+      if (premio.estoque !== null) {
+        const novoEstoque = Math.max(0, premio.estoque - 1);
+        await supabase
+          .from('premios' as any)
+          .update({ estoque: novoEstoque } as any)
+          .eq('id', premio.id);
+        
+        setPremios(prev => prev.map(p => p.id === premio.id ? { ...p, estoque: novoEstoque } : p));
+      }
+
+      // Registra o resgate na tabela de pedidos
+      const { error: insertError } = await supabase
+        .from('resgates' as any)
+        .insert({ 
+          estudante_id: studentUser.id, 
+          premio_id: premioId, 
+          status: 'pendente' 
+        } as any);
+
+      if (insertError) throw insertError;
+
+      // Atualiza o localStorage com o novo saldo
+      const dadosLocais = JSON.parse(localStorage.getItem('bit_student_session') || '{}');
+      dadosLocais.bitcash = novoSaldoNum;
+      localStorage.setItem('bit_student_session', JSON.stringify(dadosLocais));
+
+      toast({
+        title: "Sucesso!",
+        description: "Prêmio resgatado com sucesso!",
+      });
+
+      // Recarrega a página após o sucesso para sincronizar o estado geral do estudanteUser
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Erro no resgate",
+        description: "Ocorreu um erro ao processar o seu resgate. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const renderSkeletons = () => {
@@ -100,6 +220,7 @@ const Vitrine = () => {
         studentName={studentUser?.name || "Aluno"}
         bitcash={studentUser?.bitcash || 0}
         onLogout={logout}
+        studentId={studentUser?.id}
       />
 
       <main className="container mx-auto px-4 py-8 max-w-7xl">

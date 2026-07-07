@@ -39,7 +39,7 @@ const DesktopBlocker = () => {
                   📱 Escaneie o QR Code ou digite o endereço no seu celular
                 </p>
                 <img
-                  src="/img/QRCode.png"
+                  src="/img/QRCode_up.webp"
                   alt="QR Code para acessar o Uniforme Premiado pelo celular"
                   className="mx-auto mt-4 w-44 h-44 object-contain rounded-xl shadow-md"
                 />

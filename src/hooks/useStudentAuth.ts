@@ -46,7 +46,8 @@ export const useStudentAuth = () => {
         localStorage.removeItem(STORAGE_KEY);
         return null;
       }
-      return parsed;
+      // Inicializa com o bitcash zerado / limpo
+      return { ...parsed, bitcash: 0 };
     } catch {
       return null;
     }
@@ -89,42 +90,60 @@ export const useStudentAuth = () => {
     }
   }, [studentUser]);
 
-  // Efeito independente para buscar o nome real no Supabase quando logado
+  // Efeito para carregar a sessão e os dados do estudante de forma segura direto do banco de dados na montagem
   useEffect(() => {
     let isMounted = true;
 
-    const fetchRealName = async () => {
-      if (!studentUser?.id) return;
-
-      try {
-        // Busca usando id do estudante para evitar vazamento de CPF
+    const loadSessionAndData = async () => {
+      // 1. Pega o usuário autenticado direto da sessão segura do Supabase (não do localStorage)
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        // 2. Busca o saldo REAL direto do banco de dados usando o e-mail cadastrado
         const { data, error } = await supabase
           .from('estudantes' as any)
-          .select('nome_completo, termos_aceitos, bitcash')
-          .eq('id', studentUser.id)
+          .select('id, nome_completo, bitcash, termos_aceitos')
+          .eq('email', session.user.email)
           .maybeSingle();
 
-        if (error) throw error;
-        
-        const result = data as any;
-        
-        if (result && isMounted) {
-          const updatedName = result.nome_completo || studentUser.name;
-          if (updatedName !== studentUser.name || result.termos_aceitos !== studentUser.termos_aceitos || result.bitcash !== studentUser.bitcash) {
-            setStudentUser(prev => prev ? { ...prev, name: updatedName, termos_aceitos: result.termos_aceitos, bitcash: result.bitcash } : null);
-          }
+        if (error) {
+          console.error("Erro ao carregar dados seguros do estudante:", error);
+          return;
         }
-      } catch (err) {
-        console.error('Erro ao buscar o nome real do estudante:', err);
+
+        if (data && isMounted) {
+          const result = data as any;
+          const user: StudentUser = {
+            id: result.id,
+            name: result.nome_completo || 'Aluno',
+            bitcash: result.bitcash || 0,
+            termos_aceitos: result.termos_aceitos,
+          };
+          
+          setStudentUser(user);
+          
+          // Atualiza também o objeto do localStorage com o valor real do bitcash vindo do servidor
+          const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+          localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify({ ...user, expiresAt: Date.now() + SESSION_TTL_MS })
+          );
+        }
+      } else {
+        // Se não há sessão no Supabase, limpa o estado
+        if (isMounted) {
+          setStudentUser(null);
+          localStorage.removeItem(STORAGE_KEY);
+        }
       }
     };
 
-    fetchRealName();
+    loadSessionAndData();
 
     return () => {
       isMounted = false;
     };
-  }, [studentUser?.id]);
+  }, []);
 
   const login = async (identifier: string, password: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);

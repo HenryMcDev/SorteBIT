@@ -1,3 +1,5 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
 import LotteryForm from '@/components/LotteryForm';
 import Footer from '@/components/Footer';
@@ -10,6 +12,29 @@ import { useStudentAuth } from '@/hooks/useStudentAuth';
 const Index = () => {
   const isMobile = useMobileDetection();
   const { studentUser, isAuthenticated, isLoading, login, register, logout, cpfValue, cpfError, handleCPFChange, setCpfValue } = useStudentAuth();
+  const [saldo, setSaldo] = useState(0);
+
+  const buscarSaldoInicial = async () => {
+    if (!studentUser?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from('estudantes' as any)
+        .select('bitcash')
+        .eq('id', studentUser.id)
+        .maybeSingle();
+      if (data) {
+        setSaldo((data as any).bitcash || 0);
+      }
+    } catch (err) {
+      console.error("Erro ao buscar saldo inicial:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (studentUser?.id) {
+      buscarSaldoInicial();
+    }
+  }, [studentUser?.id]);
 
   if (!isMobile) {
     return <DesktopBlocker />;
@@ -20,7 +45,7 @@ const Index = () => {
       <div className="absolute inset-0 bg-gradient-to-br from-school-blue-50/30 via-white to-school-yellow-50/30 pointer-events-none dark:hidden"></div>
 
       {isAuthenticated && studentUser && (
-        <StudentNavbar studentName={studentUser.name} bitcash={studentUser.bitcash} onLogout={logout} />
+        <StudentNavbar studentName={studentUser.name} bitcash={saldo} onLogout={logout} studentId={studentUser.id} setSaldo={setSaldo} />
       )}
 
       <div className="relative z-10">
