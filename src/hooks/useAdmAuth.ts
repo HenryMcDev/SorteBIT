@@ -33,17 +33,49 @@ export const useAdmAuth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (adminUser) {
+  // Função utilitária para atualizar a sessão e disparar o evento de sincronização
+  const updateSession = (user: AdminUser | null) => {
+    if (user) {
       const SESSION_TTL_MS = 8 * 60 * 60 * 1000; // 8 horas
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ ...adminUser, expiresAt: Date.now() + SESSION_TTL_MS })
-      );
+      const sessionData = { ...user, expiresAt: Date.now() + SESSION_TTL_MS };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionData));
+      setAdminUser(sessionData);
     } else {
       localStorage.removeItem(STORAGE_KEY);
+      setAdminUser(null);
     }
-  }, [adminUser]);
+    window.dispatchEvent(new Event('admin-session-change'));
+  };
+
+  // Efeito para sincronizar sessões entre múltiplas instâncias do hook de forma reativa
+  useEffect(() => {
+    const syncSession = () => {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (!stored) {
+          setAdminUser(null);
+          return;
+        }
+        const parsed = JSON.parse(stored) as AdminUser & { expiresAt?: number };
+        if (parsed.expiresAt && Date.now() > parsed.expiresAt) {
+          localStorage.removeItem(STORAGE_KEY);
+          setAdminUser(null);
+        } else {
+          setAdminUser(parsed);
+        }
+      } catch {
+        setAdminUser(null);
+      }
+    };
+
+    window.addEventListener('admin-session-change', syncSession);
+    window.addEventListener('storage', syncSession);
+
+    return () => {
+      window.removeEventListener('admin-session-change', syncSession);
+      window.removeEventListener('storage', syncSession);
+    };
+  }, []);
 
   const login = async (identifier: string, password: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
@@ -97,12 +129,13 @@ export const useAdmAuth = () => {
         isAdmin: true,
       };
       
-      setAdminUser(user);
+      updateSession(user);
       
       toast({
         title: 'Sucesso',
         description: 'Acesso administrativo concedido!',
       });
+      navigate('/admin/participantes');
       return { success: true };
 
     } catch (err) {
@@ -124,7 +157,7 @@ export const useAdmAuth = () => {
     } catch {
       // Ignora erros de rede no signOut — sessão local já será limpa
     } finally {
-      setAdminUser(null);
+      updateSession(null);
       navigate('/');
     }
   };
