@@ -11,7 +11,7 @@ interface StudentNavbarProps {
   bitcash?: number;
   onLogout: () => void;
   studentId?: number | string;
-  setSaldo: (saldo: number) => void;
+  setSaldo?: (saldo: number) => void;
 }
 
 const StudentNavbar = ({ studentName, bitcash = 0, onLogout, studentId, setSaldo }: StudentNavbarProps) => {
@@ -48,7 +48,7 @@ const StudentNavbar = ({ studentName, bitcash = 0, onLogout, studentId, setSaldo
         (payload) => {
           console.log("Chegou alteração do Realtime!", payload);
           if (payload.new && (payload.new.bitcash || payload.new.bitcash === 0)) {
-            setSaldo(payload.new.bitcash);
+            if (setSaldo) setSaldo(payload.new.bitcash);
             
             // Sync cache to prevent discrepancy
             const user = JSON.parse(localStorage.getItem('usuario') || '{}');

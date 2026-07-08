@@ -30,6 +30,22 @@ interface LotteryFormProps {
 const LotteryForm = ({ studentUser }: LotteryFormProps) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'sorteio' | 'mural'>('sorteio');
+  const [userIp, setUserIp] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUserIp = async () => {
+      try {
+        const response = await fetch('https://api.ipify.org?format=json');
+        if (!response.ok) throw new Error('Falha ao obter IP');
+        const data = await response.json();
+        setUserIp(data.ip);
+      } catch (err) {
+        console.error('Erro ao buscar IP:', err);
+        setUserIp('Indisponível');
+      }
+    };
+    fetchUserIp();
+  }, []);
   const [name, setName] = useState(studentUser?.name || '');
   const [studentCode, setStudentCode] = useState('');
   const [phone, setPhone] = useState('');
@@ -205,7 +221,7 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
   };
 
   // Use location verification only for non-admin mode
-  const { isLoading, isWithinRange, locationProgress, distance, retryLocation } = useLocationVerification(false);
+  const { isLoading, isWithinRange, locationProgress, distance, retryLocation, error: locationError } = useLocationVerification(false);
 
   const formatPhone = (value: string): string => {
     const numbers = value.replace(/\D/g, '');
@@ -551,9 +567,6 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
     );
   }
 
-  const isLocationInvalid = !isWithinRange;
-  const showRedButton = isLocationInvalid && !isGracePeriod;
-
   // Standard user interface
   return (
     <>
@@ -563,12 +576,18 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-2">
               <MapPinOff className="w-8 h-8 text-red-500 animate-pulse" />
             </div>
-            <h3 className="text-xl font-bold text-white">Acesso Bloqueado por Proximidade</h3>
+            <h3 className="text-xl font-bold text-white">
+              {locationError ? "Acesso Bloqueado" : "Acesso Bloqueado por Proximidade"}
+            </h3>
             <p className="text-zinc-300 text-sm">
-              {distance !== null
-                ? `Você está a aproximadamente ${(distance).toFixed(0)} metros de distância. `
-                : 'Não conseguimos obter sua localização exata. '}
-              É obrigatório estar na BIT para participar.
+              {locationError ? locationError : (
+                <>
+                  {distance !== null
+                    ? `Você está a aproximadamente ${(distance).toFixed(0)} metros de distância. `
+                    : 'Não conseguimos obter sua localização exata. '}
+                  É obrigatório estar na BIT para participar.
+                </>
+              )}
             </p>
             <Button
               type="button"
@@ -745,25 +764,41 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
 
 
 
-                  <Button
-                    type="submit"
-                    disabled={submissionState === 'enviando' || submissionState === 'processando' || !photo || photoValidationError !== null || isLocationInvalid || tentativasCodigo === 0}
-                    className={`w-full h-auto py-5 text-base md:text-lg font-bold rounded-2xl shadow-sm transition-all duration-500 disabled:cursor-not-allowed ${showRedButton
-                      ? "bg-school-blue-600 text-white disabled:opacity-100"
-                      : "bg-school-blue-600 hover:bg-school-blue-700 text-white animate-pulse-subtle disabled:opacity-70 disabled:animate-none hover:shadow-md"
-                      }`}
-                  >
-                    {(submissionState === 'enviando' || submissionState === 'processando') ? (
-                      <div className="flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                        {submissionState === 'processando' ? 'Analisando foto, aguarde...' : 'Processando...'}
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center">
-                        {showRedButton ? 'Você não está na BIT' : 'Participar do sorteio'}
-                      </div>
-                    )}
-                  </Button>
+                  {(!isWithinRange || locationProgress < 100) ? (
+                    <Button
+                      type="button"
+                      disabled
+                      className="w-full h-auto py-5 text-base md:text-lg font-bold rounded-2xl shadow-sm bg-zinc-800 border border-zinc-700 text-zinc-500 disabled:opacity-100 cursor-not-allowed"
+                    >
+                      {isLoading ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="w-2 h-2 bg-zinc-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                          <div className="w-2 h-2 bg-zinc-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                          <div className="w-2 h-2 bg-zinc-500 rounded-full animate-bounce" />
+                          <span>Aguarde...</span>
+                        </div>
+                      ) : (
+                        <span>Você não está na BIT</span>
+                      )}
+                    </Button>
+                  ) : (
+                    <Button
+                      type="submit"
+                      disabled={submissionState === 'enviando' || submissionState === 'processando' || !photo || photoValidationError !== null || tentativasCodigo === 0}
+                      className="w-full h-auto py-5 text-base md:text-lg font-bold rounded-2xl shadow-sm bg-school-blue-600 hover:bg-school-blue-700 text-white animate-pulse-subtle disabled:opacity-70 disabled:animate-none hover:shadow-md transition-all duration-300"
+                    >
+                      {(submissionState === 'enviando' || submissionState === 'processando') ? (
+                        <div className="flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                          {submissionState === 'processando' ? 'Analisando foto, aguarde...' : 'Processando...'}
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center">
+                          Participar do sorteio
+                        </div>
+                      )}
+                    </Button>
+                  )}
                 </form>
                 </>
               )}

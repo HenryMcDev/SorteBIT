@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface LocationState {
   isLoading: boolean;
@@ -45,6 +44,80 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
     distance: null
   });
 
+  const watchIdRef = useRef<number | null>(null);
+  const isCheckingIpRef = useRef<boolean>(false);
+
+  // Função assíncrona de contingência por IP público
+  const validateIpAddress = async () => {
+    if (isCheckingIpRef.current) return;
+    isCheckingIpRef.current = true;
+
+    // Interromper a busca do GPS imediatamente
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+
+    try {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+      const response = await fetch(`${backendUrl}/api/validate-ip`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        // Sucesso na validação de IP: force o progresso para 100% e defina isWithinRange como true
+        setLocationState(prev => ({
+          ...prev,
+          locationProgress: 100,
+          isWithinRange: true,
+          isLoading: false,
+          error: null
+        }));
+      } else {
+        // Erro na validação de IP: exiba a mensagem pedindo para conectar ao Wi-Fi oficial
+        setLocationState(prev => ({
+          ...prev,
+          isLoading: false,
+          isWithinRange: false,
+          error: 'Por favor, conecte-se à rede Wi-Fi oficial dos Laboratórios da BIT para liberar sua participação.'
+        }));
+      }
+    } catch (err) {
+      console.error('Erro de rede ao validar IP:', err);
+      setLocationState(prev => ({
+        ...prev,
+        isLoading: false,
+        isWithinRange: false,
+        error: 'Por favor, conecte-se à rede Wi-Fi oficial dos Laboratórios da BIT para liberar sua participação.'
+      }));
+    }
+  };
+
+  // Temporizador de 60 segundos rodando de forma fluida
+  useEffect(() => {
+    if (skipVerification || !locationState.isLoading) return;
+
+    const interval = setInterval(() => {
+      setLocationState(prev => {
+        if (!prev.isLoading || prev.locationProgress >= 100) {
+          clearInterval(interval);
+          return prev;
+        }
+        // Incrementa progresso de forma fluida em direção a 100% (capping at 99%)
+        const nextProgress = Math.min(prev.locationProgress + 1.25, 99);
+        return {
+          ...prev,
+          locationProgress: Number(nextProgress.toFixed(1))
+        };
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [locationState.isLoading, skipVerification]);
+
   useEffect(() => {
     // Se deve pular a verificação, definir como permitido
     if (skipVerification) {
@@ -62,34 +135,27 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
       return;
     }
 
-    let watchId: number | null = null;
-    let contingencyTimeout: NodeJS.Timeout;
-
     const checkLocation = () => {
       // Verificar se a geolocalização é suportada
       if (!navigator.geolocation) {
-        setLocationState({
-          isLoading: false,
-          isWithinRange: false,
-          error: 'Geolocalização não é suportada neste dispositivo.',
-          hasPermission: false,
-          locationProgress: 0,
-          showContingency: true,
-          latitude: null,
-          longitude: null,
-          distance: null
-        });
+        console.log("Geolocalização não suportada. Acionando contingência de IP imediatamente...");
+        validateIpAddress();
         return;
       }
 
       setLocationState(prev => ({ ...prev, isLoading: true, locationProgress: 25 }));
 
-      watchId = navigator.geolocation.watchPosition(
+      let badAccuracyCount = 0;
+      let errorCount = 0;
+
+      watchIdRef.current = navigator.geolocation.watchPosition(
         (position) => {
           const userLat = position.coords.latitude;
           const userLon = position.coords.longitude;
+          const accuracy = position.coords.accuracy; // Precisão em metros
 
-          // Calcular distância
+          console.log(`Coordenada recebida com precisão de: ${accuracy} metros`);
+
           const distance = calculateDistance(
             userLat,
             userLon,
@@ -97,11 +163,26 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
             SCHOOL_COORDINATES.longitude
           );
 
-          console.log(`Distância da escola: ${distance.toFixed(2)} metros`);
+          // Se a precisão for muito ruim (maior que 500m) e o aluno deu longe, ignora a leitura e continua procurando
+          if (accuracy > 500 && distance > ALLOWED_RADIUS_METERS) {
+            console.log("Sinal de baixa precisão detectado. Aguardando calibração...");
+            badAccuracyCount += 1;
+            
+            if (badAccuracyCount >= 6) {
+              console.log("Limite de tentativas de calibração sem precisão esgotado. Acionando contingência de IP...");
+              if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
+              validateIpAddress();
+            } else {
+              setLocationState(prev => ({
+                ...prev,
+                locationProgress: prev.locationProgress < 75 ? Math.min(prev.locationProgress + 10, 75) : 75
+              }));
+            }
+            return;
+          }
 
           if (distance <= ALLOWED_RADIUS_METERS) {
-            if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-            clearTimeout(contingencyTimeout);
+            if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
             setLocationState({
               isLoading: false,
               isWithinRange: true,
@@ -114,46 +195,29 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
               distance: distance
             });
           } else {
-            // Rejeita imediatamente se estiver fora do raio permitido
-            if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-            clearTimeout(contingencyTimeout);
-            setLocationState(prev => ({
-              ...prev,
+            // Se a leitura for calibrada e está longe, rejeita na verificação GPS
+            if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
+            setLocationState({
               isLoading: false,
               isWithinRange: false,
-              error: null,
+              error: 'Você não está no local permitido (Escola BIT).',
               hasPermission: true,
               locationProgress: 0,
+              showContingency: false,
               latitude: userLat,
               longitude: userLon,
               distance: distance
-            }));
+            });
           }
         },
         (error) => {
           console.error(`Erro ao obter localização:`, error);
-
-          if (error.code === GeolocationPositionError.PERMISSION_DENIED) {
-            setLocationState({
-              isLoading: false,
-              isWithinRange: false,
-              error: 'Permissão de localização negada.',
-              hasPermission: false,
-              locationProgress: 0,
-              showContingency: true,
-              latitude: null,
-              longitude: null,
-              distance: null
-            });
-            if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-            clearTimeout(contingencyTimeout);
-          } else {
-            // Continua monitorando com watchPosition apesar de pequenos erros de rede ou timeout
-            setLocationState(prev => ({
-              ...prev,
-              locationProgress: prev.locationProgress < 60 ? prev.locationProgress + 10 : prev.locationProgress
-            }));
+          if (watchIdRef.current !== null) {
+            navigator.geolocation.clearWatch(watchIdRef.current);
+            watchIdRef.current = null;
           }
+          console.log("Falha de GPS. Acionando contingência de IP imediatamente...");
+          validateIpAddress();
         },
         {
           enableHighAccuracy: true,
@@ -166,27 +230,33 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
     // Tenta precisão alta imediatamente
     checkLocation();
 
-    // Contingência: Após ciclo completo (15s), se não achar libera o QR Code
-    contingencyTimeout = setTimeout(() => {
-      setLocationState(prev => {
-        if (!prev.isWithinRange) {
-          console.log('Tempo de localização esgotado. Liberando contingência.');
-          return { ...prev, showContingency: true, isLoading: false };
-        }
-        return prev;
-      });
-    }, 15000);
-
     return () => {
-      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-      clearTimeout(contingencyTimeout);
+      if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
     };
   }, [skipVerification]);
+
+  // Efeito para monitorar o progresso da localização e acionar contingência por IP se atingir 60%
+  useEffect(() => {
+    if (skipVerification) return;
+
+    if (locationState.locationProgress >= 60 && !locationState.isWithinRange) {
+      validateIpAddress();
+    }
+  }, [locationState.locationProgress, locationState.isWithinRange, skipVerification]);
 
   const retryLocation = () => {
     if (skipVerification) return;
 
-    setLocationState(prev => ({ ...prev, isLoading: true, locationProgress: 10 }));
+    // Reseta flags e limpa o erro visual
+    isCheckingIpRef.current = false;
+    setLocationState(prev => ({
+      ...prev,
+      isLoading: true,
+      locationProgress: 10,
+      error: null,
+      isWithinRange: null
+    }));
+
     // Re-executar a verificação
     setTimeout(() => {
       window.location.reload();

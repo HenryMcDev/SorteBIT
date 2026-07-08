@@ -13,6 +13,12 @@ import Instrucoes from "./pages/Instrucoes";
 // import AvatarCreator from "./pages/AvatarCreator";
 import AdminPrivateRoute from "./components/AdminPrivateRoute";
 import AdminJackpot from "@/pages/AdminJackpot";
+import GerenciarIps from "./pages/GerenciarIps";
+import AdminLayout from "./pages/AdminLayout";
+import AdminCodes from "./pages/AdminCodes";
+import Participantes from "./components/Participantes";
+import FeedbackModeration from "./components/FeedbackModeration";
+import CadastroPremios from "./components/CadastroPremios";
 import CookieBanner from "./components/CookieBanner";
 import BotaoFlutuanteWhatsapp from "./components/BotaoFlutuanteWhatsapp";
 import { supabase } from "@/integrations/supabase/client";
@@ -108,7 +114,14 @@ const App = () => {
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/admin" element={<Admin />} />
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<Navigate to="participantes" replace />} />
+              <Route path="participantes" element={<Participantes />} />
+              <Route path="codigos" element={<AdminCodes />} />
+              <Route path="moderacao" element={<FeedbackModeration />} />
+              <Route path="premios" element={<CadastroPremios />} />
+              <Route path="ips" element={<GerenciarIps />} />
+            </Route>
             <Route path="/admin/registro" element={<AdminRegister />} />
             <Route path="/admin/jackpot" element={
               <AdminPrivateRoute>
