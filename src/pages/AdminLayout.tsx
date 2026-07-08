@@ -51,17 +51,17 @@ const AdminLayout = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-zinc-950 text-white font-sans selection:bg-yellow-500/35">
+    <div className="flex min-h-screen bg-gray-50 text-zinc-900 dark:bg-zinc-950 dark:text-white font-sans selection:bg-yellow-500/35">
       {/* Sidebar Esquerda Fixa */}
-      <aside className="w-64 bg-zinc-900 border-r border-zinc-800 p-6 flex flex-col justify-between shrink-0">
+      <aside className="w-64 bg-white border-r border-gray-200 text-zinc-900 dark:bg-zinc-900 dark:border-zinc-800 dark:text-white p-6 flex flex-col justify-between shrink-0">
         <div>
           {/* Logo / Nome do Sistema */}
-          <div className="flex items-center gap-3 pb-6 border-b border-zinc-800">
+          <div className="flex items-center gap-3 pb-6 border-b border-gray-200 dark:border-zinc-800">
             <div className="bg-school-blue-600 rounded-lg p-2">
               <ShieldCheck className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="font-bold text-sm leading-none text-white tracking-wide uppercase font-sans">SorteBIT</h2>
+              <h2 className="font-bold text-sm leading-none text-zinc-800 dark:text-white tracking-wide uppercase font-sans">SorteBIT</h2>
               <span className="text-[10px] text-zinc-500">Painel Master</span>
             </div>
           </div>
@@ -73,8 +73,8 @@ const AdminLayout = () => {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all text-left w-full ${
                   isActive
-                    ? 'text-white bg-zinc-800'
-                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                    ? 'text-zinc-900 bg-gray-100 dark:text-white dark:bg-zinc-800'
+                    : 'text-zinc-600 hover:text-zinc-900 hover:bg-gray-100 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-zinc-800'
                 }`
               }
             >
@@ -87,8 +87,8 @@ const AdminLayout = () => {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all text-left w-full ${
                   isActive
-                    ? 'text-white bg-zinc-800'
-                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                    ? 'text-zinc-900 bg-gray-100 dark:text-white dark:bg-zinc-800'
+                    : 'text-zinc-600 hover:text-zinc-900 hover:bg-gray-100 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-zinc-800'
                 }`
               }
             >
@@ -101,8 +101,8 @@ const AdminLayout = () => {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all text-left w-full ${
                   isActive
-                    ? 'text-white bg-zinc-800'
-                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                    ? 'text-zinc-900 bg-gray-100 dark:text-white dark:bg-zinc-800'
+                    : 'text-zinc-600 hover:text-zinc-900 hover:bg-gray-100 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-zinc-800'
                 }`
               }
             >
@@ -115,8 +115,8 @@ const AdminLayout = () => {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all text-left w-full ${
                   isActive
-                    ? 'text-white bg-zinc-800'
-                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                    ? 'text-zinc-900 bg-gray-100 dark:text-white dark:bg-zinc-800'
+                    : 'text-zinc-600 hover:text-zinc-900 hover:bg-gray-100 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-zinc-800'
                 }`
               }
             >
@@ -129,8 +129,8 @@ const AdminLayout = () => {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all text-left w-full ${
                   isActive
-                    ? 'text-white bg-zinc-800'
-                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                    ? 'text-zinc-900 bg-gray-100 dark:text-white dark:bg-zinc-800'
+                    : 'text-zinc-600 hover:text-zinc-900 hover:bg-gray-100 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-zinc-800'
                 }`
               }
             >
@@ -141,7 +141,7 @@ const AdminLayout = () => {
         </div>
 
         {/* Rodapé da Sidebar: Status do Servidor */}
-        <div className="pt-4 border-t border-zinc-800 flex flex-col gap-3">
+        <div className="pt-4 border-t border-gray-200 dark:border-zinc-800 flex flex-col gap-3">
           <div className="flex items-center justify-between px-1">
             <span className="text-[10px] text-zinc-500 font-semibold">TEMA</span>
             <ThemeToggle />
@@ -150,12 +150,12 @@ const AdminLayout = () => {
             {backendOnline ? (
               <div className="flex items-center gap-1.5">
                 <div className="bg-emerald-500 w-2 h-2 rounded-full" />
-                <span className="text-xs font-semibold text-zinc-400">Online</span>
+                <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Online</span>
               </div>
             ) : (
               <div className="flex items-center gap-1.5">
                 <div className="bg-zinc-400 w-2 h-2 rounded-full" />
-                <span className="text-xs font-semibold text-zinc-400">Offline</span>
+                <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Offline</span>
               </div>
             )}
           </div>
@@ -165,9 +165,9 @@ const AdminLayout = () => {
       {/* Área de Conteúdo Dinâmico */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Barra Superior */}
-        <header className="h-16 border-b border-zinc-800 px-8 flex items-center justify-between bg-zinc-950 sticky top-0 z-10">
+        <header className="h-16 border-b border-gray-200 px-8 flex items-center justify-between bg-white dark:border-zinc-800 dark:bg-zinc-950 sticky top-0 z-10">
           <div>
-            <h1 className="text-lg font-bold text-white uppercase tracking-wider">
+            <h1 className="text-lg font-bold text-zinc-800 dark:text-white uppercase tracking-wider">
               {getPageTitle()}
             </h1>
           </div>
@@ -181,11 +181,11 @@ const AdminLayout = () => {
               Sorteio Jackpot
             </Link>
 
-            <div className="flex items-center gap-2 text-zinc-400 text-xs">
+            <div className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400 text-xs">
               <span>{adminUser?.name || 'Administrador'}</span>
               <button
                 onClick={logout}
-                className="flex items-center justify-center w-8 h-8 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 active:scale-90 transition-all duration-200"
+                className="flex items-center justify-center w-8 h-8 rounded-full bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-500/20 active:scale-90 transition-all duration-200"
                 title="Sair"
               >
                 <LogOut className="w-4 h-4" />
@@ -195,7 +195,7 @@ const AdminLayout = () => {
         </header>
 
         {/* Conteúdo Principal */}
-        <main className="flex-1 p-8 overflow-y-auto bg-zinc-950 text-white">
+        <main className="flex-1 p-8 overflow-y-auto bg-gray-50 text-zinc-900 dark:bg-zinc-950 dark:text-white">
           <Outlet />
         </main>
       </div>
