@@ -21,6 +21,7 @@ import FeedbackModeration from "./components/FeedbackModeration";
 import CadastroPremios from "./components/CadastroPremios";
 import CookieBanner from "./components/CookieBanner";
 import BotaoFlutuanteWhatsapp from "./components/BotaoFlutuanteWhatsapp";
+import GerenciadorNotificacoes from "./components/GerenciadorNotificacoes";
 import { supabase } from "@/integrations/supabase/client";
 
 const queryClient = new QueryClient();
@@ -87,6 +88,7 @@ const AppRoutes = () => {
         <Route path="moderacao" element={<FeedbackModeration />} />
         <Route path="premios" element={<CadastroPremios />} />
         <Route path="ips" element={<GerenciarIps />} />
+        <Route path="notificacoes" element={<GerenciadorNotificacoes />} />
       </Route>
       <Route path="/admin/registro" element={<AdminRegister />} />
       <Route path="/admin/jackpot" element={
@@ -105,7 +107,111 @@ const AppRoutes = () => {
   );
 };
 
+// Função auxiliar para converter a chave VAPID pública
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 const App = () => {
+  // Efeito para registrar e assinar notificações push de alunos
+  useEffect(() => {
+    const dispararPermissaoAoEntrar = async () => {
+      // 1. Verificação de compatibilidade do navegador
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        console.warn('Este navegador não suporta notificações Push.');
+        return;
+      }
+
+      // Só executa se o aluno estiver logado (ou seja, se tiver bit_student_session no localStorage)
+      const stored = localStorage.getItem('bit_student_session');
+      if (!stored) {
+        return;
+      }
+      
+      let student;
+      try {
+        student = JSON.parse(stored);
+      } catch {
+        return;
+      }
+      
+      if (!student || !student.id) {
+        return;
+      }
+
+      try {
+        // 2. Registra o arquivo sw.js que está na raiz da pasta public
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        console.log('Service Worker preparado para a entrada do estudante.');
+
+        // 3. SEGREDO DE UX: Aguarda o Service Worker ficar 100% ativo no navegador
+        await navigator.serviceWorker.ready;
+
+        // 4. Dispara a pergunta nativa imediatamente na tela
+        const permissao = await Notification.requestPermission();
+        
+        if (permissao === 'granted') {
+          console.log('Permissão concedida de forma imediata!');
+          
+          // 5. Gera a assinatura criptográfica para o dispositivo
+          const publicVapidKey = 'BKWtC0RNqgTDzgH-Cf0l6T5HeH90aLAznBp37ZSRpxOlDcEj5bg3ZogFr10xCm0g5nssCquKfzhr6X6JrtWDfsQ'; 
+          const options = {
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
+          };
+
+          const subscription = await registration.pushManager.subscribe(options);
+          
+          const authBuffer = subscription.getKey('auth');
+          const p256dhBuffer = subscription.getKey('p256dh');
+
+          const auth_key = authBuffer 
+            ? btoa(Array.from(new Uint8Array(authBuffer)).map(val => String.fromCharCode(val)).join('')) 
+            : '';
+
+          const p256dh_key = p256dhBuffer 
+            ? btoa(Array.from(new Uint8Array(p256dhBuffer)).map(val => String.fromCharCode(val)).join('')) 
+            : '';
+
+          // Captura token do Supabase para autorizar a rota
+          const { data: { session } } = await supabase.auth.getSession();
+          const token = session?.access_token || localStorage.getItem('token') || '';
+
+          // 6. Envia os dados gerados para o seu banco de dados via Backend
+          await fetch(`${import.meta.env.VITE_BACKEND_URL || ''}/api/notifications/subscribe`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              aluno_id: student.id,
+              endpoint: subscription.endpoint,
+              auth_key,
+              p256dh_key,
+              dispositivo: navigator.userAgent
+            })
+          });
+          
+          console.log('Dispositivo registrado no banco com sucesso!');
+        } else {
+          console.warn('O usuário recusou ou fechou o alerta automático.');
+        }
+      } catch (error) {
+        console.error('Erro na rotina de disparo automático de notificações:', error);
+      }
+    };
+
+    dispararPermissaoAoEntrar();
+  }, []);
+
   useEffect(() => {
     // Apply theme on load
     const savedTheme = localStorage.getItem('theme');

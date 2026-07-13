@@ -1,71 +1,115 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { RefreshCw, Users, AlertCircle, Coins } from 'lucide-react';
+import { RefreshCw, Users, AlertCircle, Coins, ChevronDown, Calendar, Image as ImageIcon, Tag, Search } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+
+interface Coupon {
+  id: string;
+  created_at: string;
+  daily_code: string;
+  participation_date: string;
+}
 
 interface Participant {
+  id: string;
   name: string;
-  count: number;
+  email: string;
   bitcash: number;
+  coupons: Coupon[];
+  lastParticipation: string | null;
 }
+
+// Helper para sanitizar o nome completo removendo acentos/diacríticos e todos os espaços
+const sanitizarNomePasta = (name: string): string => {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, "");
+};
 
 const Participantes = () => {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Estados de controle para busca e filtros de saldo CashBIT
+  const [searchTerm, setSearchTerm] = useState('');
+  const [cashBitFilter, setCashBitFilter] = useState<'todos' | 'com_saldo' | 'sem_saldo'>('todos');
+
+  // Estados de controle para expandir linhas e carregar fotos sob demanda
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [studentPhotos, setStudentPhotos] = useState<Record<string, string[]>>({});
+  const [loadingPhotosId, setLoadingPhotosId] = useState<string | null>(null);
+
+  // Estados para ampliação segura da foto no modal
+  const [selectedPhotoBlob, setSelectedPhotoBlob] = useState<string | null>(null);
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+
+  // Referência para guardar todas as Object URLs (blobs) criadas por estudante
+  const activeBlobsRef = useRef<Record<string, string[]>>({});
+
   const fetchParticipants = async () => {
     setIsLoading(true);
     setErrorMsg(null);
     try {
-      const [participationsRes, estudantesRes] = await Promise.all([
-        supabase.from('lottery_participations').select('name'),
-        supabase.from('estudantes' as any).select('nome_completo, bitcash')
+      // Busca todos os estudantes cadastrados e as participações geradas de forma paralela
+      const [estudantesRes, participationsRes] = await Promise.all([
+        supabase.from('estudantes' as any).select('id, nome_completo, bitcash, email'),
+        supabase.from('lottery_participations').select('id, name, created_at, daily_code, participation_date')
       ]);
 
-      if (participationsRes.error) throw participationsRes.error;
       if (estudantesRes.error) throw estudantesRes.error;
+      if (participationsRes.error) throw participationsRes.error;
 
-      const participationsData = participationsRes.data || [];
       const estudantesData = estudantesRes.data || [];
+      const participationsData = participationsRes.data || [];
 
-      // Mapa de estudantes indexado pelo nome_completo (ignorando maiúsculas/minúsculas e espaços) para busca rápida na mesclagem
-      const estudantesMap = new Map();
-      estudantesData.forEach((est: any) => {
-        if (est.nome_completo) {
-          const cleanName = est.nome_completo.trim().toLowerCase();
-          estudantesMap.set(cleanName, est);
-        }
-      });
-
-      // Lógica de agrupamento, soma e mesclagem em memória
-      const counts: Record<string, { count: number; bitcash: number }> = {};
+      // Mapeamento de participações indexadas pelo nome limpo (casing/spaces) do aluno
+      const participationsMap = new Map<string, Coupon[]>();
       participationsData.forEach((row: any) => {
-        const rawName = row.name?.trim() || 'Desconhecido';
-        const cleanName = rawName.toLowerCase();
-        
-        const est = estudantesMap.get(cleanName);
-        // Usa o nome_completo formatado correto se encontrado, ou o rawName como fallback
-        const name = est?.nome_completo?.trim() || rawName;
-        const bitcash = est?.bitcash || 0;
-        
-        if (!counts[name]) {
-          counts[name] = { count: 0, bitcash };
+        if (row.name) {
+          const cleanName = row.name.trim().toLowerCase();
+          if (!participationsMap.has(cleanName)) {
+            participationsMap.set(cleanName, []);
+          }
+          participationsMap.get(cleanName)!.push({
+            id: row.id,
+            created_at: row.created_at || row.participation_date,
+            daily_code: row.daily_code || '',
+            participation_date: row.participation_date || row.created_at
+          });
         }
-        counts[name].count += 1;
       });
 
-      // Converter para array e ordenar alfabeticamente
-      const grouped = Object.entries(counts).map(([name, stats]) => ({
-        name,
-        count: stats.count,
-        bitcash: stats.bitcash,
-      }));
+      // Mesclagem global garantindo que alunos sem participações também apareçam
+      const mapped = estudantesData.map((est: any) => {
+        const cleanName = est.nome_completo?.trim().toLowerCase() || '';
+        const studentParticipations = participationsMap.get(cleanName) || [];
 
-      grouped.sort((a, b) => a.name.localeCompare(b.name));
+        // Ordena participações por data decrescente (mais recente primeiro)
+        studentParticipations.sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
 
-      setParticipants(grouped);
+        const lastParticipation = studentParticipations.length > 0
+          ? studentParticipations[0].created_at
+          : null;
+
+        return {
+          id: String(est.id),
+          name: est.nome_completo || 'Aluno Desconhecido',
+          email: est.email || '',
+          bitcash: est.bitcash || 0,
+          coupons: studentParticipations,
+          lastParticipation
+        };
+      });
+
+      // Ordenar alfabeticamente
+      mapped.sort((a, b) => a.name.localeCompare(b.name));
+      setParticipants(mapped);
     } catch (error: any) {
       console.error('Erro ao buscar participantes:', error);
       setErrorMsg(error?.message || 'Erro inesperado de comunicação com o Supabase.');
@@ -74,12 +118,154 @@ const Participantes = () => {
     }
   };
 
+  // Revoga as Object URLs criadas para um estudante específico para liberar memória
+  const revokeStudentBlobs = (studentId: string) => {
+    const urls = activeBlobsRef.current[studentId] || [];
+    urls.forEach((url) => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error('Erro ao revogar URL do blob:', err);
+      }
+    });
+    delete activeBlobsRef.current[studentId];
+
+    setStudentPhotos((prev) => {
+      const copy = { ...prev };
+      delete copy[studentId];
+      return copy;
+    });
+  };
+
   useEffect(() => {
     fetchParticipants();
+
+    // Cleanup: revoga TODOS os blobs de todos os alunos ao desmontar o componente
+    return () => {
+      Object.keys(activeBlobsRef.current).forEach((studentId) => {
+        const urls = activeBlobsRef.current[studentId] || [];
+        urls.forEach((url) => {
+          try {
+            URL.revokeObjectURL(url);
+          } catch (e) {
+            console.error('Erro de cleanup ao desmontar componente:', e);
+          }
+        });
+      });
+    };
   }, []);
 
+  // Lógica reativa para expandir o participante e carregar fotos do bucket de forma segura usando download direto autenticado (Blob URL)
+  const handleToggleExpand = async (studentId: string, studentName: string) => {
+    if (expandedId === studentId) {
+      setExpandedId(null);
+      // Limpa e revoga os blobs do aluno ao fechar
+      revokeStudentBlobs(studentId);
+      return;
+    }
+
+    // Se já havia outro aluno aberto, fecha e revoga os blobs dele preventivamente
+    if (expandedId && expandedId !== studentId) {
+      revokeStudentBlobs(expandedId);
+    }
+
+    setExpandedId(studentId);
+
+    // Se já buscamos fotos para esse estudante, pula nova requisição
+    if (studentPhotos[studentId]) return;
+
+    setLoadingPhotosId(studentId);
+    try {
+      // Remove acentos e espaços do nome completo para corresponder ao padrão de subpastas do bucket 'Fotos'
+      const studentFolder = sanitizarNomePasta(studentName);
+      
+      // Lista as fotos presentes na pasta do estudante
+      const { data: files, error } = await supabase.storage
+        .from('Fotos')
+        .list(studentFolder, { limit: 50 });
+
+      if (error) throw error;
+
+      // Filtra e prepara caminhos dos arquivos do bucket
+      const filePaths = (files || [])
+        .filter(f => f.name && f.name !== '.emptyFolderPlaceholder')
+        .map(f => `${studentFolder}/${f.name}`);
+
+      if (filePaths.length > 0) {
+        // Faz o download de cada arquivo em paralelo como bytes binários (Blob) sob autenticação e gera Object URLs locais
+        const localBlobUrls: string[] = [];
+        await Promise.all(
+          filePaths.map(async (path) => {
+            try {
+              // Download do arquivo usando a autenticação ativa (POST para download de storage)
+              const { data: rawBlob, error: downloadError } = await supabase.storage
+                .from('Fotos')
+                .download(path);
+
+              if (downloadError) throw downloadError;
+              if (!rawBlob) return;
+
+              // Cria a Object URL local do Blob retornado íntegro
+              const localUrl = URL.createObjectURL(rawBlob);
+              localBlobUrls.push(localUrl);
+            } catch (err) {
+              console.error(`Erro ao baixar arquivo ${path}:`, err);
+            }
+          })
+        );
+
+        // Armazena as Object URLs locais na referência ativa
+        activeBlobsRef.current[studentId] = localBlobUrls;
+        setStudentPhotos(prev => ({ ...prev, [studentId]: localBlobUrls }));
+      } else {
+        setStudentPhotos(prev => ({ ...prev, [studentId]: [] }));
+      }
+    } catch (err) {
+      console.error('Erro ao carregar fotos do bucket:', err);
+    } finally {
+      setLoadingPhotosId(null);
+    }
+  };
+
+  // Método seguro para abrir a imagem no modal - apenas reutilizamos o blob local já carregado na memória do navegador
+  const handleOpenPhotoPreview = (blobUrl: string) => {
+    setIsPhotoModalOpen(true);
+    setSelectedPhotoBlob(blobUrl);
+  };
+
+  const handleClosePhotoPreview = () => {
+    setIsPhotoModalOpen(false);
+    setSelectedPhotoBlob(null);
+  };
+
+  const formatDateTime = (dateStr: string | null) => {
+    if (!dateStr) return 'Nenhuma participação registrada';
+    const date = new Date(dateStr);
+    return date.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Filtragem dinâmica de participantes em memória
+  const filteredParticipants = participants.filter((p) => {
+    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    let matchesFilter = true;
+    if (cashBitFilter === 'com_saldo') {
+      matchesFilter = p.bitcash > 0;
+    } else if (cashBitFilter === 'sem_saldo') {
+      matchesFilter = p.bitcash === 0;
+    }
+
+    return matchesSearch && matchesFilter;
+  });
+
   return (
-    <Card className="p-6 md:p-8 shadow-2xl border border-zinc-200/50 dark:border-zinc-800/50 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl rounded-2xl w-full max-w-5xl mx-auto">
+    <Card className="p-6 md:p-8 shadow-2xl border border-zinc-200/50 dark:border-zinc-800/50 bg-white/85 dark:bg-[#131517]/85 backdrop-blur-xl rounded-2xl w-full max-w-5xl mx-auto transition-colors duration-200">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <div className="flex items-center gap-4">
           <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-600/10 border border-blue-500/20 shadow-inner">
@@ -98,96 +284,264 @@ const Participantes = () => {
         <Button
           onClick={fetchParticipants}
           disabled={isLoading}
-          className="bg-school-blue-500 hover:bg-school-blue-600 text-white shadow-md transition-all duration-200 rounded-xl px-6 h-12 w-full sm:w-auto active:scale-[0.98] border-0"
+          className="bg-school-blue-600 hover:bg-school-blue-700 text-white shadow-md transition-all duration-200 rounded-xl px-6 h-12 w-full sm:w-auto active:scale-[0.98] border-0"
         >
           <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
           Atualizar Lista
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/50 shadow-sm">
-        <div className="w-full max-h-[550px] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-zinc-900/50 [&::-webkit-scrollbar-thumb]:bg-zinc-700 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-zinc-600">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-800/80">
-                <th className="sticky top-0 z-10 bg-zinc-50/95 dark:bg-zinc-900/95 backdrop-blur-sm px-6 py-4 text-sm font-semibold text-zinc-600 dark:text-zinc-300 shadow-[0_1px_0_0_rgba(228,228,231,0.8)] dark:shadow-[0_1px_0_0_rgba(39,39,42,0.8)]">
-                  Participante
-                </th>
-                <th className="sticky top-0 z-10 bg-zinc-50/95 dark:bg-zinc-900/95 backdrop-blur-sm px-6 py-4 text-sm font-semibold text-zinc-600 dark:text-zinc-300 text-center shadow-[0_1px_0_0_rgba(228,228,231,0.8)] dark:shadow-[0_1px_0_0_rgba(39,39,42,0.8)]">
-                  Saldo CashBIT
-                </th>
-                <th className="sticky top-0 z-10 bg-zinc-50/95 dark:bg-zinc-900/95 backdrop-blur-sm px-6 py-4 text-sm font-semibold text-zinc-600 dark:text-zinc-300 text-right md:text-center w-1/3 shadow-[0_1px_0_0_rgba(228,228,231,0.8)] dark:shadow-[0_1px_0_0_rgba(39,39,42,0.8)]">
-                  Total de Cupons / Participações
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/80">
-              {participants.length > 0 ? (
-                participants.map((p, idx) => (
-                  <tr
-                    key={idx}
-                    className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors"
+      <div className="space-y-4">
+        {/* Barra de Ferramentas: Caixa de Busca e Filtros de Saldo */}
+        <div className="flex flex-col md:flex-row gap-3 items-center justify-between bg-zinc-50/50 dark:bg-zinc-900/10 p-3 rounded-2xl border border-zinc-200/40 dark:border-zinc-800/50">
+          
+          {/* Campo de Pesquisa por Nome */}
+          <div className="relative w-full md:w-80">
+            <Search className="w-4 h-4 absolute left-3 top-3.5 text-zinc-400 dark:text-zinc-500" />
+            <input
+              type="text"
+              placeholder="Buscar aluno pelo nome..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#1a1c1e] text-sm font-semibold text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:focus:ring-blue-500/20 transition-all shadow-sm"
+            />
+          </div>
+
+          {/* Seletor de Filtro de Saldo CashBIT */}
+          <div className="flex bg-zinc-100 dark:bg-zinc-900/60 p-1 rounded-xl w-full md:w-auto border border-zinc-200/10">
+            {(['todos', 'com_saldo', 'sem_saldo'] as const).map((filter) => (
+              <button
+                key={filter}
+                type="button"
+                onClick={() => setCashBitFilter(filter)}
+                className={`flex-1 md:flex-initial px-4 py-2 rounded-lg text-xs font-extrabold transition-all duration-200 ${
+                  cashBitFilter === filter
+                    ? 'bg-white dark:bg-[#131517] text-blue-600 dark:text-blue-400 shadow-sm'
+                    : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'
+                }`}
+              >
+                {filter === 'todos' && 'Todos'}
+                {filter === 'com_saldo' && 'Quem tem CashBIT'}
+                {filter === 'sem_saldo' && 'Quem não tem CashBIT'}
+              </button>
+            ))}
+          </div>
+
+        </div>
+
+        {/* Listagem de Participantes com Altura Controlada e Scroll Interno */}
+        {isLoading && participants.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 space-y-4">
+            <RefreshCw className="w-8 h-8 text-blue-500/50 animate-spin" />
+            <p className="text-zinc-500 dark:text-zinc-400 text-sm font-medium">Buscando dados no Supabase...</p>
+          </div>
+        ) : errorMsg ? (
+          <div className="flex flex-col items-center justify-center py-16 space-y-4">
+            <div className="w-14 h-14 rounded-full bg-red-100/50 dark:bg-red-900/30 border border-red-200 dark:border-red-800/50 flex items-center justify-center">
+              <AlertCircle className="w-7 h-7 text-red-500 dark:text-red-400" />
+            </div>
+            <div className="space-y-1 text-center">
+              <p className="text-red-600 dark:text-red-400 font-semibold">
+                Erro ao carregar participantes
+              </p>
+              <p className="text-red-500 dark:text-red-500/80 text-sm max-w-md mx-auto">
+                {errorMsg}
+              </p>
+            </div>
+          </div>
+        ) : filteredParticipants.length > 0 ? (
+          <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 overflow-y-auto max-h-[520px] divide-y divide-zinc-200 dark:divide-zinc-850/80 bg-white dark:bg-zinc-950/20 shadow-lg [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-zinc-900/20 [&::-webkit-scrollbar-thumb]:bg-zinc-700/60 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-zinc-600/85">
+            {filteredParticipants.map((p) => {
+              const isExpanded = expandedId === p.id;
+              const photos = studentPhotos[p.id] || [];
+              const isLoadingPhotos = loadingPhotosId === p.id;
+
+              return (
+                <div key={p.id} className="transition-all duration-200 bg-white dark:bg-zinc-950/10">
+                  {/* Cabeçalho da Linha (Clicável) */}
+                  <button
+                    type="button"
+                    onClick={() => handleToggleExpand(p.id, p.name)}
+                    className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-colors"
                   >
-                    <td className="px-6 py-4 text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                      {p.name}
-                    </td>
-                    <td className="px-6 py-4 text-center">
+                    <div className="flex items-center gap-3 w-1/3">
+                      <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-bold text-xs text-zinc-600 dark:text-zinc-300">
+                        {p.name.substring(0, 2).toUpperCase()}
+                      </div>
+                      <div className="truncate">
+                        <span className="font-semibold text-sm text-zinc-800 dark:text-zinc-100 block">
+                          {p.name}
+                        </span>
+                        <span className="text-[11px] text-zinc-400 dark:text-zinc-500 block truncate">
+                          {p.email || 'Sem e-mail cadastrado'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="w-1/4 text-center">
                       <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-yellow-100/80 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20 text-yellow-800 dark:text-yellow-400 rounded-lg shadow-sm">
                         <Coins className="w-4 h-4" />
                         <span className="font-bold text-sm">{p.bitcash}</span>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 text-right md:text-center">
-                      <span className="inline-flex items-center justify-center px-3.5 py-1.5 text-xs font-bold rounded-full bg-blue-100/80 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 border border-blue-200/50 dark:border-blue-500/30 shadow-sm">
-                        {p.count} {p.count === 1 ? 'Cupom' : 'Cupons'}
+                    </div>
+
+                    <div className="flex items-center justify-end gap-4 w-1/3">
+                      <span className={`inline-flex items-center justify-center px-3.5 py-1 text-xs font-bold rounded-full border shadow-sm ${
+                        p.coupons.length > 0
+                          ? 'bg-blue-100/80 text-blue-700 dark:bg-blue-500/25 dark:text-blue-400 border-blue-200/50 dark:border-blue-500/30'
+                          : 'bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 border-transparent'
+                      }`}>
+                        {p.coupons.length} {p.coupons.length === 1 ? 'Cupom' : 'Cupons'}
                       </span>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={2} className="px-6 py-16 text-center">
-                    {isLoading ? (
-                      <div className="flex flex-col items-center justify-center space-y-4">
-                        <RefreshCw className="w-8 h-8 text-blue-500/50 animate-spin" />
-                        <p className="text-zinc-500 dark:text-zinc-400 text-sm font-medium">Buscando dados no Supabase...</p>
+                      <ChevronDown className={`w-4 h-4 text-zinc-400 transition-transform duration-200 ${
+                        isExpanded ? 'rotate-180 text-blue-500' : ''
+                      }`} />
+                    </div>
+                  </button>
+
+                  {/* Painel de Conteúdo Expansível */}
+                  {isExpanded && (
+                    <div className="px-6 py-5 bg-zinc-50/50 dark:bg-zinc-900/10 border-t border-zinc-100 dark:border-zinc-850/80 space-y-5 animate-in fade-in duration-200">
+                      
+                      {/* Grid de Informações Adicionais */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        
+                        {/* Box 1: Última Participação */}
+                        <div className="p-4 rounded-xl border border-zinc-200/50 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 shadow-sm space-y-3">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 flex items-center gap-1.5">
+                            <Calendar className="w-3.5 h-3.5 text-blue-500" />
+                            Última Participação
+                          </h4>
+                          <div className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+                            {formatDateTime(p.lastParticipation)}
+                          </div>
+                        </div>
+
+                        {/* Box 2: Cupons / Códigos de Sorteio */}
+                        <div className="p-4 rounded-xl border border-zinc-200/50 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 shadow-sm space-y-3">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 flex items-center gap-1.5">
+                            <Tag className="w-3.5 h-3.5 text-amber-500" />
+                            Códigos dos Cupons
+                          </h4>
+                          {p.coupons.length > 0 ? (
+                            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+                              {p.coupons.map((c) => (
+                                <span
+                                  key={c.id}
+                                  title={`Código Diário: ${c.daily_code} - Data: ${formatDateTime(c.created_at)}`}
+                                  className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-zinc-600 transition-colors"
+                                >
+                                  {c.id}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                              Nenhum cupom ativo para este aluno.
+                            </div>
+                          )}
+                        </div>
+
                       </div>
-                    ) : errorMsg ? (
-                      <div className="flex flex-col items-center justify-center space-y-4">
-                        <div className="w-14 h-14 rounded-full bg-red-100/50 dark:bg-red-900/30 border border-red-200 dark:border-red-800/50 flex items-center justify-center">
-                          <AlertCircle className="w-7 h-7 text-red-500 dark:text-red-400" />
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-red-600 dark:text-red-400 font-semibold">
-                            Erro ao carregar participantes
-                          </p>
-                          <p className="text-red-500 dark:text-red-500/80 text-sm max-w-md mx-auto">
-                            {errorMsg}
-                          </p>
-                        </div>
+
+                      {/* Box 3: Galeria de Fotos */}
+                      <div className="p-4 rounded-xl border border-zinc-200/50 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 shadow-sm space-y-3">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 flex items-center gap-1.5">
+                          <ImageIcon className="w-3.5 h-3.5 text-emerald-500" />
+                          Fotos de Validação (Uniforme)
+                        </h4>
+
+                        {isLoadingPhotos ? (
+                          <div className="flex items-center gap-2 py-6 text-xs text-zinc-500">
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-500" />
+                            Acessando galeria no Supabase...
+                          </div>
+                        ) : photos.length > 0 ? (
+                          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
+                            {photos.map((url, index) => (
+                              <div
+                                key={index}
+                                className="relative aspect-square rounded-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden group shadow-sm bg-zinc-50 dark:bg-zinc-900"
+                              >
+                                <img
+                                  src={url}
+                                  alt={`Validação ${index + 1}`}
+                                  className="w-full h-full object-cover transition-transform duration-350 group-hover:scale-105 pointer-events-none select-none"
+                                  loading="lazy"
+                                  onContextMenu={(e) => e.preventDefault()}
+                                  onDragStart={(e) => e.preventDefault()}
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=Erro+imagem';
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenPhotoPreview(url)}
+                                  className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-[10px] text-white font-bold cursor-pointer border-0 z-20"
+                                >
+                                  Ampliar Foto
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-zinc-500 dark:text-zinc-400 py-2">
+                            Nenhuma validação de uniforme registrada para este estudante.
+                          </div>
+                        )}
                       </div>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center space-y-4">
-                        <div className="w-14 h-14 rounded-full bg-zinc-100 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center">
-                          <AlertCircle className="w-7 h-7 text-zinc-400 dark:text-zinc-500" />
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-zinc-600 dark:text-zinc-300 font-semibold">
-                            Nenhum participante encontrado
-                          </p>
-                          <p className="text-zinc-500 dark:text-zinc-500 text-sm">
-                            Ainda não há alunos cadastrados no sorteio.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-20 space-y-4">
+            <div className="w-14 h-14 rounded-full bg-zinc-100 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center">
+              <AlertCircle className="w-7 h-7 text-zinc-400 dark:text-zinc-500" />
+            </div>
+            <div className="space-y-1 text-center">
+              <p className="text-zinc-600 dark:text-zinc-300 font-semibold">
+                Nenhum participante encontrado
+              </p>
+              <p className="text-zinc-500 dark:text-zinc-500 text-sm">
+                Nenhum participante atende aos filtros selecionados.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Modal Dialog do Shadcn UI para ampliação segura */}
+      <Dialog open={isPhotoModalOpen} onOpenChange={(open) => { if (!open) handleClosePhotoPreview(); }}>
+        <DialogContent className="max-w-2xl bg-zinc-950/95 border-zinc-800 text-white rounded-2xl p-6 shadow-2xl flex flex-col items-center justify-center">
+          <DialogHeader className="w-full text-center">
+            <DialogTitle className="text-lg font-bold text-zinc-100">Visualização Segura de Foto</DialogTitle>
+            <DialogDescription className="text-zinc-500 text-xs">
+              Esta imagem é protegida por direitos de privacidade do estudante. Cópia ou download não são permitidos.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="relative mt-4 w-full aspect-square md:aspect-[4/3] max-h-[70vh] rounded-xl border border-zinc-800 overflow-hidden bg-zinc-900 flex items-center justify-center">
+            {selectedPhotoBlob ? (
+              <img
+                src={selectedPhotoBlob}
+                alt="Foto de validação ampliada"
+                className="max-w-full max-h-full object-contain pointer-events-none select-none"
+                onContextMenu={(e) => e.preventDefault()}
+                onDragStart={(e) => e.preventDefault()}
+              />
+            ) : (
+              <div className="text-sm text-zinc-500 flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-red-500" />
+                Não foi possível carregar a imagem.
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

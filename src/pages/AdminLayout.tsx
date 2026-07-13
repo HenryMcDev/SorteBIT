@@ -3,8 +3,9 @@ import { useLocation, NavLink, Link } from 'react-router-dom';
 import { useAdmAuth } from '@/hooks/useAdmAuth';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Outlet } from 'react-router-dom';
-import { Users, Crown, MessageSquareWarning, Gift, ShieldCheck, LogOut, Loader2 } from 'lucide-react';
+import { Users, Key, ShieldCheck, Gift, Sliders, Bell, Crown, LogOut, Loader2, MessageSquareWarning } from 'lucide-react';
 import Admin from './Admin';
+import HeaderAdministrativo from '@/components/HeaderAdministrativo';
 
 const AdminLayout = () => {
   const { adminUser, isAdmin, isLoading, logout } = useAdmAuth();
@@ -23,6 +24,74 @@ const AdminLayout = () => {
       }
     };
     verificarConexao();
+  }, []);
+
+  // Lógica global para desativar inspeção e atalhos de depuração na área administrativa
+  useEffect(() => {
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 1. Tecla F12
+      if (e.key === 'F12' || e.keyCode === 123) {
+        e.preventDefault();
+        return;
+      }
+
+      const isCmdOrCtrl = e.ctrlKey || e.metaKey;
+      if (isCmdOrCtrl) {
+        // 5. Ctrl + U (Código-fonte)
+        if (e.key?.toLowerCase() === 'u' || e.keyCode === 85) {
+          e.preventDefault();
+          return;
+        }
+
+        if (e.shiftKey) {
+          const key = e.key?.toLowerCase();
+          // 2. Ctrl+Shift+I, 3. Ctrl+Shift+J, 4. Ctrl+Shift+C
+          if (
+            key === 'i' || key === 'j' || key === 'c' ||
+            e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67
+          ) {
+            e.preventDefault();
+            return;
+          }
+        }
+      }
+    };
+
+    document.addEventListener('contextmenu', handleContextMenu);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('contextmenu', handleContextMenu);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  // Rotina contínua de anti-debugging para congelar a aba caso o DevTools seja aberto
+  useEffect(() => {
+    const startAntiDebug = () => {
+      const debugFn = () => {
+        try {
+          (function() {
+            (function a() {
+              debugger;
+            })();
+          })();
+        } catch (err) {}
+      };
+      
+      const interval = setInterval(debugFn, 100);
+      return interval;
+    };
+
+    const intervalId = startAntiDebug();
+
+    return () => {
+      clearInterval(intervalId);
+    };
   }, []);
 
   if (isLoading) {
@@ -47,152 +116,119 @@ const AdminLayout = () => {
     if (path.endsWith('/moderacao')) return 'Moderação';
     if (path.endsWith('/premios')) return 'Cadastro de Prêmios';
     if (path.endsWith('/ips')) return 'Gerenciar IPs';
+    if (path.endsWith('/notificacoes')) return 'Notificações';
     return 'Painel Master';
   };
 
   return (
     <div className="flex min-h-screen bg-gray-50 text-zinc-900 dark:bg-zinc-950 dark:text-white font-sans selection:bg-yellow-500/35">
       {/* Sidebar Esquerda Fixa */}
-      <aside className="w-64 bg-white border-r border-gray-200 text-zinc-900 dark:bg-zinc-900 dark:border-zinc-800 dark:text-white p-6 flex flex-col justify-between shrink-0">
+      <aside className="w-64 h-screen flex flex-col justify-between bg-white dark:bg-[#131517] text-slate-500 dark:text-slate-400 p-4 border-r border-slate-200 dark:border-slate-800 shrink-0 transition-colors duration-200">
+        
+        {/* Topo: Logo e Identificação do Painel */}
         <div>
-          {/* Logo / Nome do Sistema */}
-          <div className="flex items-center gap-3 pb-6 border-b border-gray-200 dark:border-zinc-800">
-            <div className="bg-school-blue-600 rounded-lg p-2">
+          <div className="flex items-center gap-3 px-2 py-4 border-b border-slate-200 dark:border-slate-800/60 mb-6">
+            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-md shadow-blue-600/20">
               <ShieldCheck className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="font-bold text-sm leading-none text-zinc-800 dark:text-white tracking-wide uppercase font-sans">SorteBIT</h2>
-              <span className="text-[10px] text-zinc-500">Painel Master</span>
+              <h2 className="text-sm font-bold tracking-wider text-slate-800 dark:text-white uppercase">SorteBIT</h2>
+              <p className="text-xs text-slate-400 dark:text-slate-500">Painel Master</p>
             </div>
           </div>
 
-          {/* Links de navegação */}
-          <nav className="flex flex-col gap-2 mt-8">
-            <NavLink
-              to="/admin/participantes"
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all text-left w-full ${
-                  isActive
-                    ? 'text-zinc-900 bg-gray-100 dark:text-white dark:bg-zinc-800'
-                    : 'text-zinc-600 hover:text-zinc-900 hover:bg-gray-100 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-zinc-800'
-                }`
-              }
-            >
-              <Users className="w-4 h-4" />
-              Participantes
-            </NavLink>
-
-            <NavLink
-              to="/admin/codigos"
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all text-left w-full ${
-                  isActive
-                    ? 'text-zinc-900 bg-gray-100 dark:text-white dark:bg-zinc-800'
-                    : 'text-zinc-600 hover:text-zinc-900 hover:bg-gray-100 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-zinc-800'
-                }`
-              }
-            >
-              <Crown className="w-4 h-4" />
-              Códigos
-            </NavLink>
-
-            <NavLink
-              to="/admin/moderacao"
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all text-left w-full ${
-                  isActive
-                    ? 'text-zinc-900 bg-gray-100 dark:text-white dark:bg-zinc-800'
-                    : 'text-zinc-600 hover:text-zinc-900 hover:bg-gray-100 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-zinc-800'
-                }`
-              }
-            >
-              <MessageSquareWarning className="w-4 h-4" />
-              Moderação
-            </NavLink>
-
-            <NavLink
-              to="/admin/premios"
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all text-left w-full ${
-                  isActive
-                    ? 'text-zinc-900 bg-gray-100 dark:text-white dark:bg-zinc-800'
-                    : 'text-zinc-600 hover:text-zinc-900 hover:bg-gray-100 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-zinc-800'
-                }`
-              }
-            >
-              <Gift className="w-4 h-4" />
-              Cadastro de Prêmios
-            </NavLink>
-
-            <NavLink
-              to="/admin/ips"
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all text-left w-full ${
-                  isActive
-                    ? 'text-zinc-900 bg-gray-100 dark:text-white dark:bg-zinc-800'
-                    : 'text-zinc-600 hover:text-zinc-900 hover:bg-gray-100 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-zinc-800'
-                }`
-              }
-            >
-              <ShieldCheck className="w-4 h-4" />
-              Gerenciar IPs
-            </NavLink>
+          {/* Links de Navegação Padrão */}
+          <nav className="space-y-1.5">
+            {[
+              { id: 'participantes', nome: 'Participantes', icone: Users, path: '/admin/participantes' },
+              { id: 'codigos', nome: 'Códigos', icone: Key, path: '/admin/codigos' },
+              { id: 'moderacao', nome: 'Moderação', icone: ShieldCheck, path: '/admin/moderacao' },
+              { id: 'premios', nome: 'Cadastro de Prêmios', icone: Gift, path: '/admin/premios' },
+              { id: 'ips', nome: 'Gerenciar IPs', icone: Sliders, path: '/admin/ips' },
+              { id: 'notificacoes', nome: 'Notificações', icone: Bell, path: '/admin/notificacoes' },
+            ].map((item) => {
+              const IconeComponente = item.icone;
+              const isActive = location.pathname === item.path;
+              
+              return (
+                <NavLink
+                  key={item.id}
+                  to={item.path}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-150 ${
+                    isActive 
+                      ? 'bg-slate-100 text-slate-900 font-semibold dark:bg-[#202225] dark:text-white' 
+                      : 'hover:bg-slate-50 hover:text-slate-800 dark:hover:bg-[#1a1c1e] dark:hover:text-slate-200'
+                  }`}
+                >
+                  <IconeComponente className={`w-5 h-5 ${isActive ? 'text-blue-600 dark:text-blue-500' : 'text-slate-400 dark:text-slate-500'}`} />
+                  {item.nome}
+                </NavLink>
+              );
+            })}
           </nav>
+
+          {/* Divisor Inferior antes dos botões de Destaque */}
+          <div className="border-t border-slate-200 dark:border-slate-800/60 my-6"></div>
+
+          {/* Botão Sorteio Jackpot Modificado (Bordas Amarelas) */}
+          <Link
+            to="/admin/jackpot"
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl border transition-all duration-150 ${
+              location.pathname === '/admin/jackpot'
+                ? 'border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold shadow-sm shadow-amber-500/5'
+                : 'border-amber-500/40 text-amber-600 dark:text-amber-500/90 hover:border-amber-500 hover:bg-amber-500/5 hover:text-amber-600 dark:hover:text-amber-400'
+            }`}
+          >
+            <Crown className="w-5 h-5 text-amber-500" />
+            Sorteio Jackpot
+          </Link>
         </div>
 
-        {/* Rodapé da Sidebar: Status do Servidor */}
-        <div className="pt-4 border-t border-gray-200 dark:border-zinc-800 flex flex-col gap-3">
-          <div className="flex items-center justify-between px-1">
-            <span className="text-[10px] text-zinc-500 font-semibold">TEMA</span>
+        {/* Rodapé: Controle de Tema, Usuário e Logout */}
+        <div className="space-y-6 pt-4 border-t border-slate-200 dark:border-slate-800/40">
+          
+          {/* Switch de Tema Simplificado */}
+          <div className="flex items-center justify-between px-2 text-xs font-semibold tracking-wider text-slate-400 dark:text-slate-500 uppercase">
+            <span>Tema</span>
             <ThemeToggle />
           </div>
-          <div className="flex items-center gap-2 px-1">
-            {backendOnline ? (
-              <div className="flex items-center gap-1.5">
-                <div className="bg-emerald-500 w-2 h-2 rounded-full" />
-                <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Online</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5">
-                <div className="bg-zinc-400 w-2 h-2 rounded-full" />
-                <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Offline</span>
-              </div>
-            )}
+
+          {/* Identificação do Usuário e Botão Logout */}
+          <div className="flex items-center justify-between bg-slate-50 dark:bg-[#1a1c1e] p-3 rounded-xl border border-slate-200 dark:border-slate-800/40">
+            <div className="flex flex-col truncate pr-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Usuário</span>
+              <span className="text-sm font-medium text-slate-800 dark:text-slate-300 truncate">
+                {adminUser?.name || 'Administrador'}
+              </span>
+              {backendOnline ? (
+                <span className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-500 mt-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-500 animate-pulse"></span>
+                  Online
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5 text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-500"></span>
+                  Offline
+                </span>
+              )}
+            </div>
+            
+            <button 
+              onClick={logout}
+              title="Sair do Sistema"
+              className="w-9 h-9 flex items-center justify-center rounded-lg bg-red-100 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-300 transition-all duration-150 shrink-0"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
+
         </div>
       </aside>
 
       {/* Área de Conteúdo Dinâmico */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Barra Superior */}
-        <header className="h-16 border-b border-gray-200 px-8 flex items-center justify-between bg-white dark:border-zinc-800 dark:bg-zinc-950 sticky top-0 z-10">
-          <div>
-            <h1 className="text-lg font-bold text-zinc-800 dark:text-white uppercase tracking-wider">
-              {getPageTitle()}
-            </h1>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <Link
-              to="/admin/jackpot"
-              className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 transition-all duration-200 shadow-lg shadow-yellow-500/10 active:scale-95"
-            >
-              <Crown className="w-4 h-4" />
-              Sorteio Jackpot
-            </Link>
-
-            <div className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400 text-xs">
-              <span>{adminUser?.name || 'Administrador'}</span>
-              <button
-                onClick={logout}
-                className="flex items-center justify-center w-8 h-8 rounded-full bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-500/20 active:scale-90 transition-all duration-200"
-                title="Sair"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </header>
+        <HeaderAdministrativo abaAtivaNome={getPageTitle()} />
 
         {/* Conteúdo Principal */}
         <main className="flex-1 p-8 overflow-y-auto bg-gray-50 text-zinc-900 dark:bg-zinc-950 dark:text-white">

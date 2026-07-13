@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { MapPin, MapPinOff, AlertCircle, Camera, RefreshCw, X, AlertTriangle, Clock, HelpCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useLocationVerification } from '@/hooks/useLocationVerification';
+import { PushNotificationModal } from './PushNotificationModal';
 import Celebration from './Celebration';
 import Mural from './Mural';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -69,6 +70,22 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
   const [isAcceptingTerms, setIsAcceptingTerms] = useState(false);
   const webcamRef = useRef<Webcam>(null);
   const { toast } = useToast();
+
+  // Use location verification only for non-admin mode
+  const {
+    isLoading,
+    isWithinRange,
+    locationProgress,
+    distance,
+    retryLocation,
+    error: locationError,
+    showPushModal,
+    isPushLoading,
+    pushError,
+    pushSuccess,
+    requestPushPermission,
+    dismissPushModal
+  } = useLocationVerification(false);
 
   useEffect(() => {
     if (studentUser && studentUser.termos_aceitos === false) {
@@ -209,6 +226,15 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
     return () => clearInterval(timer);
   }, [alreadyParticipated, terminoFixo]);
 
+  useEffect(() => {
+    if (pushSuccess) {
+      toast({
+        title: "Notificações Ativas! ✅",
+        description: "Pronto! Você receberá lembretes diários para o check-in do uniforme.",
+      });
+    }
+  }, [pushSuccess, toast]);
+
   const capturePhoto = useCallback(() => {
     const imageSrc = webcamRef.current?.getScreenshot();
     if (imageSrc) {
@@ -219,9 +245,6 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
   const retakePhoto = () => {
     setPhoto(null);
   };
-
-  // Use location verification only for non-admin mode
-  const { isLoading, isWithinRange, locationProgress, distance, retryLocation, error: locationError } = useLocationVerification(false);
 
   const formatPhone = (value: string): string => {
     const numbers = value.replace(/\D/g, '');
@@ -937,6 +960,16 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
             </Card>
           </div>
         )}
+
+        {/* Push Notification Modal */}
+        <PushNotificationModal
+          isOpen={showPushModal}
+          onClose={dismissPushModal}
+          onConfirm={requestPushPermission}
+          isLoading={isPushLoading}
+          error={pushError}
+          success={pushSuccess}
+        />
 
         {/* Terms Modal */}
         <TermosCondicoes

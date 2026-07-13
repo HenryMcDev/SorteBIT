@@ -1,4 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+
+// Função auxiliar para converter a chave VAPID pública
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
 
 interface LocationState {
   isLoading: boolean;
@@ -32,6 +45,9 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
 };
 
 export const useLocationVerification = (skipVerification: boolean = false) => {
+  // Trava de estado definitiva no início da execução do hook
+  const isPushRegistered = localStorage.getItem('sortebit_push_registered') === 'true';
+
   const [locationState, setLocationState] = useState<LocationState>({
     isLoading: !skipVerification,
     isWithinRange: skipVerification ? true : null,
@@ -44,8 +60,138 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
     distance: null
   });
 
+  // Estados de controle reativo para o push modal
+  const [showPushModal, setShowPushModal] = useState(false);
+  const [isPushLoading, setIsPushLoading] = useState(false);
+  const [pushError, setPushError] = useState<string | null>(null);
+  const [pushSuccess, setPushSuccess] = useState(false);
+  const [hasDismissed, setHasDismissed] = useState(false);
+
   const watchIdRef = useRef<number | null>(null);
   const isCheckingIpRef = useRef<boolean>(false);
+
+  // Reação para exibir o modal de notificação
+  useEffect(() => {
+    if (isPushRegistered || hasDismissed) {
+      setShowPushModal(false);
+      return;
+    }
+
+    if (locationState.isWithinRange === true) {
+      setShowPushModal(true);
+    } else {
+      setShowPushModal(false);
+    }
+  }, [locationState.isWithinRange, hasDismissed, isPushRegistered]);
+
+  // Função para requisição da permissão e registro no backend
+  const requestPushPermission = async () => {
+    if (isPushRegistered) {
+      setShowPushModal(false);
+      return;
+    }
+
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      setPushError('Notificações push não são suportadas neste navegador.');
+      return;
+    }
+
+    const stored = localStorage.getItem('bit_student_session');
+    if (!stored) {
+      setPushError('Sessão do estudante não encontrada.');
+      return;
+    }
+
+    let student;
+    try {
+      student = JSON.parse(stored);
+    } catch {
+      setPushError('Erro ao decodificar dados da sessão.');
+      return;
+    }
+
+    if (!student || !student.id) {
+      setPushError('ID do estudante não encontrado na sessão.');
+      return;
+    }
+
+    setIsPushLoading(true);
+    setPushError(null);
+
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const permissao = await Notification.requestPermission();
+      
+      if (permissao === 'granted') {
+        const publicVapidKey = 'BKWtC0RNqgTDzgH-Cf0l6T5HeH90aLAznBp37ZSRpxOlDcEj5bg3ZogFr10xCm0g5nssCquKfzhr6X6JrtWDfsQ';
+        const options = {
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
+        };
+
+        const subscription = await registration.pushManager.subscribe(options);
+        
+        const authBuffer = subscription.getKey('auth');
+        const p256dhBuffer = subscription.getKey('p256dh');
+
+        const auth_key = authBuffer 
+          ? btoa(Array.from(new Uint8Array(authBuffer)).map(val => String.fromCharCode(val)).join('')) 
+          : '';
+
+        const p256dh_key = p256dhBuffer 
+          ? btoa(Array.from(new Uint8Array(p256dhBuffer)).map(val => String.fromCharCode(val)).join('')) 
+          : '';
+
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token || localStorage.getItem('token') || '';
+
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+        const response = await fetch(`${backendUrl}/api/notifications/subscribe`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            aluno_id: student.id,
+            endpoint: subscription.endpoint,
+            auth_key,
+            p256dh_key,
+            dispositivo: navigator.userAgent
+          })
+        });
+
+        const resText = await response.text();
+        let resData;
+        try {
+          resData = JSON.parse(resText);
+        } catch {
+          resData = { message: resText };
+        }
+
+        if (response.ok) {
+          localStorage.setItem('sortebit_push_registered', 'true');
+          setPushSuccess(true);
+          setShowPushModal(false);
+        } else {
+          console.error('❌ Falha ao salvar dispositivo no backend:', resData);
+          setPushError(resData.error || resData.message || 'Falha ao registrar dispositivo.');
+        }
+      } else {
+        setPushError('Permissão de notificações recusada pelo usuário.');
+      }
+    } catch (err) {
+      console.error('Erro ao ativar notificações:', err);
+      setPushError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsPushLoading(false);
+    }
+  };
+
+  const dismissPushModal = () => {
+    setHasDismissed(true);
+    setShowPushModal(false);
+  };
 
   // Função assíncrona de contingência por IP público
   const validateIpAddress = async () => {
@@ -138,7 +284,7 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
     const checkLocation = () => {
       // Verificar se a geolocalização é suportada
       if (!navigator.geolocation) {
-        console.log("Geolocalização não suportada. Acionando contingência de IP imediatamente...");
+        console.log("Geolocalização não suportada. Acionando contingência de IP...");
         validateIpAddress();
         return;
       }
@@ -146,7 +292,6 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
       setLocationState(prev => ({ ...prev, isLoading: true, locationProgress: 25 }));
 
       let badAccuracyCount = 0;
-      let errorCount = 0;
 
       watchIdRef.current = navigator.geolocation.watchPosition(
         (position) => {
@@ -265,6 +410,13 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
 
   return {
     ...locationState,
-    retryLocation
+    retryLocation,
+    showPushModal,
+    setShowPushModal,
+    isPushLoading,
+    pushError,
+    pushSuccess,
+    requestPushPermission,
+    dismissPushModal
   };
 };
