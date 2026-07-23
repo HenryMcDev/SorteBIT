@@ -1,16 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, NavLink, Link } from 'react-router-dom';
+import { useLocation, NavLink, Link, useNavigate } from 'react-router-dom';
 import { useAdmAuth } from '@/hooks/useAdmAuth';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Outlet } from 'react-router-dom';
-import { Users, Key, ShieldCheck, Gift, Sliders, Bell, Crown, LogOut, Loader2, MessageSquareWarning } from 'lucide-react';
+import { Users, Key, ShieldCheck, Gift, Sliders, Bell, Crown, LogOut, Loader2, MessageSquareWarning, ShoppingBag, ClipboardList } from 'lucide-react';
 import Admin from './Admin';
 import HeaderAdministrativo from '@/components/HeaderAdministrativo';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
 
 const AdminLayout = () => {
   const { adminUser, isAdmin, isLoading, logout } = useAdmAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [backendOnline, setBackendOnline] = useState(false);
+  const [resgatesNaoLidosCount, setResgatesNaoLidosCount] = useState(0);
+  const [showPermissionBanner, setShowPermissionBanner] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     const verificarConexao = async () => {
@@ -25,6 +32,147 @@ const AdminLayout = () => {
     };
     verificarConexao();
   }, []);
+
+  const fetchPendingCount = async () => {
+    try {
+      const { count, error } = await (supabase as any)
+        .from('resgates')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pendente');
+      
+      if (!error && count !== null) {
+        setResgatesNaoLidosCount(count);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar contagem de resgates pendentes:', err);
+    }
+  };
+
+  // Busca contagem inicial de resgates pendentes
+  useEffect(() => {
+    if (isAdmin) {
+      fetchPendingCount();
+    }
+  }, [isAdmin]);
+
+  // Efeito para escutar novos resgates no Supabase Realtime
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    // Inicia escuta Realtime
+    const canal = (supabase as any)
+      .channel('admin-resgates-global')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'resgates' },
+        async (payload: any) => {
+          console.log('Novo resgate detectado em tempo real (global):', payload);
+          
+          // Incrementar contador
+          setResgatesNaoLidosCount(prev => prev + 1);
+
+          // Buscar nomes para notificação nativa do SO
+          let alunoNome = 'Um aluno';
+          let produtoNome = 'um prêmio';
+
+          try {
+            const { data: estData } = await (supabase as any)
+              .from('estudantes')
+              .select('nome_completo')
+              .eq('id', payload.new.estudante_id)
+              .maybeSingle();
+            if (estData?.nome_completo) alunoNome = estData.nome_completo;
+          } catch (err) {
+            console.error('Erro ao obter estudante:', err);
+          }
+
+          try {
+            const { data: premData } = await (supabase as any)
+              .from('premios')
+              .select('nome')
+              .eq('id', payload.new.premio_id)
+              .maybeSingle();
+            if (premData?.nome) produtoNome = premData.nome;
+          } catch (err) {
+            console.error('Erro ao obter prêmio:', err);
+          }
+
+          // Disparar notificação nativa se permitido
+          if ('Notification' in window && Notification.permission === 'granted') {
+            const notification = new Notification('🎁 Novo Resgate no SorteBIT!', {
+              body: `${alunoNome} solicitou o prêmio "${produtoNome}".`,
+              icon: '/favicon.ico',
+              tag: 'novo-resgate-' + payload.new.id,
+              requireInteraction: true
+            });
+
+            notification.onclick = () => {
+              window.focus();
+              navigate('/admin/resgates');
+            };
+          }
+
+          // Disparar evento para componentes filhos (ex: AdminResgates)
+          window.dispatchEvent(new CustomEvent('admin-resgates-changed', { detail: payload }));
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'resgates' },
+        async (payload: any) => {
+          console.log('Resgate atualizado (global):', payload);
+          await fetchPendingCount();
+          window.dispatchEvent(new CustomEvent('admin-resgates-changed', { detail: payload }));
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'resgates' },
+        async (payload: any) => {
+          console.log('Resgate deletado (global):', payload);
+          await fetchPendingCount();
+          window.dispatchEvent(new CustomEvent('admin-resgates-changed', { detail: payload }));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      (supabase as any).removeChannel(canal);
+    };
+  }, [isAdmin, navigate]);
+
+  // Efeito para controlar o título da aba com o número de notificações
+  useEffect(() => {
+    if (resgatesNaoLidosCount > 0) {
+      document.title = `(${resgatesNaoLidosCount}) Uniforme Premiado - Painel Admin`;
+    } else {
+      document.title = 'Uniforme Premiado - Painel Admin';
+    }
+
+    return () => {
+      document.title = 'Uniforme Premiado';
+    };
+  }, [resgatesNaoLidosCount]);
+
+  // Efeito para verificar status da permissão de notificações Desktop
+  useEffect(() => {
+    if ('Notification' in window) {
+      setShowPermissionBanner(Notification.permission === 'default');
+    }
+  }, []);
+
+  const handleRequestPermission = async () => {
+    if ('Notification' in window) {
+      const permission = await Notification.requestPermission();
+      setShowPermissionBanner(permission === 'default');
+      if (permission === 'granted') {
+        toast({
+          title: 'Notificações ativadas!',
+          description: 'Você receberá alertas nativos sobre novos resgates no seu computador.',
+        });
+      }
+    }
+  };
 
   // Lógica global para desativar inspeção e atalhos de depuração na área administrativa
   useEffect(() => {
@@ -117,6 +265,8 @@ const AdminLayout = () => {
     if (path.endsWith('/premios')) return 'Cadastro de Prêmios';
     if (path.endsWith('/ips')) return 'Gerenciar IPs';
     if (path.endsWith('/notificacoes')) return 'Notificações';
+    if (path.endsWith('/resgates')) return 'Gestão de Resgates';
+    if (path.endsWith('/logs')) return 'Logs de Auditoria';
     return 'Painel Master';
   };
 
@@ -144,8 +294,10 @@ const AdminLayout = () => {
               { id: 'codigos', nome: 'Códigos', icone: Key, path: '/admin/codigos' },
               { id: 'moderacao', nome: 'Moderação', icone: ShieldCheck, path: '/admin/moderacao' },
               { id: 'premios', nome: 'Cadastro de Prêmios', icone: Gift, path: '/admin/premios' },
+              { id: 'resgates', nome: 'Gestão de Resgates', icone: ShoppingBag, path: '/admin/resgates' },
               { id: 'ips', nome: 'Gerenciar IPs', icone: Sliders, path: '/admin/ips' },
               { id: 'notificacoes', nome: 'Notificações', icone: Bell, path: '/admin/notificacoes' },
+              { id: 'logs', nome: 'Logs de Auditoria', icone: ClipboardList, path: '/admin/logs' },
             ].map((item) => {
               const IconeComponente = item.icone;
               const isActive = location.pathname === item.path;
@@ -154,14 +306,21 @@ const AdminLayout = () => {
                 <NavLink
                   key={item.id}
                   to={item.path}
-                  className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-150 ${
+                  className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium rounded-xl transition-all duration-150 ${
                     isActive 
                       ? 'bg-slate-100 text-slate-900 font-semibold dark:bg-[#202225] dark:text-white' 
                       : 'hover:bg-slate-50 hover:text-slate-800 dark:hover:bg-[#1a1c1e] dark:hover:text-slate-200'
                   }`}
                 >
-                  <IconeComponente className={`w-5 h-5 ${isActive ? 'text-blue-600 dark:text-blue-500' : 'text-slate-400 dark:text-slate-500'}`} />
-                  {item.nome}
+                  <div className="flex items-center gap-3">
+                    <IconeComponente className={`w-5 h-5 ${isActive ? 'text-blue-600 dark:text-blue-500' : 'text-slate-400 dark:text-slate-500'}`} />
+                    <span>{item.nome}</span>
+                  </div>
+                  {item.id === 'resgates' && resgatesNaoLidosCount > 0 && (
+                    <span className="bg-red-500 text-white font-bold rounded-full px-2 py-0.5 text-[10px] min-w-5 h-5 flex items-center justify-center animate-pulse">
+                      {resgatesNaoLidosCount}
+                    </span>
+                  )}
                 </NavLink>
               );
             })}
@@ -232,6 +391,22 @@ const AdminLayout = () => {
 
         {/* Conteúdo Principal */}
         <main className="flex-1 p-8 overflow-y-auto bg-gray-50 text-zinc-900 dark:bg-zinc-950 dark:text-white">
+          {showPermissionBanner && (
+            <div className="p-4 border border-blue-200 bg-blue-50 dark:border-blue-900/30 dark:bg-blue-950/20 text-blue-800 dark:text-blue-300 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-fade-in mb-6">
+              <div className="flex items-center gap-3">
+                <Bell className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0" />
+                <span className="text-sm font-medium">
+                  Ative as notificações para receber alertas de novos resgates no seu computador.
+                </span>
+              </div>
+              <Button 
+                onClick={handleRequestPermission}
+                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs h-9 px-4 shrink-0 shadow-sm"
+              >
+                Ativar Notificações
+              </Button>
+            </div>
+          )}
           <Outlet />
         </main>
       </div>

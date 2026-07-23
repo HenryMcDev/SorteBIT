@@ -72,6 +72,19 @@ const Vitrine = () => {
     if (!studentUser?.id) return;
     if (isProcessing) return;
 
+    // Validação de segurança: apenas entre os dias 1 e 10 de cada mês (COMENTADO PARA TESTES)
+    /*
+    const currentDay = new Date().getDate();
+    if (currentDay < 1 || currentDay > 10) {
+      toast({
+        title: "Período encerrado",
+        description: "Solicitações de resgate de prêmios só são permitidas entre os dias 01 e 10 de cada mês.",
+        variant: "destructive",
+      });
+      return;
+    }
+    */
+
     const premio = premios.find(p => p.id === id);
     if (!premio) {
       toast({
@@ -135,38 +148,22 @@ const Vitrine = () => {
         return; // Barra o resgate aqui!
       }
 
-      // 3. Se o saldo do banco for suficiente, aí sim processa o resgate
+      // 3. Executa o resgate de forma atômica no banco de dados via RPC
+      const { error: rpcError } = await (supabase as any)
+        .rpc('resgatar_premio', {
+          p_aluno_id: studentUser.id,
+          p_produto_id: premioId
+        });
+
+      if (rpcError) throw rpcError;
+
       const novoSaldoNum = bitcashReal - custoPremio;
 
-      // Atualiza o saldo no banco de dados subtraindo o valor correto
-      const { error: updateError } = await supabase
-        .from('estudantes' as any)
-        .update({ bitcash: novoSaldoNum } as any)
-        .eq('id', studentUser.id);
-
-      if (updateError) throw updateError;
-
-      // Atualiza o estoque do prêmio se aplicável
+      // Sincroniza estoque local se aplicável
       if (premio.estoque !== null) {
         const novoEstoque = Math.max(0, premio.estoque - 1);
-        await supabase
-          .from('premios' as any)
-          .update({ estoque: novoEstoque } as any)
-          .eq('id', premio.id);
-        
         setPremios(prev => prev.map(p => p.id === premio.id ? { ...p, estoque: novoEstoque } : p));
       }
-
-      // Registra o resgate na tabela de pedidos
-      const { error: insertError } = await supabase
-        .from('resgates' as any)
-        .insert({ 
-          estudante_id: studentUser.id, 
-          premio_id: premioId, 
-          status: 'pendente' 
-        } as any);
-
-      if (insertError) throw insertError;
 
       // Atualiza o localStorage com o novo saldo
       const dadosLocais = JSON.parse(localStorage.getItem('bit_student_session') || '{}');
@@ -197,17 +194,19 @@ const Vitrine = () => {
 
   const renderSkeletons = () => {
     return Array.from({ length: 4 }).map((_, index) => (
-      <Card key={index} className="flex flex-col h-full overflow-hidden border border-gray-100 dark:border-zinc-800 rounded-2xl p-0">
-        <div className="w-full aspect-square bg-zinc-200 dark:bg-zinc-800 animate-pulse"></div>
-        <div className="p-5 space-y-4">
+      <Card key={index} className="flex flex-row items-center gap-4 p-3.5 md:p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800/60 w-full">
+        {/* Imagem placeholder */}
+        <div className="w-24 h-24 sm:w-28 sm:h-28 bg-zinc-100 dark:bg-zinc-800/50 rounded-xl animate-pulse shrink-0"></div>
+        {/* Conteúdo */}
+        <div className="flex flex-col justify-between flex-1 min-w-0 space-y-3">
           <div className="space-y-2">
-            <div className="h-5 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse w-3/4"></div>
-            <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse w-full"></div>
-            <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse w-5/6"></div>
+            <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse w-3/4"></div>
+            <div className="h-3 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse w-full"></div>
+            <div className="h-3 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse w-5/6"></div>
           </div>
-          <div className="pt-2 border-t border-gray-100 dark:border-zinc-800 flex justify-between items-center">
-            <div className="h-8 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse w-16"></div>
-            <div className="h-10 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse w-32"></div>
+          <div className="flex items-center justify-between gap-2 mt-3 pt-2 border-t border-zinc-200 dark:border-zinc-800/50">
+            <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse w-16"></div>
+            <div className="h-8 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse w-24"></div>
           </div>
         </div>
       </Card>
@@ -233,6 +232,18 @@ const Vitrine = () => {
           </p>
         </div>
 
+        {new Date().getDate() > 10 && (
+          <div className="mb-6 p-4 border border-amber-200 bg-amber-50 dark:border-amber-900/30 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 rounded-2xl flex items-start gap-3 shadow-sm">
+            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-bold text-sm md:text-base">Período de Resgates Encerrado</h3>
+              <p className="text-xs md:text-sm mt-0.5 text-amber-700 dark:text-amber-400">
+                O período de resgates do mês atual está encerrado. Novos pedidos reabrirão no dia 01 do próximo mês.
+              </p>
+            </div>
+          </div>
+        )}
+
         {error ? (
           <div className="flex flex-col items-center justify-center py-20 px-4 text-center bg-red-50 dark:bg-red-900/10 rounded-3xl border border-red-100 dark:border-red-900/30">
             <AlertCircle className="w-16 h-16 text-red-400 mb-4" />
@@ -240,7 +251,7 @@ const Vitrine = () => {
             <p className="text-red-600 dark:text-red-300 max-w-md">{error}</p>
           </div>
         ) : isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-24">
             {renderSkeletons()}
           </div>
         ) : premios.length === 0 ? (
@@ -254,7 +265,7 @@ const Vitrine = () => {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-24">
             {premios.map((premio) => (
               <PremioCard
                 key={premio.id}

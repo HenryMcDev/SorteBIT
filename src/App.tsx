@@ -19,9 +19,11 @@ import AdminCodes from "./pages/AdminCodes";
 import Participantes from "./components/Participantes";
 import FeedbackModeration from "./components/FeedbackModeration";
 import CadastroPremios from "./components/CadastroPremios";
+import AdminResgates from "./components/AdminResgates";
 import CookieBanner from "./components/CookieBanner";
 import BotaoFlutuanteWhatsapp from "./components/BotaoFlutuanteWhatsapp";
 import GerenciadorNotificacoes from "./components/GerenciadorNotificacoes";
+import AdminLogs from "./components/AdminLogs"; // Import do log de auditoria do admin
 import { supabase } from "@/integrations/supabase/client";
 
 const queryClient = new QueryClient();
@@ -87,8 +89,10 @@ const AppRoutes = () => {
         <Route path="codigos" element={<AdminCodes />} />
         <Route path="moderacao" element={<FeedbackModeration />} />
         <Route path="premios" element={<CadastroPremios />} />
+        <Route path="resgates" element={<AdminResgates />} />
         <Route path="ips" element={<GerenciarIps />} />
         <Route path="notificacoes" element={<GerenciadorNotificacoes />} />
+        <Route path="logs" element={<AdminLogs />} />
       </Route>
       <Route path="/admin/registro" element={<AdminRegister />} />
       <Route path="/admin/jackpot" element={

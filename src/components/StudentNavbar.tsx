@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
 import { TermosCondicoes } from './TermosCondicoes';
 import { ThemeToggle } from './ThemeToggle';
+import { InstallPWAButton } from './InstallPWAButton';
 
 interface StudentNavbarProps {
   studentName: string;
@@ -152,6 +153,8 @@ const StudentNavbar = ({ studentName, bitcash = 0, onLogout, studentId, setSaldo
                 <Store className="w-5 h-5" />
               </Link>
 
+              <InstallPWAButton variant="navbar-desktop" />
+
               <a
                 href={whatsappUrl}
                 target="_blank"
@@ -199,42 +202,37 @@ const StudentNavbar = ({ studentName, bitcash = 0, onLogout, studentId, setSaldo
                   <Menu className="w-5 h-5" />
                 </button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[300px] sm:w-[350px] flex flex-col p-6 bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800">
+              <SheetContent side="right" className="w-[300px] sm:w-[350px] h-full flex flex-col p-6 pb-24 bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800">
                 {isOpen && (
                   <>
-                    <SheetHeader className="text-left border-b border-zinc-200 dark:border-zinc-800 pb-4 mb-4">
+                    <SheetHeader className="text-left border-b border-zinc-200 dark:border-zinc-800 pb-3 mb-3">
                       <SheetTitle className="text-lg font-bold text-zinc-900 dark:text-white">Menu</SheetTitle>
                     </SheetHeader>
 
-                    {/* Informações do Usuário no Menu Mobile */}
-                    <div className="flex flex-col items-center gap-4 mb-6">
-                      <div className="w-20 h-20 rounded-full bg-school-blue-500/20 border-2 border-school-blue-500/30 flex items-center justify-center shrink-0 shadow-sm">
-                        <User className="w-10 h-10 text-school-blue-500" />
+                    {/* Cabeçalho Compacto do Usuário e Saldo no Menu Mobile */}
+                    <div className="flex items-center gap-3 mb-4 pb-3 border-b border-zinc-100 dark:border-zinc-800/50">
+                      <div className="w-11 h-11 rounded-full bg-school-blue-500/20 border border-school-blue-500/30 flex items-center justify-center shrink-0 shadow-sm">
+                        <User className="w-6 h-6 text-school-blue-500" />
                       </div>
-                      <div className="text-center">
-                        <h3 className="text-lg font-bold text-zinc-900 dark:text-white text-ellipsis overflow-hidden max-w-[220px]">{studentName}</h3>
-                        <p className="text-sm text-zinc-500 dark:text-zinc-400">Aluno(a)</p>
-                      </div>
-                    </div>
-
-                    {/* Saldo BITCash no Menu Mobile */}
-                    <div className="flex items-center justify-center gap-3 bg-gradient-to-r from-yellow-400 to-yellow-500/90 dark:from-yellow-500 dark:to-yellow-600 shadow-md border border-yellow-300 dark:border-yellow-500/50 p-4 rounded-xl mb-6">
-                      <Coins className="w-8 h-8 text-yellow-950 dark:text-yellow-100 drop-shadow-sm" />
-                      <div className="flex flex-col">
-                        <span className="text-xs uppercase font-bold text-yellow-900/80 dark:text-yellow-200/80 leading-none">
-                          Saldo Atual
-                        </span>
-                         <span className="text-xl font-black text-yellow-950 dark:text-white leading-tight">
-                          {bitcash} CashBIT
-                        </span>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-bold text-zinc-900 dark:text-white truncate" title={studentName}>
+                          {studentName}
+                        </h3>
+                        <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">Aluno(a)</p>
+                        
+                        {/* Saldo de CashBIT como pílula compacta */}
+                        <div className="inline-flex items-center gap-1.5 mt-1 bg-amber-500/10 text-amber-500 font-bold px-3 py-1.5 rounded-lg text-xs border border-amber-500/20">
+                          <Coins className="w-3.5 h-3.5" />
+                          <span>{bitcash} CashBIT</span>
+                        </div>
                       </div>
                     </div>
 
                     {/* Ações de Navegação */}
-                    <div className="flex flex-col gap-3 flex-1 overflow-y-auto pr-1">
+                    <div className="flex flex-col gap-2 flex-1 overflow-y-auto pr-1">
                       <Link
                         to="/"
-                        className="flex items-center gap-3 w-full p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-medium transition-colors border border-zinc-200/50 dark:border-zinc-700/50"
+                        className="flex items-center gap-3 w-full h-11 py-2 px-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-medium transition-colors border border-zinc-200/50 dark:border-zinc-700/50"
                       >
                         <Home className="w-5 h-5 text-zinc-500" />
                         Página Principal
@@ -242,17 +240,19 @@ const StudentNavbar = ({ studentName, bitcash = 0, onLogout, studentId, setSaldo
 
                       <Link
                         to="/vitrine"
-                        className="flex items-center gap-3 w-full p-3 rounded-lg bg-school-blue-500/10 text-school-blue-700 dark:text-school-blue-400 hover:bg-school-blue-500/20 font-medium transition-colors border border-school-blue-500/20"
+                        className="flex items-center gap-3 w-full h-11 py-2 px-3 rounded-lg bg-school-blue-500/10 text-school-blue-700 dark:text-school-blue-400 hover:bg-school-blue-500/20 font-medium transition-colors border border-school-blue-500/20"
                       >
                         <Store className="w-5 h-5 text-school-blue-500" />
                         Loja de Prêmios
                       </Link>
 
+                      <InstallPWAButton variant="navbar-mobile" />
+
                       <a
                         href={whatsappUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-3 w-full p-3 rounded-lg bg-[#25D366] text-white hover:opacity-90 font-bold transition-all border border-[#25D366]/20 shadow-sm"
+                        className="flex items-center gap-3 w-full h-11 py-2 px-3 rounded-lg bg-[#25D366] text-white hover:opacity-90 font-bold transition-all border border-[#25D366]/20 shadow-sm"
                       >
                         <img src="/img/icon-whatsapp.png" alt="WhatsApp" className="w-5 h-5" />
                         <span>Suporte WhatsApp</span>
@@ -260,7 +260,7 @@ const StudentNavbar = ({ studentName, bitcash = 0, onLogout, studentId, setSaldo
                       
                       <TermosCondicoes>
                         <button
-                          className="flex items-center gap-3 w-full p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-medium transition-colors border border-zinc-200/50 dark:border-zinc-700/50"
+                          className="flex items-center gap-3 w-full h-11 py-2 px-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-medium transition-colors border border-zinc-200/50 dark:border-zinc-700/50"
                         >
                           <FileText className="w-5 h-5 text-zinc-500" />
                           Termos e Condições
@@ -276,7 +276,7 @@ const StudentNavbar = ({ studentName, bitcash = 0, onLogout, studentId, setSaldo
                       </div>
                       <button
                         onClick={onLogout}
-                        className="flex items-center justify-center gap-2 w-full p-3 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 hover:text-red-700 dark:hover:text-red-300 font-bold transition-all border border-red-500/20"
+                        className="flex items-center justify-center gap-2 w-full h-11 py-2 px-3 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 hover:text-red-700 dark:hover:text-red-300 font-bold transition-all border border-red-500/20"
                       >
                         <LogOut className="w-5 h-5" />
                         Sair da Aplicação

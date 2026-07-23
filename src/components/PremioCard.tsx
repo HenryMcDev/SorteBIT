@@ -24,59 +24,55 @@ export const PremioCard = ({ premio, studentBitcash, onResgatar }: PremioCardPro
 
   const isOutOfStock = !premio.estoque || premio.estoque <= 0;
   const isInsufficientFunds = studentBitcash < premio.valor;
-  const isDisabled = isInsufficientFunds || isOutOfStock;
+  const currentDay = new Date().getDate();
+  // COMENTADO PARA TESTES: const isOutsideWindow = currentDay < 1 || currentDay > 10;
+  const isOutsideWindow = false;
+  const isDisabled = isInsufficientFunds || isOutOfStock || isOutsideWindow;
 
-  let buttonText = "Resgatar Prêmio";
+  const cleanDescription = (desc: string) => {
+    if (!desc) return "Nenhuma descrição disponível para este item.";
+    return desc.replace(/[*_`#]/g, "");
+  };
+
+  let buttonText = "Resgatar";
   if (isOutOfStock) buttonText = "Esgotado";
-  else if (isInsufficientFunds) buttonText = "Saldo Insuficiente";
+  else if (isOutsideWindow) buttonText = "Período Encerrado";
+  else if (isInsufficientFunds) {
+    buttonText = `Faltam ${premio.valor - studentBitcash} CashBIT`;
+  }
 
   return (
-    <Card className="flex flex-col h-full overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 dark:bg-zinc-950 border border-gray-100 dark:border-zinc-800 rounded-2xl">
-      <div className="relative w-full h-48 bg-muted/10 overflow-hidden group rounded-t-lg flex items-center justify-center">
+    <Card className="flex flex-row items-center gap-4 p-3.5 md:p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800/60 transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 w-full">
+      {/* Imagem do Produto (Lado Esquerdo) */}
+      <div className="relative w-24 h-24 sm:w-28 sm:h-28 bg-zinc-100 dark:bg-zinc-800/50 rounded-xl p-1 flex items-center justify-center flex-shrink-0">
         {premio.foto && !imgError ? (
           <img
             src={premio.foto}
             alt={premio.nome}
             loading="lazy"
-            className="w-full h-full object-cover object-center transition-transform duration-300 hover:scale-105 group-hover:scale-105"
+            className="w-full h-full object-contain p-0.5 mix-blend-multiply dark:mix-blend-normal"
             onError={() => setImgError(true)}
           />
         ) : (
-          <Gift className="w-16 h-16 text-zinc-300 dark:text-zinc-700" />
+          <Gift className="w-10 h-10 text-zinc-400 dark:text-zinc-600" />
         )}
-
-        {/* Stock badge overlay */}
-        <div className={`absolute top-2.5 right-2.5 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold shadow-md backdrop-blur-sm ${
-          isOutOfStock
-            ? 'bg-red-600/90 text-white'
-            : 'bg-emerald-500/90 text-white'
-        }`}>
-          <Package className="w-3 h-3" />
-          {isOutOfStock ? 'Esgotado' : `${premio.estoque} restante${premio.estoque === 1 ? '' : 's'}`}
-        </div>
       </div>
 
-      <div className="flex flex-col flex-grow p-5 space-y-4">
-        <div className="flex-grow space-y-1">
-          <h3 className="text-lg font-bold text-school-blue-900 dark:text-zinc-100 line-clamp-2 break-words" style={{ wordBreak: 'break-word' }}>
+      {/* Informações e Ações (Lado Direito) */}
+      <div className="min-w-0 flex-1 flex flex-col justify-between h-full self-stretch">
+        <div>
+          <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 text-base truncate" title={premio.nome}>
             {premio.nome}
           </h3>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 line-clamp-2 break-words" style={{ wordBreak: 'break-word' }}>
-            {premio.descricao || "Nenhuma descrição disponível para este item."}
+          <p className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-2 mt-1">
+            {cleanDescription(premio.descricao)}
           </p>
         </div>
 
-        <div className="flex items-center justify-between flex-wrap gap-3 pt-3 border-t border-gray-100 dark:border-zinc-800">
-          <div className="flex flex-col">
-            <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Custo</span>
-            <div className="flex items-center gap-1.5">
-              <div className="w-5 h-5 rounded-full bg-school-yellow-500 flex items-center justify-center shadow-sm">
-                <span className="text-[10px] font-black text-school-yellow-950">B</span>
-              </div>
-              <span className={`text-xl font-black ${isInsufficientFunds ? 'text-red-500 dark:text-red-400' : 'text-school-blue-800 dark:text-school-blue-400'}`}>
-                {premio.valor}
-              </span>
-            </div>
+        {/* Preço & Botão de Resgate (Rodapé do Card) */}
+        <div className="flex flex-wrap items-center justify-between gap-2 mt-3 pt-2 border-t border-zinc-200 dark:border-zinc-800/50">
+          <div className="font-bold text-amber-600 dark:text-amber-400 text-sm shrink-0">
+            🪙 {premio.valor} CashBIT
           </div>
 
           <TooltipProvider>
@@ -86,15 +82,12 @@ export const PremioCard = ({ premio, studentBitcash, onResgatar }: PremioCardPro
                   <Button
                     onClick={() => onResgatar(premio.id)}
                     disabled={isDisabled}
-                    className={`rounded-xl shadow-md transition-all whitespace-normal h-auto min-h-[2.5rem] py-2 text-center ${
-                      isOutOfStock
-                        ? 'bg-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 cursor-not-allowed'
-                        : isInsufficientFunds 
-                          ? 'bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400' 
-                          : 'bg-school-blue-600 hover:bg-school-blue-700 text-white hover:scale-105'
+                    className={`rounded-xl shadow-md transition-all px-3 py-1.5 h-auto text-xs font-semibold disabled:opacity-100 ${
+                      isDisabled
+                        ? 'bg-zinc-100 text-zinc-500 border border-zinc-200 dark:bg-zinc-800/80 dark:text-zinc-400 dark:border-zinc-700/50 dark:border cursor-not-allowed'
+                        : 'bg-school-yellow-500 hover:bg-school-yellow-600 text-school-blue-950 font-bold hover:scale-105'
                     }`}
                   >
-                    <ShoppingBag className="w-4 h-4 mr-2 shrink-0" />
                     <span>{buttonText}</span>
                   </Button>
                 </div>
@@ -104,7 +97,7 @@ export const PremioCard = ({ premio, studentBitcash, onResgatar }: PremioCardPro
                   <p>
                     {isOutOfStock
                       ? 'Este prêmio está esgotado no momento.'
-                      : 'Você precisa acumular mais CashBIT para resgatar.'}
+                      : `Você precisa de mais ${premio.valor - studentBitcash} CashBIT para resgatar.`}
                   </p>
                 </TooltipContent>
               )}

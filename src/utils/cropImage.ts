@@ -13,12 +13,15 @@ export async function getCroppedImg(
 ): Promise<File | null> {
   const image = await createImage(imageSrc);
   const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d', { alpha: true });
 
   if (!ctx) return null;
 
   canvas.width = pixelCrop.width;
   canvas.height = pixelCrop.height;
+
+  // Limpa o canvas para preservar a transparência (canal alpha)
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   ctx.drawImage(
     image,
@@ -38,7 +41,7 @@ export async function getCroppedImg(
         resolve(null);
         return;
       }
-      resolve(new File([blob], 'premio-recortado.jpg', { type: 'image/jpeg' }));
-    }, 'image/jpeg');
+      resolve(new File([blob], 'premio-recortado.webp', { type: 'image/webp' }));
+    }, 'image/webp');
   });
 }

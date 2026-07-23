@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Key, ShieldCheck, Lock, Loader2, EyeOff, Eye, XCircle, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { validatePasswordStrength } from '@/hooks/useStudentAuth';
+import { InstallPWAButton } from './InstallPWAButton';
 
 const formatCPF = (value: string) => {
   const digits = value.replace(/\D/g, '').slice(0, 11);
@@ -210,7 +211,8 @@ const StudentAuth = ({ isLoading, login, register, cpfValue, cpfError, handleCPF
   };
 
   return (
-    <div className="max-w-md mx-auto px-4 w-full notranslate">
+    <div className="max-w-md mx-auto px-4 w-full notranslate flex flex-col gap-4">
+      <InstallPWAButton variant="login" />
       <Card className="rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden bg-white/95 dark:bg-zinc-900/85 backdrop-blur-xl">
         {/* Mode toggle tabs */}
         <div className="flex border-b border-zinc-200 dark:border-zinc-800">
