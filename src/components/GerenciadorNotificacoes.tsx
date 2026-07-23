@@ -616,7 +616,7 @@ export default function GerenciadorNotificacoes() {
                   variant="outline"
                   disabled={triggerLoading}
                   onClick={() => setConfirmTriggerOpen(false)}
-                  className="h-10 rounded-xl bg-white text-slate-700 border border-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:text-white dark:border-slate-700 px-4 text-xs font-semibold"
+                  className="h-10 rounded-xl bg-white text-slate-700 border border-slate-300 hover:bg-slate-100 hover:text-slate-900 dark:bg-slate-800 dark:text-slate-200 dark:hover:text-white dark:border-slate-700 px-4 text-xs font-semibold"
                 >
                   Cancelar
                 </Button>
@@ -693,7 +693,7 @@ export default function GerenciadorNotificacoes() {
                   variant="outline"
                   disabled={deleteLoading}
                   onClick={() => setConfirmDeleteOpen(false)}
-                  className="h-10 rounded-xl bg-white text-slate-700 border border-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:text-white dark:border-slate-700 px-4 text-xs font-semibold"
+                  className="h-10 rounded-xl bg-white text-slate-700 border border-slate-300 hover:bg-slate-100 hover:text-slate-900 dark:bg-slate-800 dark:text-slate-200 dark:hover:text-white dark:border-slate-700 px-4 text-xs font-semibold"
                 >
                   Cancelar
                 </Button>
