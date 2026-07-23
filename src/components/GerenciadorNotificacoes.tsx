@@ -39,6 +39,12 @@ export default function GerenciadorNotificacoes() {
   const [triggerLoading, setTriggerLoading] = useState(false);
   const [triggerError, setTriggerError] = useState('');
 
+  // Estados do Modal de Confirmação de Exclusão
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [templateToDelete, setTemplateToDelete] = useState<Template | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
   const { toast } = useToast();
 
   useEffect(() => {
@@ -127,30 +133,43 @@ export default function GerenciadorNotificacoes() {
     setDiasSemana(t.dias_semana || [1, 2, 3, 4, 5]);
   };
 
-  const handleDeletar = async (id: number) => {
-    if (!window.confirm('Tem certeza que deseja excluir esta notificação?')) return;
+  const handlePrepareDeletar = (t: Template) => {
+    setTemplateToDelete(t);
+    setDeleteError('');
+    setConfirmDeleteOpen(true);
+  };
 
-    setLoading(true);
+  const handleConfirmDeletar = async () => {
+    if (!templateToDelete) return;
+    setDeleteLoading(true);
+    setDeleteError('');
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token || localStorage.getItem('token') || '';
 
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || ''}/api/notifications/templates/${id}`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || ''}/api/notifications/templates/${templateToDelete.id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (response.ok) {
-        showStatus('success', 'Notificação excluída com sucesso.');
+        toast({
+          title: "Notificação excluída",
+          description: `A notificação "${templateToDelete.titulo}" foi excluída com sucesso.`,
+        });
+        setConfirmDeleteOpen(false);
+        setTemplateToDelete(null);
         fetchTemplates();
-        if (currentId === id) limparFormulario();
+        if (currentId === templateToDelete.id) limparFormulario();
       } else {
-        showStatus('error', 'Erro ao excluir a notificação.');
+        const data = await response.json().catch(() => ({}));
+        setDeleteError(data.error || 'Erro ao excluir a notificação.');
       }
     } catch (err) {
-      showStatus('error', 'Erro de conexão.');
+      setDeleteError('Erro de conexão.');
     } finally {
-      setLoading(false);
+      setDeleteLoading(false);
     }
   };
 
@@ -524,7 +543,7 @@ export default function GerenciadorNotificacoes() {
                       </button>
                       <button 
                         type="button"
-                        onClick={() => handleDeletar(t.id)}
+                        onClick={() => handlePrepareDeletar(t)}
                         title="Excluir"
                         className="p-2 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
                       >
@@ -616,6 +635,83 @@ export default function GerenciadorNotificacoes() {
                     <>
                       <Send className="w-3.5 h-3.5" />
                       Sim, Disparar Agora
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Confirmação de Exclusão de Notificação */}
+      <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <DialogContent className="sm:max-w-md bg-white dark:bg-zinc-950 border dark:border-zinc-800 rounded-2xl">
+          <DialogHeader className="border-b border-zinc-100 dark:border-zinc-900/60 pb-3 flex flex-row items-center gap-2">
+            <div className="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center shrink-0">
+              <Trash2 className="w-5 h-5 text-rose-500" />
+            </div>
+            <DialogTitle className="text-slate-900 dark:text-white text-lg font-bold">
+              Excluir Notificação
+            </DialogTitle>
+          </DialogHeader>
+
+          {templateToDelete && (
+            <div className="space-y-4 pt-3 text-sm">
+              <p className="text-slate-500 dark:text-zinc-400">
+                Tem certeza que deseja excluir esta notificação?
+              </p>
+
+              <div className="bg-slate-50 dark:bg-zinc-900/50 p-4 rounded-xl border border-slate-100 dark:border-zinc-900">
+                <span className="block text-[11px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider mb-1">
+                  Título da Notificação
+                </span>
+                <h4 className="font-bold text-slate-800 dark:text-zinc-200">
+                  {templateToDelete.titulo}
+                </h4>
+              </div>
+
+              <div className="flex items-start gap-2.5 p-3.5 bg-rose-500/5 dark:bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-455 rounded-xl">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <p className="text-xs font-semibold">
+                  Esta ação não poderá ser desfeita e a notificação será removida permanentemente do banco de dados.
+                </p>
+              </div>
+
+              {deleteError && (
+                <div className="flex items-start gap-2 p-3 bg-rose-500/5 dark:bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-455 rounded-xl">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <p className="text-xs font-medium">
+                    {deleteError}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-zinc-900/60">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={deleteLoading}
+                  onClick={() => setConfirmDeleteOpen(false)}
+                  className="h-10 rounded-xl bg-white text-slate-700 border border-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:text-white dark:border-slate-700 px-4 text-xs font-semibold"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  disabled={deleteLoading}
+                  onClick={handleConfirmDeletar}
+                  className="h-10 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md px-5 flex items-center justify-center gap-1.5"
+                >
+                  {deleteLoading ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Excluindo...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Sim, Excluir
                     </>
                   )}
                 </Button>
