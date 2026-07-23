@@ -17,16 +17,14 @@ interface PremioCardProps {
   premio: Premio;
   studentBitcash: number;
   onResgatar: (id: number) => void;
+  isOutsideWindow: boolean;
 }
 
-export const PremioCard = ({ premio, studentBitcash, onResgatar }: PremioCardProps) => {
+export const PremioCard = ({ premio, studentBitcash, onResgatar, isOutsideWindow }: PremioCardProps) => {
   const [imgError, setImgError] = useState(false);
 
   const isOutOfStock = !premio.estoque || premio.estoque <= 0;
   const isInsufficientFunds = studentBitcash < premio.valor;
-  const currentDay = new Date().getDate();
-  // COMENTADO PARA TESTES: const isOutsideWindow = currentDay < 1 || currentDay > 10;
-  const isOutsideWindow = false;
   const isDisabled = isInsufficientFunds || isOutOfStock || isOutsideWindow;
 
   const cleanDescription = (desc: string) => {

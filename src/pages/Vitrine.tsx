@@ -20,6 +20,7 @@ const Vitrine = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [serverDay, setServerDay] = useState<number | null>(null);
   const { toast } = useToast();
 
   const fetchPremios = async () => {
@@ -56,9 +57,39 @@ const Vitrine = () => {
     }
   };
 
+  const fetchServerDay = async (): Promise<number> => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/`, {
+        method: 'HEAD',
+        headers: {
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        }
+      });
+      const dateStr = response.headers.get('date');
+      if (dateStr) {
+        const formatter = new Intl.DateTimeFormat('pt-BR', {
+          timeZone: 'America/Sao_Paulo',
+          day: 'numeric'
+        });
+        const dayStr = formatter.format(new Date(dateStr));
+        const day = parseInt(dayStr, 10);
+        setServerDay(day);
+        return day;
+      }
+    } catch (e) {
+      console.error("Erro ao obter dia do servidor:", e);
+    }
+    const fallbackDay = new Date().getDate();
+    setServerDay(fallbackDay);
+    return fallbackDay;
+  };
+
   useEffect(() => {
     fetchPremios();
+    fetchServerDay();
   }, []);
+
+  const isOutsideWindow = serverDay !== null ? (serverDay < 1 || serverDay > 10) : (new Date().getDate() < 1 || new Date().getDate() > 10);
 
   if (!isMobile) {
     return <DesktopBlocker />;
@@ -72,18 +103,33 @@ const Vitrine = () => {
     if (!studentUser?.id) return;
     if (isProcessing) return;
 
-    // Validação de segurança: apenas entre os dias 1 e 10 de cada mês (COMENTADO PARA TESTES)
-    /*
-    const currentDay = new Date().getDate();
-    if (currentDay < 1 || currentDay > 10) {
-      toast({
-        title: "Período encerrado",
-        description: "Solicitações de resgate de prêmios só são permitidas entre os dias 01 e 10 de cada mês.",
-        variant: "destructive",
-      });
-      return;
+    // Validação de segurança: apenas entre os dias 1 e 10 de cada mês (perguntando ao servidor)
+    setIsProcessing(true);
+    try {
+      const activeServerDay = await fetchServerDay();
+      if (activeServerDay < 1 || activeServerDay > 10) {
+        toast({
+          title: "Período encerrado",
+          description: "Solicitações de resgate de prêmios só são permitidas entre os dias 01 e 10 de cada mês.",
+          variant: "destructive",
+        });
+        setIsProcessing(false);
+        return;
+      }
+    } catch (e) {
+      console.error("Erro na validação da data do servidor:", e);
+      // Em caso de erro de rede, usa o fallback local
+      const localDay = new Date().getDate();
+      if (localDay < 1 || localDay > 10) {
+        toast({
+          title: "Período encerrado",
+          description: "Solicitações de resgate de prêmios só são permitidas entre os dias 01 e 10 de cada mês.",
+          variant: "destructive",
+        });
+        setIsProcessing(false);
+        return;
+      }
     }
-    */
 
     const premio = premios.find(p => p.id === id);
     if (!premio) {
@@ -92,6 +138,7 @@ const Vitrine = () => {
         description: "Prêmio não encontrado.",
         variant: "destructive",
       });
+      setIsProcessing(false);
       return;
     }
 
@@ -104,10 +151,9 @@ const Vitrine = () => {
         description: "Este prêmio não está mais disponível no estoque.",
         variant: "destructive",
       });
+      setIsProcessing(false);
       return;
     }
-
-    setIsProcessing(true);
 
     try {
       // 1. Não confie no localStorage! Busca o saldo REAL e atualizado do banco de dados agora mesmo
@@ -232,7 +278,7 @@ const Vitrine = () => {
           </p>
         </div>
 
-        {new Date().getDate() > 10 && (
+        {isOutsideWindow && (
           <div className="mb-6 p-4 border border-amber-200 bg-amber-50 dark:border-amber-900/30 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 rounded-2xl flex items-start gap-3 shadow-sm">
             <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
             <div>
@@ -272,6 +318,7 @@ const Vitrine = () => {
                 premio={premio}
                 studentBitcash={studentUser?.bitcash || 0}
                 onResgatar={handleResgatar}
+                isOutsideWindow={isOutsideWindow}
               />
             ))}
           </div>
