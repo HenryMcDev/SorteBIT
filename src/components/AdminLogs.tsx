@@ -291,7 +291,8 @@ const AdminLogs = () => {
                   type="date"
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
-                  className="pl-9 h-10 rounded-xl border-gray-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm text-zinc-750 dark:text-zinc-300"
+                  className="pl-9 h-10 rounded-xl border-gray-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm text-slate-800 dark:text-slate-100 [color-scheme:light] dark:[color-scheme:dark]"
+                  style={{ colorScheme: 'light dark' }}
                 />
                 <Calendar className="w-4 h-4 text-zinc-400 absolute left-3 top-3 pointer-events-none" />
               </div>
@@ -305,7 +306,8 @@ const AdminLogs = () => {
                   type="date"
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
-                  className="pl-9 h-10 rounded-xl border-gray-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm text-zinc-750 dark:text-zinc-300"
+                  className="pl-9 h-10 rounded-xl border-gray-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm text-slate-800 dark:text-slate-100 [color-scheme:light] dark:[color-scheme:dark]"
+                  style={{ colorScheme: 'light dark' }}
                 />
                 <Calendar className="w-4 h-4 text-zinc-400 absolute left-3 top-3 pointer-events-none" />
               </div>
