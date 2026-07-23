@@ -43,6 +43,7 @@ const AdminLogs = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [actionFilter, setActionFilter] = useState('all');
+  const [tableFilter, setTableFilter] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
@@ -64,6 +65,10 @@ const AdminLogs = () => {
 
       if (actionFilter !== 'all') {
         query = query.eq('action', actionFilter);
+      }
+
+      if (tableFilter !== 'all') {
+        query = query.eq('table_name', tableFilter);
       }
 
       if (dateFrom) {
@@ -92,7 +97,7 @@ const AdminLogs = () => {
 
   useEffect(() => {
     fetchLogs();
-  }, [actionFilter, dateFrom, dateTo]);
+  }, [actionFilter, dateFrom, dateTo, tableFilter]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,6 +107,7 @@ const AdminLogs = () => {
   const handleClearFilters = () => {
     setSearchTerm('');
     setActionFilter('all');
+    setTableFilter('all');
     setDateFrom('');
     setDateTo('');
     setTimeout(() => {
@@ -253,7 +259,7 @@ const AdminLogs = () => {
       {/* Filters Card */}
       <Card className="p-5 border border-zinc-150 dark:border-zinc-800 bg-white dark:bg-zinc-950 rounded-2xl shadow-sm">
         <form onSubmit={handleSearchSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {/* Search Input */}
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Pesquisa Geral</Label>
@@ -280,6 +286,21 @@ const AdminLogs = () => {
                 <option value="INSERT">Inclusão (INSERT)</option>
                 <option value="UPDATE">Edição (UPDATE)</option>
                 <option value="DELETE">Exclusão (DELETE)</option>
+              </select>
+            </div>
+
+            {/* Table/Module Filter */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Módulo/Tabela</Label>
+              <select
+                value={tableFilter}
+                onChange={(e) => setTableFilter(e.target.value)}
+                className="w-full h-10 rounded-xl border border-gray-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm px-3 text-zinc-700 dark:text-zinc-350 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="all">Todos os Módulos</option>
+                <option value="estudantes">Estudantes</option>
+                <option value="premios">Prêmios</option>
+                <option value="resgates">Resgates</option>
               </select>
             </div>
 
@@ -314,23 +335,63 @@ const AdminLogs = () => {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-900/60">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClearFilters}
-              className="h-10 rounded-xl bg-white text-slate-700 border border-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:text-white dark:border-slate-700 text-xs font-semibold"
-            >
-              <X className="w-3.5 h-3.5 mr-1.5" />
-              Limpar Filtros
-            </Button>
-            <Button
-              type="submit"
-              className="h-10 rounded-xl bg-school-blue-600 hover:bg-school-blue-700 text-white text-xs font-bold shadow-md px-5"
-            >
-              <Filter className="w-3.5 h-3.5 mr-1.5" />
-              Buscar Logs
-            </Button>
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-zinc-100 dark:border-zinc-900/60">
+            {/* Quick Badges Filtros Rápidos */}
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              <span className="text-[11px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Filtros Rápidos:</span>
+              <button
+                type="button"
+                onClick={() => setTableFilter(tableFilter === 'estudantes' ? 'all' : 'estudantes')}
+                className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all flex items-center gap-1 ${
+                  tableFilter === 'estudantes'
+                    ? 'bg-blue-600 border-blue-600 text-white dark:bg-blue-600 dark:border-blue-600 dark:text-white shadow-sm'
+                    : 'bg-slate-100/70 border-slate-200 text-slate-800 hover:bg-slate-200/80 hover:text-slate-900 dark:bg-zinc-900 dark:border-zinc-800 dark:text-slate-200 dark:hover:bg-zinc-800 dark:hover:text-white'
+                }`}
+              >
+                👤 Estudantes {tableFilter === 'estudantes' && <span className="text-[9px] bg-white text-blue-600 rounded-full w-3.5 h-3.5 flex items-center justify-center font-bold">✓</span>}
+              </button>
+              <button
+                type="button"
+                onClick={() => setTableFilter(tableFilter === 'premios' ? 'all' : 'premios')}
+                className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all flex items-center gap-1 ${
+                  tableFilter === 'premios'
+                    ? 'bg-blue-600 border-blue-600 text-white dark:bg-blue-600 dark:border-blue-600 dark:text-white shadow-sm'
+                    : 'bg-slate-100/70 border-slate-200 text-slate-800 hover:bg-slate-200/80 hover:text-slate-900 dark:bg-zinc-900 dark:border-zinc-800 dark:text-slate-200 dark:hover:bg-zinc-800 dark:hover:text-white'
+                }`}
+              >
+                🎁 Prêmios {tableFilter === 'premios' && <span className="text-[9px] bg-white text-blue-600 rounded-full w-3.5 h-3.5 flex items-center justify-center font-bold">✓</span>}
+              </button>
+              <button
+                type="button"
+                onClick={() => setTableFilter(tableFilter === 'resgates' ? 'all' : 'resgates')}
+                className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all flex items-center gap-1 ${
+                  tableFilter === 'resgates'
+                    ? 'bg-blue-600 border-blue-600 text-white dark:bg-blue-600 dark:border-blue-600 dark:text-white shadow-sm'
+                    : 'bg-slate-100/70 border-slate-200 text-slate-800 hover:bg-slate-200/80 hover:text-slate-900 dark:bg-zinc-900 dark:border-zinc-800 dark:text-slate-200 dark:hover:bg-zinc-800 dark:hover:text-white'
+                }`}
+              >
+                🛍️ Resgates {tableFilter === 'resgates' && <span className="text-[9px] bg-white text-blue-600 rounded-full w-3.5 h-3.5 flex items-center justify-center font-bold">✓</span>}
+              </button>
+            </div>
+
+            <div className="flex gap-2.5 w-full sm:w-auto justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleClearFilters}
+                className="h-10 rounded-xl bg-white text-slate-700 border border-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:text-white dark:border-slate-700 text-xs font-semibold"
+              >
+                <X className="w-3.5 h-3.5 mr-1.5" />
+                Limpar Filtros
+              </Button>
+              <Button
+                type="submit"
+                className="h-10 rounded-xl bg-school-blue-600 hover:bg-school-blue-700 text-white text-xs font-bold shadow-md px-5"
+              >
+                <Filter className="w-3.5 h-3.5 mr-1.5" />
+                Buscar Logs
+              </Button>
+            </div>
           </div>
         </form>
       </Card>
@@ -349,16 +410,16 @@ const AdminLogs = () => {
             <p className="text-xs text-zinc-400 mt-1">Experimente alterar os termos da pesquisa ou os filtros de data.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto w-full">
+          <div className="overflow-auto w-full max-h-[550px] relative [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-zinc-200 dark:[&::-webkit-scrollbar-thumb]:bg-zinc-800 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-zinc-350 dark:hover:[&::-webkit-scrollbar-thumb]:bg-zinc-700">
             <table className="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr className="bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-150 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 font-semibold text-xs">
-                  <th className="p-4">Data/Hora</th>
-                  <th className="p-4">Administrador</th>
-                  <th className="p-4">Ação</th>
-                  <th className="p-4">Módulo/Tabela</th>
-                  <th className="p-4">ID do Registro</th>
-                  <th className="p-4 text-center">Detalhes</th>
+              <thead className="sticky top-0 z-10 bg-zinc-50 dark:bg-zinc-900 shadow-[0_1px_0_0_rgba(0,0,0,0.05)] dark:shadow-[0_1px_0_0_rgba(255,255,255,0.05)]">
+                <tr className="text-zinc-500 dark:text-zinc-400 font-semibold text-xs border-b border-zinc-150 dark:border-zinc-800">
+                  <th className="p-4 bg-zinc-50 dark:bg-zinc-900">Data/Hora</th>
+                  <th className="p-4 bg-zinc-50 dark:bg-zinc-900">Administrador</th>
+                  <th className="p-4 bg-zinc-50 dark:bg-zinc-900">Ação</th>
+                  <th className="p-4 bg-zinc-50 dark:bg-zinc-900">Módulo/Tabela</th>
+                  <th className="p-4 bg-zinc-50 dark:bg-zinc-900">ID do Registro</th>
+                  <th className="p-4 bg-zinc-50 dark:bg-zinc-900 text-center">Detalhes</th>
                 </tr>
               </thead>
               <tbody>

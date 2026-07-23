@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, NavLink, Link, useNavigate } from 'react-router-dom';
+import { useLocation, NavLink, Link, useNavigate, Navigate } from 'react-router-dom';
 import { useAdmAuth } from '@/hooks/useAdmAuth';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Outlet } from 'react-router-dom';
@@ -256,6 +256,14 @@ const AdminLayout = () => {
     return <Admin />;
   }
 
+  // Proteção de Rota (Guarded Route) para Logs de Auditoria
+  const isLogsRoute = location.pathname.endsWith('/logs');
+  const hasLogsAccess = adminUser?.email?.toLowerCase() === 'henrymc.bit@gmail.com' || adminUser?.email?.toLowerCase() === 'marinabitaraxa@gmail.com';
+  
+  if (isLogsRoute && !hasLogsAccess) {
+    return <Navigate to="/admin/participantes" replace />;
+  }
+
   // Map route path to page title
   const getPageTitle = () => {
     const path = location.pathname;
@@ -298,7 +306,12 @@ const AdminLayout = () => {
               { id: 'ips', nome: 'Gerenciar IPs', icone: Sliders, path: '/admin/ips' },
               { id: 'notificacoes', nome: 'Notificações', icone: Bell, path: '/admin/notificacoes' },
               { id: 'logs', nome: 'Logs de Auditoria', icone: ClipboardList, path: '/admin/logs' },
-            ].map((item) => {
+            ].filter((item) => {
+              if (item.id === 'logs') {
+                return hasLogsAccess;
+              }
+              return true;
+            }).map((item) => {
               const IconeComponente = item.icone;
               const isActive = location.pathname === item.path;
               

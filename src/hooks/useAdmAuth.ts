@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 interface AdminUser {
   id: string;
   name: string;
+  email?: string;
   isAdmin?: boolean;
 }
 
@@ -77,6 +78,26 @@ export const useAdmAuth = () => {
     };
   }, []);
 
+  // Efeito para buscar o email se ele não estiver no localStorage (para compatibilidade/retrocompatibilidade)
+  useEffect(() => {
+    const fetchEmailIfMissing = async () => {
+      if (adminUser && !adminUser.email) {
+        try {
+          const { data } = await supabase.auth.getUser();
+          if (data?.user?.email) {
+            updateSession({
+              ...adminUser,
+              email: data.user.email.toLowerCase(),
+            });
+          }
+        } catch (e) {
+          console.error('Erro ao buscar email do admin autenticado:', e);
+        }
+      }
+    };
+    fetchEmailIfMissing();
+  }, [adminUser]);
+
   const login = async (identifier: string, password: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
     try {
@@ -126,6 +147,7 @@ export const useAdmAuth = () => {
       const user: AdminUser = {
         id: (adminData as any).id,
         name: (adminData as any).nome || (adminData as any).email,
+        email: ((adminData as any).email || authData.user.email || '').toLowerCase(),
         isAdmin: true,
       };
       
