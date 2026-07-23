@@ -62,17 +62,22 @@ const AppRoutes = () => {
         localStorage.removeItem('bit_student_session');
         window.dispatchEvent(new Event('admin-session-change')); // Notifica o hook useAdmAuth
         navigate('/');
+        setRenderKey(prev => prev + 1);
       } 
-      // Se for SIGNED_IN, redireciona caso já tenha uma sessão ativa de admin
+      // Se for SIGNED_IN, redireciona caso já tenha uma sessão ativa de admin e esteja na tela de login/index
       else if (event === 'SIGNED_IN') {
         const storedAdmin = localStorage.getItem('school_admin_session');
         if (storedAdmin) {
-          navigate('/admin/participantes');
+          const currentPath = window.location.pathname;
+          if (currentPath === '/' || currentPath === '/admin' || currentPath === '/admin/') {
+            navigate('/admin/participantes');
+            setRenderKey(prev => prev + 1);
+          }
+        } else {
+          // Se não tinha storedAdmin no localStorage, força remount para carregar painel
+          setRenderKey(prev => prev + 1);
         }
       }
-
-      // Força uma atualização limpa do componente de rotas resetando a renderização
-      setRenderKey(prev => prev + 1);
     });
 
     return () => {

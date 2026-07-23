@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Search, Calendar, Filter, Eye, RefreshCw, X, ClipboardList } from 'lucide-react';
+import { Loader2, Search, Calendar, Filter, Eye, EyeOff, RefreshCw, X, ClipboardList, ShieldCheck } from 'lucide-react';
 
 interface AuditLog {
   id: string;
@@ -48,6 +48,14 @@ const AdminLogs = () => {
   const [dateTo, setDateTo] = useState('');
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
   const [diffModalOpen, setDiffModalOpen] = useState(false);
+
+  // Estados para reautenticação de segurança (Confirmar senha)
+  const [pendingLog, setPendingLog] = useState<AuditLog | null>(null);
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [confirmError, setConfirmError] = useState('');
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const { toast } = useToast();
 
@@ -116,8 +124,46 @@ const AdminLogs = () => {
   };
 
   const handleViewDetails = (log: AuditLog) => {
-    setSelectedLog(log);
-    setDiffModalOpen(true);
+    setPendingLog(log);
+    setConfirmPassword('');
+    setShowPassword(false);
+    setConfirmError('');
+    setPasswordModalOpen(true);
+  };
+
+  const handleVerifyPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setConfirmError('');
+    setConfirmLoading(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) {
+        throw new Error("Usuário administrador não identificado.");
+      }
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: confirmPassword,
+      });
+
+      if (error) {
+        throw new Error("Senha incorreta. Acesso negado.");
+      }
+
+      // Se passou na senha, abre o modal de detalhes
+      setPasswordModalOpen(false);
+      setConfirmPassword('');
+      if (pendingLog) {
+        setSelectedLog(pendingLog);
+        setDiffModalOpen(true);
+      }
+    } catch (err: any) {
+      console.error('Erro na reautenticação de segurança:', err);
+      setConfirmError(err.message || 'Senha incorreta. Tente novamente.');
+    } finally {
+      setConfirmLoading(false);
+    }
   };
 
   const renderDiffContent = (log: AuditLog) => {
@@ -139,7 +185,7 @@ const AdminLogs = () => {
               <tbody>
                 {Object.entries(data).map(([key, val]) => (
                   <tr key={key} className="border-b border-emerald-50/50 dark:border-emerald-950/20 bg-emerald-50/5 dark:bg-emerald-950/5">
-                    <td className="p-3 font-semibold font-mono text-zinc-650 dark:text-zinc-350">{key}</td>
+                    <td className="p-3 font-semibold font-mono text-slate-900 dark:text-slate-200">{key}</td>
                     <td className="p-3 font-mono text-emerald-600 dark:text-emerald-400 break-all">{JSON.stringify(val)}</td>
                   </tr>
                 ))}
@@ -168,7 +214,7 @@ const AdminLogs = () => {
               <tbody>
                 {Object.entries(data).map(([key, val]) => (
                   <tr key={key} className="border-b border-rose-50/50 dark:border-rose-950/20 bg-rose-50/5 dark:bg-rose-950/5">
-                    <td className="p-3 font-semibold font-mono text-zinc-650 dark:text-zinc-350">{key}</td>
+                    <td className="p-3 font-semibold font-mono text-slate-900 dark:text-slate-200">{key}</td>
                     <td className="p-3 font-mono text-rose-600 dark:text-rose-400 break-all">{JSON.stringify(val)}</td>
                   </tr>
                 ))}
@@ -216,7 +262,7 @@ const AdminLogs = () => {
               <tbody>
                 {changedKeys.map(key => (
                   <tr key={key} className="border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-950">
-                    <td className="p-3 font-semibold font-mono text-zinc-650 dark:text-zinc-350">{key}</td>
+                    <td className="p-3 font-semibold font-mono text-slate-900 dark:text-slate-200">{key}</td>
                     <td className="p-3 font-mono bg-rose-50/10 dark:bg-rose-950/10 text-rose-600 dark:text-rose-400 break-all">
                       {oldData[key] !== undefined ? JSON.stringify(oldData[key]) : <span className="text-zinc-400 italic">nulo</span>}
                     </td>
@@ -509,6 +555,83 @@ const AdminLogs = () => {
               Fechar
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Password Confirmation Modal for Step-Up Auth */}
+      <Dialog open={passwordModalOpen} onOpenChange={setPasswordModalOpen}>
+        <DialogContent className="sm:max-w-md bg-white dark:bg-zinc-950 border dark:border-zinc-800 rounded-2xl">
+          <DialogHeader className="border-b border-zinc-100 dark:border-zinc-900/60 pb-3">
+            <DialogTitle className="text-school-blue-800 dark:text-white text-lg font-bold flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-school-blue-600 dark:text-school-blue-400" />
+              Confirmação de Segurança
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleVerifyPassword} className="space-y-4 pt-3">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Para visualizar os detalhes deste log de auditoria, confirme a sua senha administrativa.
+            </p>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="confirm-password-input" className="text-xs font-semibold text-slate-900 dark:text-zinc-300">
+                Senha do Administrador
+              </Label>
+              <div className="relative">
+                <Input
+                  id="confirm-password-input"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Insira sua senha..."
+                  className="h-10 pr-10 rounded-xl border-gray-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm text-slate-800 dark:text-slate-100"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-300"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {confirmError && (
+              <p className="text-xs font-medium text-rose-600 dark:text-rose-455 bg-rose-50/50 dark:bg-rose-950/20 p-2.5 rounded-xl border border-rose-100 dark:border-rose-950/30">
+                ⚠️ {confirmError}
+              </p>
+            )}
+
+            <div className="flex justify-end gap-2.5 pt-3 border-t border-zinc-100 dark:border-zinc-900/60">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setPasswordModalOpen(false)}
+                className="h-10 rounded-xl bg-white text-slate-700 border border-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:text-white dark:border-slate-700 px-4"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={confirmLoading}
+                className="h-10 rounded-xl bg-school-blue-600 hover:bg-school-blue-700 text-white text-xs font-bold shadow-md px-5 flex items-center justify-center gap-1.5"
+              >
+                {confirmLoading ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Verificando...
+                  </>
+                ) : (
+                  'Confirmar e Visualizar'
+                )}
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
