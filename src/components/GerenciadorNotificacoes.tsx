@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Bell, Trash2, Edit3, Plus, Send, CheckCircle2, AlertCircle, 
-  Clock, Lock, Unlock, Smartphone, Sparkles 
+  Clock, Lock, Unlock, Smartphone, Sparkles, Loader2 
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 interface Template {
   id: number;
@@ -29,6 +32,14 @@ export default function GerenciadorNotificacoes() {
   const [horarioDisparo, setHorarioDisparo] = useState('12:00');
   const [isFixo, setIsFixo] = useState(false);
   const [diasSemana, setDiasSemana] = useState<number[]>([1, 2, 3, 4, 5]);
+
+  // Estados do Modal de Confirmação de Disparo
+  const [confirmTriggerOpen, setConfirmTriggerOpen] = useState(false);
+  const [templateToTrigger, setTemplateToTrigger] = useState<Template | null>(null);
+  const [triggerLoading, setTriggerLoading] = useState(false);
+  const [triggerError, setTriggerError] = useState('');
+
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchTemplates();
@@ -143,28 +154,41 @@ export default function GerenciadorNotificacoes() {
     }
   };
 
-  const handleDispararImediato = async (id: number) => {
-    if (!window.confirm('Deseja disparar esta notificação no celular de todos os alunos agora?')) return;
-    
-    setLoading(true);
+  const handlePrepareDisparo = (t: Template) => {
+    setTemplateToTrigger(t);
+    setTriggerError('');
+    setConfirmTriggerOpen(true);
+  };
+
+  const handleConfirmDisparar = async () => {
+    if (!templateToTrigger) return;
+    setTriggerLoading(true);
+    setTriggerError('');
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token || localStorage.getItem('token') || '';
 
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || ''}/api/notifications/disparar-imediato/${id}`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || ''}/api/notifications/disparar-imediato/${templateToTrigger.id}`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (response.ok) {
-        showStatus('success', 'Disparo de Notificação PWA iniciado!');
+        toast({
+          title: "Sucesso!",
+          description: "O disparo de notificações PWA foi iniciado para todos os alunos!",
+        });
+        setConfirmTriggerOpen(false);
+        setTemplateToTrigger(null);
       } else {
-        showStatus('error', 'Falha no disparo.');
+        const data = await response.json().catch(() => ({}));
+        setTriggerError(data.error || 'Falha no disparo da notificação.');
       }
     } catch (err) {
-      showStatus('error', 'Erro de conexão.');
+      setTriggerError('Erro de conexão com o servidor.');
     } finally {
-      setLoading(false);
+      setTriggerLoading(false);
     }
   };
 
@@ -484,7 +508,7 @@ export default function GerenciadorNotificacoes() {
                     <div className="flex items-center gap-1">
                       <button 
                         type="button"
-                        onClick={() => handleDispararImediato(t.id)}
+                        onClick={() => handlePrepareDisparo(t)}
                         title="Disparar no celular dos alunos agora"
                         className="px-3 py-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40 border border-emerald-500/20 font-medium transition flex items-center gap-1.5"
                       >
@@ -516,6 +540,90 @@ export default function GerenciadorNotificacoes() {
         </div>
 
       </div>
+
+      {/* Modal de Confirmação de Disparo de Notificação */}
+      <Dialog open={confirmTriggerOpen} onOpenChange={setConfirmTriggerOpen}>
+        <DialogContent className="sm:max-w-md bg-white dark:bg-zinc-950 border dark:border-zinc-800 rounded-2xl">
+          <DialogHeader className="border-b border-zinc-100 dark:border-zinc-900/60 pb-3 flex flex-row items-center gap-2">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+              <Bell className="w-5 h-5 text-amber-500 animate-bounce" />
+            </div>
+            <DialogTitle className="text-slate-900 dark:text-white text-lg font-bold">
+              Confirmar Disparo de Notificação
+            </DialogTitle>
+          </DialogHeader>
+
+          {templateToTrigger && (
+            <div className="space-y-4 pt-3 text-sm">
+              <div className="space-y-2 bg-slate-50 dark:bg-zinc-900/50 p-4 rounded-xl border border-slate-100 dark:border-zinc-900">
+                <div className="space-y-1">
+                  <span className="block text-[11px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider">
+                    Título da Notificação
+                  </span>
+                  <h4 className="font-bold text-slate-800 dark:text-zinc-200">
+                    {templateToTrigger.titulo}
+                  </h4>
+                </div>
+
+                <div className="space-y-1 pt-2 border-t border-slate-100 dark:border-zinc-900/50">
+                  <span className="block text-[11px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider">
+                    Mensagem Push
+                  </span>
+                  <p className="text-slate-600 dark:text-zinc-400 leading-relaxed font-medium">
+                    {templateToTrigger.mensagem}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2.5 p-3.5 bg-blue-500/5 dark:bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 rounded-xl">
+                <Smartphone className="w-4 h-4 shrink-0 mt-0.5" />
+                <p className="text-xs font-semibold">
+                  Aviso: Esta notificação será enviada em tempo real para o celular de todos os alunos cadastrados no sistema.
+                </p>
+              </div>
+
+              {triggerError && (
+                <div className="flex items-start gap-2 p-3 bg-rose-500/5 dark:bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-455 rounded-xl">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <p className="text-xs font-medium">
+                    {triggerError}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-zinc-900/60">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={triggerLoading}
+                  onClick={() => setConfirmTriggerOpen(false)}
+                  className="h-10 rounded-xl bg-white text-slate-700 border border-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:text-white dark:border-slate-700 px-4 text-xs font-semibold"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  disabled={triggerLoading}
+                  onClick={handleConfirmDisparar}
+                  className="h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md px-5 flex items-center justify-center gap-1.5"
+                >
+                  {triggerLoading ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Disparando...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      Sim, Disparar Agora
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
