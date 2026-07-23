@@ -244,7 +244,7 @@ const AdminLogs = () => {
             </p>
           </div>
         </div>
-        <Button onClick={fetchLogs} variant="outline" className="gap-2 border-gray-200 dark:border-zinc-800 text-zinc-650 dark:text-zinc-300 h-10 rounded-xl">
+        <Button onClick={fetchLogs} variant="outline" className="gap-2 bg-white text-slate-700 border border-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:text-white dark:border-slate-700 h-10 rounded-xl">
           <RefreshCw className="w-4 h-4" />
           Atualizar
         </Button>
@@ -317,7 +317,7 @@ const AdminLogs = () => {
               type="button"
               variant="outline"
               onClick={handleClearFilters}
-              className="h-10 rounded-xl border-gray-200 dark:border-zinc-800 text-zinc-650 dark:text-zinc-300 text-xs font-semibold"
+              className="h-10 rounded-xl bg-white text-slate-700 border border-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:text-white dark:border-slate-700 text-xs font-semibold"
             >
               <X className="w-3.5 h-3.5 mr-1.5" />
               Limpar Filtros
@@ -362,7 +362,7 @@ const AdminLogs = () => {
               <tbody>
                 {logs.map((log) => (
                   <tr key={log.id} className="border-b border-zinc-100 dark:border-zinc-900 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30 transition-colors">
-                    <td className="p-4 font-mono text-xs text-zinc-650 dark:text-zinc-400">
+                    <td className="p-4 font-mono text-xs text-slate-700 font-medium dark:text-slate-300">
                       {new Date(log.created_at).toLocaleString('pt-BR')}
                     </td>
                     <td className="p-4 font-medium text-zinc-800 dark:text-zinc-200">
@@ -390,7 +390,7 @@ const AdminLogs = () => {
                         onClick={() => handleViewDetails(log)}
                         size="sm"
                         variant="outline"
-                        className="h-8 rounded-lg border-zinc-200 dark:border-zinc-800 text-school-blue-600 dark:text-blue-400 hover:bg-school-blue-50 dark:hover:bg-zinc-900 font-semibold gap-1 text-xs px-2.5"
+                        className="h-8 rounded-lg bg-slate-100 text-slate-800 hover:bg-slate-200 border border-slate-200 dark:bg-slate-800 dark:text-slate-200 font-semibold gap-1 text-xs px-2.5"
                       >
                         <Eye className="w-3.5 h-3.5" />
                         Ver

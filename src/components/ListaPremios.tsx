@@ -128,7 +128,7 @@ const ListaPremios = ({ onEdit, refreshTrigger }: ListaPremiosProps) => {
                     onClick={() => onEdit?.(premio)} 
                     size="sm" 
                     variant="outline" 
-                    className="flex-1 border-blue-100 text-blue-600 hover:bg-blue-50 dark:border-zinc-800 dark:text-blue-400 dark:hover:bg-zinc-900 font-semibold rounded-lg text-xs h-8"
+                    className="flex-1 bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 dark:border-zinc-800 dark:bg-slate-800 dark:text-blue-400 dark:hover:bg-zinc-900 font-semibold rounded-lg text-xs h-8"
                   >
                     <Pencil className="w-3 h-3 mr-1" /> Editar
                   </Button>
@@ -137,7 +137,7 @@ const ListaPremios = ({ onEdit, refreshTrigger }: ListaPremiosProps) => {
                     disabled={isDeleting === premio.id} 
                     size="sm" 
                     variant="outline" 
-                    className="border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-950/30 dark:text-red-400 dark:hover:bg-red-950/20 font-semibold rounded-lg text-xs h-8"
+                    className="bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 dark:border-red-950/30 dark:bg-slate-800 dark:text-red-400 dark:hover:bg-red-950/20 font-semibold rounded-lg text-xs h-8"
                   >
                     {isDeleting === premio.id ? (
                       <Loader2 className="w-3 animate-spin mr-1" />
