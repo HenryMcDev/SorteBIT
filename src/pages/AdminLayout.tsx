@@ -290,7 +290,7 @@ const AdminLayout = () => {
               <ShieldCheck className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-sm font-bold tracking-wider text-slate-800 dark:text-white uppercase">SorteBIT</h2>
+              <h2 className="text-sm font-bold tracking-wider text-slate-800 dark:text-white uppercase">Uniforme Premiado</h2>
               <p className="text-xs text-slate-400 dark:text-slate-500">Painel Master</p>
             </div>
           </div>
@@ -352,7 +352,7 @@ const AdminLayout = () => {
             }`}
           >
             <Crown className="w-5 h-5 text-amber-500" />
-            Sorteio Jackpot
+            Sorteio
           </Link>
         </div>
 

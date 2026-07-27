@@ -26,9 +26,10 @@ interface StudentUser {
 
 interface LotteryFormProps {
   studentUser?: StudentUser;
+  onSuccessPhotoValidated?: () => void;
 }
 
-const LotteryForm = ({ studentUser }: LotteryFormProps) => {
+const LotteryForm = ({ studentUser, onSuccessPhotoValidated }: LotteryFormProps) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'sorteio' | 'mural'>('sorteio');
   const [userIp, setUserIp] = useState<string | null>(null);
@@ -585,6 +586,9 @@ const LotteryForm = ({ studentUser }: LotteryFormProps) => {
           setSubmissionState('idle');
           setPhone('');
           setPhoto(null);
+          if (onSuccessPhotoValidated) {
+            onSuccessPhotoValidated();
+          }
         }}
       />
     );

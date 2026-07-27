@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, User, Coins, Store, Home, Menu, FileText } from 'lucide-react';
+import { LogOut, User, Coins, Store, Home, Menu, FileText, Gift } from 'lucide-react';
 import { supabase } from '../integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
@@ -13,9 +13,19 @@ interface StudentNavbarProps {
   onLogout: () => void;
   studentId?: number | string;
   setSaldo?: (saldo: number) => void;
+  onOpenDailyCheckin?: () => void;
+  hasPendingCheckin?: boolean;
 }
 
-const StudentNavbar = ({ studentName, bitcash = 0, onLogout, studentId, setSaldo }: StudentNavbarProps) => {
+const StudentNavbar = ({ 
+  studentName, 
+  bitcash = 0, 
+  onLogout, 
+  studentId, 
+  setSaldo,
+  onOpenDailyCheckin,
+  hasPendingCheckin = false
+}: StudentNavbarProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [backendOnline, setBackendOnline] = useState(false);
 
@@ -145,6 +155,21 @@ const StudentNavbar = ({ studentName, bitcash = 0, onLogout, studentId, setSaldo
                 <Home className="w-5 h-5" />
               </Link>
 
+              {onOpenDailyCheckin && (
+                <button
+                  onClick={onOpenDailyCheckin}
+                  className="relative flex items-center justify-center w-10 h-10 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 active:scale-90 transition-all duration-200 shadow-sm shrink-0"
+                  title="Campanha de Check-in"
+                >
+                  <Gift className="w-5 h-5 text-amber-500" />
+                  {hasPendingCheckin && (
+                    <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white animate-pulse">
+                      !
+                    </span>
+                  )}
+                </button>
+              )}
+
               <Link
                 to="/vitrine"
                 className="flex items-center justify-center w-10 h-10 rounded-full bg-school-blue-500/10 border border-school-blue-500/20 text-school-blue-600 dark:text-school-blue-400 hover:bg-school-blue-500/20 active:scale-90 transition-all duration-200 shadow-sm shrink-0"
@@ -232,19 +257,37 @@ const StudentNavbar = ({ studentName, bitcash = 0, onLogout, studentId, setSaldo
                     <div className="flex flex-col gap-2 flex-1 overflow-y-auto pr-1">
                       <Link
                         to="/"
-                        className="flex items-center gap-3 w-full h-11 py-2 px-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-medium transition-colors border border-zinc-200/50 dark:border-zinc-700/50"
+                        className="flex items-center gap-3 w-full h-11 py-2 px-3 rounded-lg bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-900/50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-medium transition-all duration-200 border border-zinc-200 dark:border-zinc-800/80 shadow-sm"
                       >
-                        <Home className="w-5 h-5 text-zinc-500" />
+                        <Home className="w-5 h-5 text-zinc-500 dark:text-zinc-400" />
                         Página Principal
                       </Link>
 
                       <Link
                         to="/vitrine"
-                        className="flex items-center gap-3 w-full h-11 py-2 px-3 rounded-lg bg-school-blue-500/10 text-school-blue-700 dark:text-school-blue-400 hover:bg-school-blue-500/20 font-medium transition-colors border border-school-blue-500/20"
+                        className="flex items-center gap-3 w-full h-11 py-2 px-3 rounded-lg bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-900/50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-medium transition-all duration-200 border border-zinc-200 dark:border-zinc-800/80 shadow-sm"
                       >
-                        <Store className="w-5 h-5 text-school-blue-500" />
+                        <Store className="w-5 h-5 text-school-blue-500 dark:text-school-blue-400" />
                         Loja de Prêmios
                       </Link>
+
+                      {onOpenDailyCheckin && (
+                        <button
+                          onClick={() => {
+                            setIsOpen(false);
+                            onOpenDailyCheckin();
+                          }}
+                          className="flex items-center gap-3 w-full h-11 py-2 px-3 rounded-lg bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-900/50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-medium transition-all duration-200 border border-zinc-200 dark:border-zinc-800/80 shadow-sm"
+                        >
+                          <div className="relative shrink-0">
+                            <Gift className="w-5 h-5 text-amber-500" />
+                            {hasPendingCheckin && (
+                              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse border border-white dark:border-zinc-900" />
+                            )}
+                          </div>
+                          <span>Recompensa Diária</span>
+                        </button>
+                      )}
 
                       <InstallPWAButton variant="navbar-mobile" />
 
@@ -252,17 +295,17 @@ const StudentNavbar = ({ studentName, bitcash = 0, onLogout, studentId, setSaldo
                         href={whatsappUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-3 w-full h-11 py-2 px-3 rounded-lg bg-[#25D366] text-white hover:opacity-90 font-bold transition-all border border-[#25D366]/20 shadow-sm"
+                        className="flex items-center gap-3 w-full h-11 py-2 px-3 rounded-lg bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-900/50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-medium transition-all duration-200 border border-zinc-200 dark:border-zinc-800/80 shadow-sm"
                       >
-                        <img src="/img/icon-whatsapp.png" alt="WhatsApp" className="w-5 h-5" />
+                        <img src="/img/icon-whatsapp.png" alt="WhatsApp" className="w-5 h-5 shrink-0" />
                         <span>Suporte WhatsApp</span>
                       </a>
                       
                       <TermosCondicoes>
                         <button
-                          className="flex items-center gap-3 w-full h-11 py-2 px-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-medium transition-colors border border-zinc-200/50 dark:border-zinc-700/50"
+                          className="flex items-center gap-3 w-full h-11 py-2 px-3 rounded-lg bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-900/50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-medium transition-all duration-200 border border-zinc-200 dark:border-zinc-800/80 shadow-sm"
                         >
-                          <FileText className="w-5 h-5 text-zinc-500" />
+                          <FileText className="w-5 h-5 text-zinc-500 dark:text-zinc-400" />
                           Termos e Condições
                         </button>
                       </TermosCondicoes>

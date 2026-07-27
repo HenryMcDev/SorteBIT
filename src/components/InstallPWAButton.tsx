@@ -103,10 +103,10 @@ export const InstallPWAButton = ({ variant = 'login', className = '', onSuccess 
       <>
         <button
           onClick={handleInstallClick}
-          className={`flex items-center gap-3 w-full h-11 py-2 px-3 rounded-lg bg-school-blue-500/10 text-school-blue-700 dark:text-school-blue-400 hover:bg-school-blue-500/20 font-medium transition-colors border border-school-blue-500/20 ${className}`}
+          className={`flex items-center gap-3 w-full h-11 py-2 px-3 rounded-lg bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-900/50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-medium transition-all duration-200 border border-zinc-200 dark:border-zinc-800/80 shadow-sm ${className}`}
         >
-          <Download className="w-5 h-5 text-school-blue-500" />
-          <span className="text-sm font-semibold">Baixe o app</span>
+          <Download className="w-5 h-5 text-school-blue-500 dark:text-school-blue-400" />
+          <span className="text-sm font-medium">Baixe o app</span>
         </button>
 
         <IOSInstallSheet open={isIOSSheetOpen} onOpenChange={setIsIOSSheetOpen} />

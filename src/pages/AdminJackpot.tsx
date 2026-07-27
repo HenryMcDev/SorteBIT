@@ -663,7 +663,7 @@ const AdminJackpot = () => {
               <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-600 dark:bg-yellow-500/20 dark:text-yellow-500 rounded border border-amber-500/30 dark:border-yellow-500/30">
                 Master
               </span>
-              <h1 className="text-base sm:text-lg font-black tracking-tight uppercase text-zinc-800 dark:text-zinc-100">Jackpot Uniforme Premiado</h1>
+              <h1 className="text-base sm:text-lg font-black tracking-tight uppercase text-zinc-800 dark:text-zinc-100">Uniforme Premiado</h1>
             </div>
             <p className="text-xs text-zinc-500 dark:text-zinc-450 hidden sm:block">Ambiente Seguro & Autenticado</p>
           </div>
@@ -702,10 +702,10 @@ const AdminJackpot = () => {
                 <div className="flex items-center justify-center gap-2">
                   <Trophy className="w-8 h-8 text-amber-500 dark:text-yellow-400 animate-bounce" />
                   <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-500 dark:from-yellow-300 dark:via-amber-400 dark:to-yellow-500 tracking-[0.15em] uppercase">
-                    JACKPOT DRAW
+                    SORTEIO
                   </h3>
                 </div>
-                <p className="text-xs text-zinc-500 dark:text-zinc-455 font-mono tracking-widest uppercase">Escola de Tecnologia & Negócios</p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-455 font-mono tracking-widest uppercase">BIT Educação & Negócios</p>
               </div>
 
               {/* ÁREA DOS ROLES (SLOTS ROBUSTOS) */}
@@ -903,10 +903,6 @@ const AdminJackpot = () => {
                               <h2 className="text-base sm:text-lg font-black text-zinc-950 dark:text-white tracking-tight uppercase leading-tight line-clamp-2 px-1">
                                 {win.name}
                               </h2>
-                              
-                              <p className="text-xs text-zinc-500 dark:text-zinc-400 font-semibold truncate px-4">
-                                {win.email || 'Sem e-mail cadastrado'}
-                              </p>
 
                               {win.daily_code && (
                                 <p className="text-[10px] font-bold font-mono text-amber-600 dark:text-yellow-500 bg-amber-500/10 dark:bg-yellow-500/10 px-2.5 py-0.5 rounded border border-amber-500/20 dark:border-yellow-500/20 w-fit mx-auto">
