@@ -292,14 +292,14 @@ const Instrucoes = () => {
           </h2>
           
           <p className="text-zinc-600 dark:text-zinc-400 text-base md:text-lg mb-8 max-w-lg mx-auto">
-            Acesse agora mesmo a sua conta SorteBIT e registre a sua presença de uniforme escolar!
+            Acesse agora mesmo a sua conta Uniforme Premiado e registre a sua presença com o uniforme da BIT Educação Inteligente.
           </p>
 
           <Link
             to="/"
             className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-green-500 hover:bg-green-600 active:scale-95 text-white font-bold text-lg rounded-2xl shadow-lg shadow-green-500/20 hover:shadow-green-500/30 hover:-translate-y-0.5 transition-all duration-200"
           >
-            <span>Acessar SorteBIT</span>
+            <span>Acessar Uniforme Premiado</span>
             <ArrowRight className="w-5 h-5" />
           </Link>
         </div>
