@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Gift, Coins, Check, Lock, AlertTriangle, AlertCircle, Sparkles } from 'lucide-react';
+import { Gift, Coins, Check, Lock, AlertTriangle, AlertCircle, Sparkles, Calendar } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -159,14 +159,18 @@ export const DailyCheckinModal = ({
     return null;
   };
 
+  const today = new Date();
+  const campaignStart = new Date(2026, 7, 3); // 03/08/2026
+  const campaignEnd = new Date(2026, 7, 11, 23, 59, 59, 999); // 11/08/2026
+  const isBeforeCampaign = today < campaignStart;
+  const isAfterCampaign = today > campaignEnd;
+
   const todayCampaignDay = getCampaignDayForToday();
   const isCampaignActive = todayCampaignDay !== null;
 
   // Verificação de pausa de fim de semana dentro do período da campanha
   const checkWeekendPause = () => {
     const today = new Date();
-    const campaignStart = new Date(2026, 7, 3); // 03/08/2026
-    const campaignEnd = new Date(2026, 7, 11, 23, 59, 59); // 11/08/2026
     const isCampaignPeriod = today >= campaignStart && today <= campaignEnd;
     const isWeekend = today.getDay() === 0 || today.getDay() === 6; // 0 = Domingo, 6 = Sábado
     return isCampaignPeriod && isWeekend;
@@ -177,21 +181,13 @@ export const DailyCheckinModal = ({
   // Verifica se o aluno já fez check-in hoje
   const alreadyCheckedInToday = isCampaignActive
     ? checkins.some(c => c.dia_checkin === todayCampaignDay)
-    : checkins.some(c => {
-        const date = new Date(c.data_resgate);
-        const today = new Date();
-        return date.getDate() === today.getDate() &&
-               date.getMonth() === today.getMonth() &&
-               date.getFullYear() === today.getFullYear();
-      });
+    : false;
 
   // Determinar o dia atual do check-in a ser resgatado
   const totalCompleted = checkins.length;
   const currentCheckinDay = isCampaignActive
     ? todayCampaignDay
-    : (alreadyCheckedInToday 
-        ? (totalCompleted > 0 ? checkins[totalCompleted - 1].dia_checkin : 1)
-        : Math.min(totalCompleted + 1, 7));
+    : (isBeforeCampaign ? 1 : 7);
 
   // Verificar se a sequência está quebrada/interrompida para o Dia 7
   const checkSequenceInterrupted = () => {
@@ -322,15 +318,15 @@ export const DailyCheckinModal = ({
               
               const isCurrent = isCampaignActive
                 ? item.dia === todayCampaignDay
-                : (item.dia === currentCheckinDay && !alreadyCheckedInToday);
+                : false;
                 
               const isFuture = isCampaignActive
                 ? item.dia > todayCampaignDay
-                : (item.dia > currentCheckinDay || (item.dia === currentCheckinDay && alreadyCheckedInToday));
+                : isBeforeCampaign;
                 
               const isMissed = isCampaignActive
                 ? (item.dia < todayCampaignDay && !isClaimed)
-                : false;
+                : isAfterCampaign && !isClaimed;
 
               let cardStyle = "";
               let coinStyle = "";
@@ -425,9 +421,33 @@ export const DailyCheckinModal = ({
 
           {/* Dicas/Estado */}
           <div className="mt-4 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800/80 rounded-2xl p-3.5 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-school-blue-500 shrink-0 mt-0.5" />
+            {isBeforeCampaign ? (
+              <Calendar className="w-5 h-5 text-school-blue-500 shrink-0 mt-0.5" />
+            ) : isAfterCampaign ? (
+              <AlertCircle className="w-5 h-5 text-zinc-500 shrink-0 mt-0.5" />
+            ) : alreadyCheckedInToday ? (
+              <Check className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+            ) : !alreadyParticipated ? (
+              <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+            ) : (
+              <Sparkles className="w-5 h-5 text-school-blue-500 shrink-0 mt-0.5" />
+            )}
             <div className="text-xs space-y-1 flex-1 min-w-0">
-              {isWeekendPause ? (
+              {isBeforeCampaign ? (
+                <>
+                  <p className="font-bold text-school-blue-600 dark:text-school-blue-400">Lançamento em 03/08 🚀</p>
+                  <p className="text-zinc-500 dark:text-zinc-400 leading-normal">
+                    A Campanha de Lançamento estará disponível a partir de 03/08/2026. Prepare seu uniforme!
+                  </p>
+                </>
+              ) : isAfterCampaign ? (
+                <>
+                  <p className="font-bold text-zinc-550 dark:text-zinc-400">Campanha Encerrada 🏁</p>
+                  <p className="text-zinc-550 dark:text-zinc-455 leading-normal">
+                    A Campanha de Lançamento encerrou-se em 11/08/2026. Agradecemos a participação de todos!
+                  </p>
+                </>
+              ) : isWeekendPause ? (
                 <>
                   <p className="font-bold text-amber-600 dark:text-amber-400">Pausa de Fim de Semana 📅</p>
                   <p className="text-zinc-500 dark:text-zinc-400 leading-normal">
@@ -462,7 +482,21 @@ export const DailyCheckinModal = ({
 
         {/* Botão de Ação */}
         <div className="flex flex-col gap-2 shrink-0 pt-3 border-t border-zinc-100 dark:border-zinc-800/80">
-          {isWeekendPause ? (
+          {isBeforeCampaign ? (
+            <Button
+              disabled
+              className="w-full h-12 text-sm font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-450 border border-zinc-200 dark:border-zinc-700/50 rounded-xl cursor-not-allowed flex items-center justify-center gap-2 opacity-75 animate-pulse"
+            >
+              Lançamento em 03/08
+            </Button>
+          ) : isAfterCampaign ? (
+            <Button
+              disabled
+              className="w-full h-12 text-sm font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-450 border border-zinc-200 dark:border-zinc-700/50 rounded-xl cursor-not-allowed flex items-center justify-center gap-2 opacity-75"
+            >
+              Campanha Encerrada
+            </Button>
+          ) : isWeekendPause ? (
             <Button
               disabled
               className="w-full h-12 text-sm font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-400 border border-zinc-200 dark:border-zinc-700/50 rounded-xl cursor-not-allowed flex items-center justify-center gap-2 opacity-75"
