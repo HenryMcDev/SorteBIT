@@ -1,13 +1,22 @@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Smartphone, Lock } from 'lucide-react';
+import { Smartphone, Lock, GraduationCap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const DesktopBlocker = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-school-blue-50 via-white to-school-yellow-50 dark:bg-zinc-950 dark:bg-none flex flex-col">
-      {/* Botão Administrativo no topo */}
-      <div className="w-full p-4 flex justify-end">
+      {/* Botões de Acesso no topo */}
+      <div className="w-full p-4 flex justify-end gap-3">
+        <Link to="/professor">
+          <Button
+            variant="outline"
+            className="border-school-blue-600 text-school-blue-600 dark:text-school-blue-400 dark:bg-slate-800"
+          >
+            <GraduationCap className="w-4 h-4 mr-2" />
+            Acesso do Professor
+          </Button>
+        </Link>
         <Link to="/admin">
           <Button
             variant="outline"

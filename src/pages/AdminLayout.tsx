@@ -3,7 +3,7 @@ import { useLocation, NavLink, Link, useNavigate, Navigate } from 'react-router-
 import { useAdmAuth } from '@/hooks/useAdmAuth';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Outlet } from 'react-router-dom';
-import { Users, Key, ShieldCheck, Gift, Sliders, Bell, Crown, LogOut, Loader2, MessageSquareWarning, ShoppingBag, ClipboardList } from 'lucide-react';
+import { Users, Key, ShieldCheck, Gift, Sliders, Bell, Crown, LogOut, Loader2, MessageSquareWarning, ShoppingBag, ClipboardList, GraduationCap } from 'lucide-react';
 import Admin from './Admin';
 import HeaderAdministrativo from '@/components/HeaderAdministrativo';
 import { supabase } from '@/integrations/supabase/client';
@@ -268,6 +268,7 @@ const AdminLayout = () => {
   const getPageTitle = () => {
     const path = location.pathname;
     if (path.endsWith('/participantes')) return 'Participantes';
+    if (path.endsWith('/professores')) return 'Professores';
     if (path.endsWith('/codigos')) return 'Códigos';
     if (path.endsWith('/moderacao')) return 'Moderação';
     if (path.endsWith('/premios')) return 'Cadastro de Prêmios';
@@ -299,6 +300,7 @@ const AdminLayout = () => {
           <nav className="space-y-1.5">
             {[
               { id: 'participantes', nome: 'Participantes', icone: Users, path: '/admin/participantes' },
+              { id: 'professores', nome: 'Professores', icone: GraduationCap, path: '/admin/professores' },
               { id: 'codigos', nome: 'Códigos', icone: Key, path: '/admin/codigos' },
               { id: 'moderacao', nome: 'Moderação', icone: ShieldCheck, path: '/admin/moderacao' },
               { id: 'premios', nome: 'Cadastro de Prêmios', icone: Gift, path: '/admin/premios' },

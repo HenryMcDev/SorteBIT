@@ -2,136 +2,227 @@ import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Settings } from 'lucide-react';
+import { Clock, RefreshCw, Search, Users, Shield, User, AlertCircle } from 'lucide-react';
+import axios from 'axios';
+import { getBackendUrl } from '@/utils/backendUrl';
+import { Button } from '@/components/ui/button';
 
-
-interface DailyCode {
+interface ClassCode {
   id: string;
   code: string;
   created_at: string;
+  expires_at: string;
+  is_active: boolean;
+  is_expired: boolean;
+  professor_name: string;
+  use_count: number;
 }
 
 const ClassCodeManager = () => {
-  const [currentCode, setCurrentCode] = useState<DailyCode | null>(null);
+  const [classCodes, setClassCodes] = useState<ClassCode[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentTime, setCurrentTime] = useState(Date.now());
   const { toast } = useToast();
 
-  const formatToBrazilTime = (dateString: string) => {
+  const fetchClassCodes = async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
-      // Remove o "Z" e qualquer offset de fuso horário (+00:00, -03:00) 
-      // para forçar o construtor Date a assumir o fuso local da máquina,
-      // evitando assim aplicar a subtração de horas duplamente.
-      const localDateString = dateString.replace(/(Z|[+-]\d{2}(?::?\d{2})?)$/, '');
-      const d = new Date(localDateString);
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
 
-      const formatted = new Intl.DateTimeFormat('pt-BR', {
-        dateStyle: 'short',
-        timeStyle: 'short'
-      }).format(d);
+      if (!token) {
+        throw new Error('Sessão expirada');
+      }
 
-      return formatted.replace(/,?\s+/, ' às ');
+      const response = await axios.get(getBackendUrl() + '/api/admin/class-codes', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (response.data?.sucesso) {
+        setClassCodes(response.data.classCodes || []);
+      } else {
+        throw new Error(response.data?.erro || 'Erro ao carregar códigos de aula.');
+      }
+    } catch (error: any) {
+      console.error('Erro ao buscar códigos de aula:', error);
+      if (!silent) {
+        toast({
+          title: 'Erro ao carregar',
+          description: error.message || 'Não foi possível carregar a lista de códigos de aula.',
+          variant: 'destructive',
+        });
+      }
+    } finally {
+      if (!silent) setIsLoading(false);
+    }
+  };
+
+  // Poll class codes every 10 seconds
+  useEffect(() => {
+    fetchClassCodes();
+
+    const pollInterval = setInterval(() => {
+      fetchClassCodes(true);
+    }, 10000);
+
+    return () => clearInterval(pollInterval);
+  }, []);
+
+  // Update current time every second for active countdowns
+  useEffect(() => {
+    const timeInterval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+
+    return () => clearInterval(timeInterval);
+  }, []);
+
+  // Format creation time to HH:mm:ss
+  const formatTime = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     } catch {
       return dateString;
     }
   };
 
-  const loadCurrentCode = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('daily_codes')
-        .select('id, code, created_at')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+  // Get status details (is_active and time remaining)
+  const getStatusBadge = (item: ClassCode) => {
+    const expiresTime = new Date(item.expires_at).getTime();
+    const remainingSeconds = Math.max(0, Math.floor((expiresTime - currentTime) / 1000));
 
-      if (error) throw error;
-
-      let latestCode = data;
-
-      const isFromToday = (dateString: string) => {
-        const date = new Date(dateString.replace(/(Z|[+-]\d{2}(?::?\d{2})?)$/, ''));
-        const today = new Date();
-        return date.getDate() === today.getDate() &&
-          date.getMonth() === today.getMonth() &&
-          date.getFullYear() === today.getFullYear();
-      };
-
-      if (!latestCode || !isFromToday(latestCode.created_at)) {
-        setCurrentCode(null);
-      } else {
-        setCurrentCode(latestCode);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar código do dia:', error);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível carregar o código do dia.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
+    if (remainingSeconds > 0 && item.is_active && !item.is_expired) {
+      const mins = Math.floor(remainingSeconds / 60);
+      const secs = remainingSeconds % 60;
+      const formattedTime = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 shadow-sm animate-pulse">
+          <Clock className="w-3 h-3" />
+          Ativo ({formattedTime})
+        </span>
+      );
     }
+
+    return (
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-zinc-500/10 text-zinc-400 border border-zinc-500/10 shadow-sm">
+        <AlertCircle className="w-3 h-3 text-zinc-500" />
+        Expirado
+      </span>
+    );
   };
 
-  useEffect(() => {
-    loadCurrentCode();
-
-    const channel = supabase
-      .channel('daily_codes_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'daily_codes',
-        },
-        (payload) => {
-          const newCode = payload.new as DailyCode;
-          setCurrentCode(newCode);
-          toast({
-            title: 'Novo Código Gerado',
-            description: `O código foi atualizado automaticamente: ${newCode.code}`,
-          });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [toast]);
+  const filteredCodes = classCodes.filter((item) => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      item.code.toLowerCase().includes(searchLower) ||
+      item.professor_name.toLowerCase().includes(searchLower)
+    );
+  });
 
   return (
-    <Card className="p-6 mb-6 bg-school-blue-50 dark:bg-slate-800 border-2 border-school-blue-200 dark:border-slate-700">
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Settings className="w-6 h-6 text-school-blue-700 dark:text-school-blue-300" />
-            <h3 className="text-xl font-bold text-school-blue-700 dark:text-school-blue-300">
-              Gerador de Código do Dia
-            </h3>
+    <Card className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-zinc-150 dark:border-zinc-800 pb-4 gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-600/10 dark:bg-blue-600/20 border border-blue-500/20 dark:border-blue-500/30">
+            <Shield className="w-5 h-5 text-blue-500 dark:text-blue-400" />
+          </div>
+          <div>
+            <h3 className="font-bold text-zinc-950 dark:text-white text-lg tracking-tight">Monitoramento de Códigos de Aula</h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">Acompanhe e audite os códigos gerados pelos professores em tempo real.</p>
           </div>
         </div>
 
-        <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-900 rounded-xl border-2 border-school-blue-100 dark:border-slate-700 shadow-inner">
-          {currentCode ? (
-            <div className="text-center space-y-4">
-              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Código Atual</p>
-              <div className="text-5xl font-mono font-bold text-school-blue-800 dark:text-white tracking-widest bg-school-yellow-100 dark:bg-zinc-800 py-4 px-8 rounded-lg border-2 border-school-yellow-300 dark:border-zinc-600">
-                {currentCode.code}
-              </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Gerado em: {formatToBrazilTime(currentCode.created_at)}
-              </p>
-            </div>
-          ) : (
-            <p className="text-center text-gray-500 dark:text-gray-400 py-6">
-              Nenhum código gerado para hoje ainda.
-            </p>
-          )}
-        </div>
+        <Button
+          variant="outline"
+          onClick={() => fetchClassCodes()}
+          disabled={isLoading}
+          className="flex items-center gap-2 h-10 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-750 hover:bg-zinc-50 dark:hover:bg-zinc-800 font-semibold transition-all px-4 rounded-xl"
+        >
+          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-blue-500' : ''}`} />
+          {isLoading ? 'Atualizando...' : 'Atualizar'}
+        </Button>
       </div>
+
+      {/* Filter and Search */}
+      <div className="relative">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
+        <input
+          type="text"
+          placeholder="Pesquisar por professor ou código..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full h-11 pl-10 pr-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+        />
+      </div>
+
+      {/* Table Section */}
+      {isLoading && classCodes.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-zinc-500 gap-3">
+          <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
+          <p className="text-sm font-semibold tracking-wide">Carregando códigos de aula...</p>
+        </div>
+      ) : filteredCodes.length > 0 ? (
+        <div className="overflow-x-auto border border-zinc-200 dark:border-zinc-800/80 rounded-xl">
+          <table className="w-full border-collapse text-left">
+            <thead>
+              <tr className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800/80 text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 select-none">
+                <th className="py-3.5 px-4 font-bold">Código</th>
+                <th className="py-3.5 px-4 font-bold">Professor</th>
+                <th className="py-3.5 px-4 font-bold">Gerado em</th>
+                <th className="py-3.5 px-4 font-bold text-center">Uso</th>
+                <th className="py-3.5 px-4 font-bold text-right">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/60 text-sm">
+              {filteredCodes.map((item) => (
+                <tr key={item.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/10 transition-colors">
+                  <td className="py-4 px-4 font-mono font-black text-blue-600 dark:text-blue-400 tracking-wider text-base">
+                    {item.code}
+                  </td>
+                  <td className="py-4 px-4 font-semibold text-zinc-900 dark:text-zinc-150">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center text-xs font-bold text-blue-500 border border-blue-500/10">
+                        {item.professor_name.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="truncate max-w-[180px]">{item.professor_name}</span>
+                    </div>
+                  </td>
+                  <td className="py-4 px-4 text-zinc-500 dark:text-zinc-400 font-mono">
+                    {formatTime(item.created_at)}
+                  </td>
+                  <td className="py-4 px-4 text-center">
+                    <div className="inline-flex items-center justify-center gap-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-2.5 py-1 rounded-lg text-xs font-semibold border border-zinc-200/50 dark:border-zinc-700/50">
+                      <Users className="w-3 h-3 text-zinc-400" />
+                      {item.use_count}
+                    </div>
+                  </td>
+                  <td className="py-4 px-4 text-right">
+                    {getStatusBadge(item)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-16 text-center space-y-4 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl">
+          <div className="w-12 h-12 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 dark:text-zinc-500">
+            <User className="w-6 h-6" />
+          </div>
+          <div className="space-y-1">
+            <h4 className="font-bold text-zinc-800 dark:text-zinc-200 text-sm">Nenhum código encontrado</h4>
+            <p className="text-xs text-zinc-500 dark:text-zinc-450 max-w-xs mx-auto">
+              {searchTerm 
+                ? "Nenhum resultado corresponde à sua pesquisa. Tente buscar por outros termos." 
+                : "Nenhum código de aula foi gerado por professores recentemente."}
+            </p>
+          </div>
+        </div>
+      )}
     </Card>
   );
 };

@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Key, ShieldCheck, Lock, Loader2, EyeOff, Eye, XCircle, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { validatePasswordStrength } from '@/hooks/useStudentAuth';
 import { InstallPWAButton } from './InstallPWAButton';
+import axios from 'axios';
+import { getBackendUrl } from '@/utils/backendUrl';
 
 const formatCPF = (value: string) => {
   const digits = value.replace(/\D/g, '').slice(0, 11);
@@ -16,18 +19,20 @@ const formatCPF = (value: string) => {
 
 interface StudentAuthProps {
   isLoading: boolean;
-  login: (cpf: string, pass: string) => Promise<{ success: boolean; error?: string }>;
+  login: (cpf: string, pass: string) => Promise<{ success: boolean; error?: string; role?: string }>;
   register: (name: string, cpf: string, email: string, pass: string) => Promise<boolean>;
   cpfValue: string;
   cpfError: string;
   handleCPFChange: (value: string) => void;
   setCpfValue: (value: string) => void;
+  defaultMode?: 'login' | 'register';
 }
 
-const StudentAuth = ({ isLoading, login, register, cpfValue, cpfError, handleCPFChange, setCpfValue }: StudentAuthProps) => {
+const StudentAuth = ({ isLoading, login, register, cpfValue, cpfError, handleCPFChange, setCpfValue, defaultMode = 'login' }: StudentAuthProps) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot'>(defaultMode);
 
   // Login State
   const [loginEmail, setLoginEmail] = useState('');
@@ -43,6 +48,8 @@ const StudentAuth = ({ isLoading, login, register, cpfValue, cpfError, handleCPF
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [showRegConfirm, setShowRegConfirm] = useState(false);
   const [regState, setRegState] = useState<'idle' | 'submitting' | 'success'>('idle');
+  const [regRole, setRegRole] = useState<'student' | 'professor'>('student');
+  const [regAdminCode, setRegAdminCode] = useState('');
 
   // Forgot Password State
   const [forgotIdentifier, setForgotIdentifier] = useState('');
@@ -70,7 +77,13 @@ const StudentAuth = ({ isLoading, login, register, cpfValue, cpfError, handleCPF
       }
       setLoginError('');
       const result = await login(loginEmail, loginPassword);
-      if (!result.success) {
+      if (result.success) {
+        if (result.role === 'PROFESSOR') {
+          navigate('/professor/dashboard');
+        } else {
+          navigate('/');
+        }
+      } else {
         setLoginError(result.error || 'E-mail ou senha incorretos. Tente novamente.');
       }
     } catch (err) {
@@ -164,18 +177,30 @@ const StudentAuth = ({ isLoading, login, register, cpfValue, cpfError, handleCPF
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (!regFullName.trim() || !cpfValue.trim() || !regEmail.trim() || !regPassword.trim() || !regConfirmPassword.trim()) {
-        toast({ title: 'Campos obrigatórios', description: 'Preencha todos os campos para se registrar.', variant: 'destructive' });
-        return;
+      if (regRole === 'student') {
+        if (!regFullName.trim() || !cpfValue.trim() || !regEmail.trim() || !regPassword.trim() || !regConfirmPassword.trim()) {
+          toast({ title: 'Campos obrigatórios', description: 'Preencha todos os campos para se registrar.', variant: 'destructive' });
+          return;
+        }
+        if (cpfValue.replace(/\D/g, '').length !== 11) {
+          toast({ title: 'CPF inválido', description: 'Digite um CPF completo com 11 dígitos.', variant: 'destructive' });
+          return;
+        }
+        if (cpfError) {
+          toast({ title: 'CPF inválido', description: 'Corrija o erro no CPF antes de enviar.', variant: 'destructive' });
+          return;
+        }
+      } else {
+        if (!regFullName.trim() || !regEmail.trim() || !regPassword.trim() || !regConfirmPassword.trim() || !regAdminCode.trim()) {
+          toast({ title: 'Campos obrigatórios', description: 'Preencha todos os campos para se registrar.', variant: 'destructive' });
+          return;
+        }
+        if (regAdminCode.trim().length !== 5) {
+          toast({ title: 'Código inválido', description: 'O código administrativo deve ter 5 dígitos.', variant: 'destructive' });
+          return;
+        }
       }
-      if (cpfValue.replace(/\D/g, '').length !== 11) {
-        toast({ title: 'CPF inválido', description: 'Digite um CPF completo com 11 dígitos.', variant: 'destructive' });
-        return;
-      }
-      if (cpfError) {
-        toast({ title: 'CPF inválido', description: 'Corrija o erro no CPF antes de enviar.', variant: 'destructive' });
-        return;
-      }
+
       if (regPassword !== regConfirmPassword) {
         toast({ title: 'Senhas não coincidem', description: 'A senha e a confirmação devem ser idênticas.', variant: 'destructive' });
         return;
@@ -196,12 +221,49 @@ const StudentAuth = ({ isLoading, login, register, cpfValue, cpfError, handleCPF
 
       setRegState('submitting');
 
-      const success = await register(regFullName, cpfValue, regEmail, regPassword);
-
-      if (success) {
-        setRegState('success');
+      if (regRole === 'student') {
+        const success = await register(regFullName, cpfValue, regEmail, regPassword);
+        if (success) {
+          setRegState('success');
+        } else {
+          setRegState('idle');
+        }
       } else {
-        setRegState('idle');
+        // Professor Registration via Backend API
+        const REGISTER_PROF_URL = getBackendUrl() + '/api/auth/register-professor';
+        
+        try {
+          const resposta = await axios.post(REGISTER_PROF_URL, {
+            nome: regFullName.trim(),
+            email: regEmail.trim().toLowerCase(),
+            senha: regPassword,
+            admin_code: regAdminCode.trim()
+          });
+
+          if (resposta.data?.sucesso) {
+            toast({
+              title: 'Cadastro realizado!',
+              description: resposta.data?.mensagem || 'Sua conta de professor foi criada com sucesso.',
+            });
+            setRegState('success');
+          } else {
+            toast({
+              title: 'Erro no cadastro',
+              description: resposta.data?.erro || 'Falha no cadastro de professor.',
+              variant: 'destructive',
+            });
+            setRegState('idle');
+          }
+        } catch (error: any) {
+          console.error('Erro ao registrar professor:', error);
+          const errorMessage = error.response?.data?.erro || 'Falha no cadastro! Tente novamente.';
+          toast({
+            title: 'Erro no cadastro',
+            description: errorMessage,
+            variant: 'destructive',
+          });
+          setRegState('idle');
+        }
       }
     } catch (err) {
       console.error(err);
@@ -246,7 +308,7 @@ const StudentAuth = ({ isLoading, login, register, cpfValue, cpfError, handleCPF
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-school-blue-50 dark:bg-blue-600/20 border border-school-blue-100 dark:border-blue-500/30 mb-3">
                   <Lock className="w-6 h-6 text-school-blue-600 dark:text-blue-400" />
                 </div>
-                <h2 className="text-2xl font-bold text-school-blue-800 dark:text-white tracking-tight">Acesso do Aluno</h2>
+                <h2 className="text-2xl font-bold text-school-blue-800 dark:text-white tracking-tight">Acesso ao Uniforme Premiado</h2>
                 <p className="mt-1 text-sm text-school-blue-600 dark:text-zinc-400">Entre com seu e-mail e senha cadastrados.</p>
               </div>
 
@@ -308,12 +370,38 @@ const StudentAuth = ({ isLoading, login, register, cpfValue, cpfError, handleCPF
           {/* ── REGISTER FORM ── */}
           {authMode === 'register' && (
             <div>
-              <div className="text-center mb-6">
+              <div className="text-center mb-4">
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-school-blue-50 dark:bg-blue-600/20 border border-school-blue-100 dark:border-blue-500/30 mb-3">
                   <ShieldCheck className="w-6 h-6 text-school-blue-600 dark:text-blue-400" />
                 </div>
                 <h2 className="text-2xl font-bold text-school-blue-800 dark:text-white tracking-tight">Novo Cadastro</h2>
                 <p className="mt-1 text-sm text-school-blue-600 dark:text-zinc-400">Crie sua conta de acesso ao Uniforme Premiado.</p>
+              </div>
+
+              {/* Toggle de Aluno / Professor */}
+              <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl mb-4 border border-zinc-200 dark:border-zinc-700">
+                <button
+                  type="button"
+                  onClick={() => setRegRole('student')}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all duration-200 ${
+                    regRole === 'student'
+                      ? 'bg-white dark:bg-zinc-750 text-school-blue-600 dark:text-white shadow-sm'
+                      : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+                  }`}
+                >
+                  Aluno
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRegRole('professor')}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all duration-200 ${
+                    regRole === 'professor'
+                      ? 'bg-white dark:bg-zinc-750 text-school-blue-600 dark:text-white shadow-sm'
+                      : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+                  }`}
+                >
+                  Professor
+                </button>
               </div>
 
               {regState === 'success' ? (
@@ -332,13 +420,20 @@ const StudentAuth = ({ isLoading, login, register, cpfValue, cpfError, handleCPF
                       <label htmlFor="regFullName" className="block text-sm font-medium text-school-blue-700 dark:text-zinc-300">Nome completo <span className="text-red-500">*</span></label>
                       <input id="regFullName" type="text" autoComplete="name" placeholder="Ex.: João da Silva" value={regFullName} onChange={(e) => setRegFullName(e.target.value || '')} disabled={regState === 'submitting'} className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 px-4 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-school-blue-500/50 focus:border-school-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" />
                     </div>
-                    <div className="space-y-2">
-                      <label htmlFor="regCpf" className="block text-sm font-medium text-school-blue-700 dark:text-zinc-300">CPF <span className="text-red-500">*</span></label>
-                      <input id="regCpf" type="text" inputMode="numeric" autoComplete="off" placeholder="000.000.000-00" value={cpfValue} onChange={(e) => handleCPFChange(e.target.value)} disabled={regState === 'submitting'} maxLength={14} className={`w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border ${cpfError ? 'border-red-500 focus:ring-red-500/50 focus:border-red-500' : 'border-zinc-200 dark:border-zinc-700 focus:ring-school-blue-500/50 focus:border-school-blue-500'} px-4 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed`} />
-                      {cpfError && (
-                        <p className="text-xs text-red-500 dark:text-red-400 font-medium mt-1">{cpfError}</p>
-                      )}
-                    </div>
+                    {regRole === 'student' ? (
+                      <div className="space-y-2">
+                        <label htmlFor="regCpf" className="block text-sm font-medium text-school-blue-700 dark:text-zinc-300">CPF <span className="text-red-500">*</span></label>
+                        <input id="regCpf" type="text" inputMode="numeric" autoComplete="off" placeholder="000.000.000-00" value={cpfValue} onChange={(e) => handleCPFChange(e.target.value)} disabled={regState === 'submitting'} maxLength={14} className={`w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border ${cpfError ? 'border-red-500 focus:ring-red-500/50 focus:border-red-500' : 'border-zinc-200 dark:border-zinc-700 focus:ring-school-blue-500/50 focus:border-school-blue-500'} px-4 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed`} />
+                        {cpfError && (
+                          <p className="text-xs text-red-500 dark:text-red-400 font-medium mt-1">{cpfError}</p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <label htmlFor="regAdminCode" className="block text-sm font-medium text-school-blue-700 dark:text-zinc-300">Código Administrativo (5 dígitos) <span className="text-red-500">*</span></label>
+                        <input id="regAdminCode" type="text" placeholder="Digite o código de 5 dígitos" value={regAdminCode} onChange={(e) => setRegAdminCode(e.target.value.replace(/\D/g, '').slice(0, 5))} disabled={regState === 'submitting'} maxLength={5} className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 px-4 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-school-blue-500/50 focus:border-school-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-mono text-center tracking-widest text-lg" />
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <label htmlFor="regEmail" className="block text-sm font-medium text-school-blue-700 dark:text-zinc-300">E-mail <span className="text-red-500">*</span></label>
                       <input id="regEmail" type="email" autoComplete="email" placeholder="aluno@email.com" value={regEmail} onChange={(e) => setRegEmail(e.target.value || '')} disabled={regState === 'submitting'} className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 px-4 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-school-blue-500/50 focus:border-school-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" />

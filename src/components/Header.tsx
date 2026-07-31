@@ -50,9 +50,9 @@ const Header = () => {
       
       <div className="max-w-2xl mx-auto px-2">
         <div className="min-h-[70px] md:min-h-[80px] flex items-center justify-center">
-          <h1 className="text-xl md:text-2xl font-black mb-4 tracking-tight leading-snug text-school-blue-600 dark:text-white text-center">
+          <h1 className="text-xl md:text-2xl font-black mb-4 tracking-tight leading-snug text-school-blue-900 dark:text-white text-center">
             {displayText}
-            <span className="animate-pulse border-r-2 border-school-blue-600 dark:border-white ml-1"></span>
+            <span className="animate-pulse border-r-2 border-school-blue-900 dark:border-white ml-1"></span>
           </h1>
         </div>
       </div>

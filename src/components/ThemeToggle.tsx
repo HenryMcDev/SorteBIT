@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useTheme } from './ThemeProvider';
 import '../css/style.css';
 
 interface ThemeToggleProps {
@@ -6,45 +6,8 @@ interface ThemeToggleProps {
 }
 
 export const ThemeToggle = ({ className = "" }: ThemeToggleProps) => {
-  const [isDark, setIsDark] = useState(() => {
-    // Check initial preference from localStorage or fallback to OS theme
-    if (typeof window !== 'undefined') {
-      const savedTheme = localStorage.getItem('theme');
-      if (savedTheme) {
-        return savedTheme === 'dark';
-      }
-      return window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
-    return false;
-  });
-
-  // Sync class on element root when isDark changes
-  useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [isDark]);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (e: MediaQueryListEvent) => {
-      // Only sync automatically if user has not explicitly set a preference
-      const savedTheme = localStorage.getItem('theme');
-      if (!savedTheme) {
-        setIsDark(e.matches);
-      }
-    };
-
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
-
-  const toggleTheme = (checked: boolean) => {
-    setIsDark(checked);
-    localStorage.setItem('theme', checked ? 'dark' : 'light');
-  };
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === 'dark';
 
   return (
     <div className={`flex items-center justify-center ${className}`}>
@@ -53,7 +16,7 @@ export const ThemeToggle = ({ className = "" }: ThemeToggleProps) => {
           type="checkbox"
           className="theme-toggle-input"
           checked={isDark}
-          onChange={(e) => toggleTheme(e.target.checked)}
+          onChange={toggleTheme}
         />
         <svg viewBox="0 0 69.667 44" xmlnsXlink="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg">
           <g transform="translate(3.5 3.5)" data-name="Component 15 – 1">

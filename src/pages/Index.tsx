@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
 import LotteryForm from '@/components/LotteryForm';
@@ -11,6 +12,15 @@ import { useStudentAuth } from '@/hooks/useStudentAuth';
 import DailyCheckinModal from '@/components/DailyCheckinModal';
 
 const Index = () => {
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    const isTeacher = sessionStorage.getItem('school_teacher_session');
+    if (isTeacher) {
+      navigate('/professor/dashboard');
+    }
+  }, [navigate]);
+
   const isMobile = useMobileDetection();
   const { studentUser, isAuthenticated, isLoading, login, register, logout, cpfValue, cpfError, handleCPFChange, setCpfValue } = useStudentAuth();
   const [saldo, setSaldo] = useState(0);

@@ -130,14 +130,16 @@ const AdminRegister = () => {
   const isSuccess = submissionState === 'success';
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center px-4 py-12 relative overflow-hidden">
+    <div className="min-h-screen bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white transition-all duration-300 flex flex-col items-center justify-center px-4 py-12 relative overflow-hidden">
+      {/* Ambient background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-school-blue-50/30 via-white to-school-yellow-50/30 pointer-events-none dark:hidden"></div>
       {/* Ambient glow effects */}
       <div
-        className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full opacity-20"
+        className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full opacity-30 dark:opacity-20"
         style={{ background: 'radial-gradient(ellipse at center, #3b82f6 0%, transparent 70%)' }}
       />
       <div
-        className="pointer-events-none absolute bottom-0 right-0 w-72 h-72 rounded-full opacity-10"
+        className="pointer-events-none absolute bottom-0 right-0 w-72 h-72 rounded-full opacity-20 dark:opacity-10"
         style={{ background: 'radial-gradient(ellipse at center, #6366f1 0%, transparent 70%)' }}
       />
 
@@ -156,30 +158,22 @@ const AdminRegister = () => {
               className="h-14 w-auto object-contain hidden dark:block"
               style={{ filter: 'brightness(0) invert(1)' }}
             />
-            {/* Fallback: always-visible logo on zinc-950 background */}
-            <img
-              src="/img/logo_branca.png"
-              alt="BIT Educação e Negócios"
-              className="h-14 w-auto object-contain"
-              style={{ filter: 'brightness(0) invert(1)' }}
-            />
           </Link>
         </div>
 
         {/* Card */}
         <div
-          className="rounded-2xl border border-zinc-800 p-8 shadow-2xl"
-          style={{ background: 'rgba(24,24,27,0.85)', backdropFilter: 'blur(16px)' }}
+          className="rounded-2xl border border-zinc-200 dark:border-zinc-800 p-8 shadow-2xl bg-white/95 dark:bg-zinc-900/85 backdrop-blur-md"
         >
           {/* Header */}
           <div className="mb-8 text-center">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-600/20 border border-blue-500/30 mb-4">
-              <ShieldCheck className="w-6 h-6 text-blue-400" />
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-school-blue-50 dark:bg-blue-600/20 border border-school-blue-100 dark:border-blue-500/30 mb-4">
+              <ShieldCheck className="w-6 h-6 text-school-blue-600 dark:text-blue-400" />
             </div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">
+            <h1 className="text-2xl font-bold text-school-blue-800 dark:text-white tracking-tight">
               Cadastro Administrativo
             </h1>
-            <p className="mt-2 text-sm text-zinc-400 leading-relaxed">
+            <p className="mt-2 text-sm text-school-blue-600 dark:text-zinc-400 leading-relaxed">
               Crie a conta principal que gerenciará o acesso ao sistema Uniforme Premiado.
             </p>
           </div>
@@ -187,17 +181,17 @@ const AdminRegister = () => {
           {isSuccess ? (
             /* Success state */
             <div className="flex flex-col items-center justify-center py-8 space-y-4 text-center">
-              <div className="w-16 h-16 rounded-full bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center">
-                <CheckCircle2 className="w-8 h-8 text-emerald-400" />
+              <div className="w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-600/20 border border-emerald-100 dark:border-emerald-500/30 flex items-center justify-center">
+                <CheckCircle2 className="w-8 h-8 text-emerald-500 dark:text-emerald-400" />
               </div>
-              <h2 className="text-xl font-semibold text-white">Cadastro realizado!</h2>
-              <p className="text-zinc-400 text-sm max-w-xs">
+              <h2 className="text-xl font-semibold text-school-blue-800 dark:text-white">Cadastro realizado!</h2>
+              <p className="text-school-blue-600 dark:text-zinc-400 text-sm max-w-xs">
                 Sua conta administrativa foi criada com sucesso. Você já pode acessar o painel de controle.
               </p>
               <Link
                 to="/admin"
                 className="mt-4 inline-flex items-center justify-center rounded-xl px-6 py-3 text-sm font-semibold text-white transition-all duration-200"
-                style={{ background: 'linear-gradient(135deg, #2563eb, #4f46e5)' }}
+                style={{ background: 'linear-gradient(135deg, #2563eb, #4f46e5)', boxShadow: '0 4px 14px 0 rgba(37, 99, 235, 0.39)' }}
               >
                 Ir para o Painel
               </Link>
@@ -206,8 +200,8 @@ const AdminRegister = () => {
             <form onSubmit={handleSubmit} className="space-y-5" noValidate>
               {/* Nome completo */}
               <div className="space-y-2">
-                <label htmlFor="fullName" className="block text-sm font-medium text-zinc-300">
-                  Nome completo <span className="text-blue-400">*</span>
+                <label htmlFor="fullName" className="block text-sm font-medium text-zinc-755 dark:text-zinc-300">
+                  Nome completo <span className="text-school-blue-500 dark:text-blue-400">*</span>
                 </label>
                 <input
                   id="fullName"
@@ -217,14 +211,14 @@ const AdminRegister = () => {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   disabled={isSubmitting}
-                  className="w-full h-12 rounded-xl bg-zinc-900 border border-zinc-700 px-4 text-white placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 disabled:opacity-50"
+                  className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 px-4 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 disabled:opacity-50"
                 />
               </div>
 
               {/* CPF */}
               <div className="space-y-2">
-                <label htmlFor="cpf" className="block text-sm font-medium text-zinc-300">
-                  CPF <span className="text-blue-400">*</span>
+                <label htmlFor="cpf" className="block text-sm font-medium text-zinc-755 dark:text-zinc-300">
+                  CPF <span className="text-school-blue-500 dark:text-blue-400">*</span>
                 </label>
                 <input
                   id="cpf"
@@ -236,14 +230,14 @@ const AdminRegister = () => {
                   onChange={handleCpfChange}
                   disabled={isSubmitting}
                   maxLength={14}
-                  className="w-full h-12 rounded-xl bg-zinc-900 border border-zinc-700 px-4 text-white placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 disabled:opacity-50"
+                  className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 px-4 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 disabled:opacity-50"
                 />
               </div>
 
               {/* E-mail */}
               <div className="space-y-2">
-                <label htmlFor="email" className="block text-sm font-medium text-zinc-300">
-                  E-mail <span className="text-blue-400">*</span>
+                <label htmlFor="email" className="block text-sm font-medium text-zinc-755 dark:text-zinc-300">
+                  E-mail <span className="text-school-blue-500 dark:text-blue-400">*</span>
                 </label>
                 <input
                   id="email"
@@ -253,14 +247,14 @@ const AdminRegister = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isSubmitting}
-                  className="w-full h-12 rounded-xl bg-zinc-900 border border-zinc-700 px-4 text-white placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 disabled:opacity-50"
+                  className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 px-4 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 disabled:opacity-50"
                 />
               </div>
 
               {/* Senha */}
               <div className="space-y-2">
-                <label htmlFor="password" className="block text-sm font-medium text-zinc-300">
-                  Senha <span className="text-blue-400">*</span>
+                <label htmlFor="password" className="block text-sm font-medium text-zinc-755 dark:text-zinc-300">
+                  Senha <span className="text-school-blue-500 dark:text-blue-400">*</span>
                 </label>
                 <div className="relative">
                   <input
@@ -271,14 +265,14 @@ const AdminRegister = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={isSubmitting}
-                    className="w-full h-12 rounded-xl bg-zinc-900 border border-zinc-700 px-4 pr-12 text-white placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 disabled:opacity-50"
+                    className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 px-4 pr-12 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 disabled:opacity-50"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
                     disabled={isSubmitting}
                     aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 transition-colors duration-150 disabled:opacity-50"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-650 transition-colors duration-150 disabled:opacity-50"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -287,8 +281,8 @@ const AdminRegister = () => {
 
               {/* Confirmar senha */}
               <div className="space-y-2">
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-zinc-300">
-                  Confirmar senha <span className="text-blue-400">*</span>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-zinc-755 dark:text-zinc-300">
+                  Confirmar senha <span className="text-school-blue-500 dark:text-blue-400">*</span>
                 </label>
                 <div className="relative">
                   <input
@@ -299,14 +293,14 @@ const AdminRegister = () => {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     disabled={isSubmitting}
-                    className="w-full h-12 rounded-xl bg-zinc-900 border border-zinc-700 px-4 pr-12 text-white placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 disabled:opacity-50"
+                    className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 px-4 pr-12 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 disabled:opacity-50"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword((v) => !v)}
                     disabled={isSubmitting}
                     aria-label={showConfirmPassword ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 transition-colors duration-150 disabled:opacity-50"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-650 transition-colors duration-150 disabled:opacity-50"
                   >
                     {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -314,7 +308,7 @@ const AdminRegister = () => {
                 {/* Password match indicator */}
                 {confirmPassword.length > 0 && (
                   <p
-                    className={`text-xs flex items-center gap-1 mt-1 ${password === confirmPassword ? 'text-emerald-400' : 'text-red-400'
+                    className={`text-xs flex items-center gap-1 mt-1 ${password === confirmPassword ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'
                       }`}
                   >
                     {password === confirmPassword ? (
@@ -328,8 +322,8 @@ const AdminRegister = () => {
 
               {/* Código de Convite */}
               <div className="space-y-2">
-                <label htmlFor="adminCode" className="block text-sm font-medium text-zinc-300">
-                  Código de Convite <span className="text-blue-400">*</span>
+                <label htmlFor="adminCode" className="block text-sm font-medium text-zinc-755 dark:text-zinc-300">
+                  Código de Convite <span className="text-school-blue-500 dark:text-blue-400">*</span>
                 </label>
                 <input
                   id="adminCode"
@@ -340,7 +334,7 @@ const AdminRegister = () => {
                   onChange={(e) => setAdminCode(e.target.value.toUpperCase())}
                   disabled={isSubmitting}
                   maxLength={8}
-                  className="w-full h-12 rounded-xl bg-zinc-900 border border-zinc-700 px-4 text-white placeholder-zinc-500 text-sm font-mono tracking-widest transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 disabled:opacity-50"
+                  className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 px-4 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm font-mono tracking-widest transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 disabled:opacity-50"
                 />
               </div>
 
@@ -353,7 +347,7 @@ const AdminRegister = () => {
                   background: isSubmitting
                     ? 'linear-gradient(135deg, #1d4ed8, #3730a3)'
                     : 'linear-gradient(135deg, #2563eb, #4f46e5)',
-                  boxShadow: '0 0 24px rgba(59,130,246,0.25)',
+                  boxShadow: '0 4px 14px 0 rgba(37, 99, 235, 0.39)',
                 }}
               >
                 {isSubmitting ? (
@@ -371,7 +365,7 @@ const AdminRegister = () => {
 
               <p className="text-center text-xs text-zinc-500 pt-1">
                 Já possui acesso?{' '}
-                <Link to="/admin" className="text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors">
+                <Link to="/admin" className="text-school-blue-600 dark:text-blue-400 hover:text-school-blue-700 dark:hover:text-blue-300 underline underline-offset-2 transition-colors">
                   Entrar no painel
                 </Link>
               </p>
@@ -380,7 +374,7 @@ const AdminRegister = () => {
         </div>
 
         {/* Footer note */}
-        <p className="mt-6 text-center text-xs text-zinc-600">
+        <p className="mt-6 text-center text-xs text-zinc-500 dark:text-zinc-650">
           Esta conta terá acesso total à gestão do Uniforme Premiado.
           <br />
           O acesso de futuros usuários será liberado por meio de códigos internos.

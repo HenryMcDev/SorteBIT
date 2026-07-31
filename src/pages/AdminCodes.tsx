@@ -4,6 +4,8 @@ import { ShieldCheck, Loader2, RefreshCw, CheckCheck, Copy } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import ClassCodeManager from '@/components/ClassCodeManager';
+import axios from 'axios';
+import { getBackendUrl } from '@/utils/backendUrl';
 
 const AdminCodes = () => {
   const { toast } = useToast();
@@ -16,33 +18,29 @@ const AdminCodes = () => {
     setIsGeneratingAdminCode(true);
     setAdminCodeDebugError(null);
     try {
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-      const code = Array.from({ length: 8 }, () =>
-        chars[Math.floor(Math.random() * chars.length)]
-      ).join('');
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
 
-      const { error } = await supabase.from('code_adm').insert({ code });
-
-      if (error) {
-        const debugMsg = [
-          `message: ${error.message}`,
-          `code: ${error.code}`,
-          error.details ? `details: ${error.details}` : null,
-          error.hint ? `hint: ${error.hint}` : null,
-        ]
-          .filter(Boolean)
-          .join('\n');
-        setAdminCodeDebugError(debugMsg);
-        throw error;
+      if (!token) {
+        throw new Error('Sessão expirada. Faça login novamente.');
       }
 
-      setGeneratedAdminCode(code);
-      toast({ title: 'Código gerado!', description: `Código "${code}" salvo com sucesso.` });
-    } catch (err) {
-      if (!adminCodeDebugError) {
-        const msg = err instanceof Error ? err.message : String(err);
-        setAdminCodeDebugError(`Erro inesperado: ${msg}`);
+      const response = await axios.post(getBackendUrl() + '/api/admin/generate-code', {}, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (response.data?.sucesso) {
+        const code = response.data.code;
+        setGeneratedAdminCode(code);
+        toast({ title: 'Código gerado!', description: `Código "${code}" salvo com sucesso.` });
+      } else {
+        throw new Error(response.data?.erro || 'Erro desconhecido ao gerar código.');
       }
+    } catch (err: any) {
+      const msg = err.response?.data?.erro || err.message || String(err);
+      setAdminCodeDebugError(msg);
       toast({
         title: 'Erro ao gerar código',
         description: 'Não foi possível salvar o código. Veja o debug abaixo.',

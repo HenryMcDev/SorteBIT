@@ -127,33 +127,8 @@ const LotteryForm = ({ studentUser, onSuccessPhotoValidated }: LotteryFormProps)
   }, [studentUser?.name]);
 
   useEffect(() => {
-    const fetchDailyCode = async () => {
-      try {
-        const todayStr = new Date().toISOString().split('T')[0];
-
-        // Removemos o filtro de data rigoroso via string para evitar bugs de fuso horário (UTC vs GMT-3)
-        // e simplesmente ordenamos para capturar a chave de acesso mais recente gerada pelo professor.
-        const { data, error } = await supabase
-          .from('daily_codes')
-          .select('code')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (error) {
-          console.error('Erro ao buscar o código diário:', error);
-          return;
-        }
-
-        if (data?.code) {
-          setStudentCode(data.code);
-        }
-      } catch (err) {
-        console.error('Falha inesperada ao buscar código:', err);
-      }
-    };
-
-    fetchDailyCode();
+    // Código da aula deve ser digitado manualmente pelo aluno, sem busca automática
+    setStudentCode('');
   }, []);
 
   useEffect(() => {
@@ -747,15 +722,19 @@ const LotteryForm = ({ studentUser, onSuccessPhotoValidated }: LotteryFormProps)
                     />
                   </div>
 
-                  <div className="hidden space-y-2">
-                    <Label className="text-school-blue-700 dark:text-zinc-200 font-semibold">
-                      Código do dia (Automação)
+                   <div className="space-y-2">
+                    <Label className="text-school-blue-700 dark:text-zinc-200 font-semibold flex justify-between items-center">
+                      <span>Código da Aula (6 dígitos) *</span>
+                      <span className="text-xs text-zinc-400 font-normal">Pergunte ao professor em sala</span>
                     </Label>
                     <Input
+                      id="codigo-aula"
                       type="text"
-                      value={studentCode || 'Buscando código automático...'}
-                      disabled
-                      className="h-12 md:h-14 text-base md:text-lg border-2 border-gray-200 dark:bg-zinc-900/80 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 rounded-xl cursor-not-allowed opacity-80 font-mono"
+                      maxLength={6}
+                      placeholder="Ex.: 123456"
+                      value={studentCode}
+                      onChange={(e) => setStudentCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      className="h-14 text-xl border-2 border-zinc-300 bg-white text-zinc-900 placeholder-zinc-400 focus:border-school-blue-500 focus:ring-school-blue-500/20 dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-white dark:placeholder-zinc-500 rounded-xl text-center font-mono font-bold tracking-widest"
                     />
                   </div>
 

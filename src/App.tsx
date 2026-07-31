@@ -22,8 +22,16 @@ import AdminResgates from "./components/AdminResgates";
 import CookieBanner from "./components/CookieBanner";
 import BotaoFlutuanteWhatsapp from "./components/BotaoFlutuanteWhatsapp";
 import GerenciadorNotificacoes from "./components/GerenciadorNotificacoes";
-import AdminLogs from "./components/AdminLogs"; // Import do log de auditoria do admin
+import AdminLogs from "./components/AdminLogs";
 import { supabase } from "@/integrations/supabase/client";
+import { ThemeProvider } from "./components/ThemeProvider";
+
+// Módulo de Professores e Autenticação Unificada
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Teacher from "./pages/Teacher";
+import ProfessorDashboard from "./pages/ProfessorDashboard";
+import AdminProfessores from "./pages/AdminProfessores";
 
 const queryClient = new QueryClient();
 
@@ -87,9 +95,14 @@ const AppRoutes = () => {
   return (
     <Routes key={renderKey}>
       <Route path="/" element={<Index />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/professor" element={<Teacher />} />
+      <Route path="/professor/dashboard" element={<ProfessorDashboard />} />
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<Navigate to="participantes" replace />} />
         <Route path="participantes" element={<Participantes />} />
+        <Route path="professores" element={<AdminProfessores />} />
         <Route path="codigos" element={<AdminCodes />} />
         <Route path="moderacao" element={<FeedbackModeration />} />
         <Route path="premios" element={<CadastroPremios />} />
@@ -219,32 +232,6 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    // Apply theme on load
-    const savedTheme = localStorage.getItem('theme');
-    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-
-    // Listen to system changes globally
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (e: MediaQueryListEvent) => {
-      const currentSavedTheme = localStorage.getItem('theme');
-      if (!currentSavedTheme) {
-        if (e.matches) {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-        }
-      }
-    };
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
-
-  useEffect(() => {
     let timerId: any;
 
     const resetarCronometro = () => {
@@ -281,15 +268,17 @@ const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <AppRoutes />
-        </BrowserRouter>
-        <CookieBanner />
-        <BotaoFlutuanteWhatsapp />
-      </TooltipProvider>
+      <ThemeProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <AppRoutes />
+          </BrowserRouter>
+          <CookieBanner />
+          <BotaoFlutuanteWhatsapp />
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 };

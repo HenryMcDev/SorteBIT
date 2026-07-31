@@ -145,72 +145,62 @@ export const useStudentAuth = () => {
     };
   }, []);
 
-  const login = async (identifier: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const login = async (identifier: string, password: string): Promise<{ success: boolean; error?: string; role?: string }> => {
     setIsLoading(true);
     try {
       const emailLower = identifier.trim().toLowerCase();
 
-      // 1. Autenticação nativa com Supabase Auth usando o e-mail
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      // Chamada unificada para o backend
+      const response = await axios.post(getBackendUrl() + '/api/auth/login', {
         email: emailLower,
         password: password,
       });
 
-      if (authError || !authData.user) {
-        let errorMessage = 'Falha na autenticação. Verifique suas credenciais.';
-        if (authError?.message.includes('Invalid login credentials')) {
-          errorMessage = 'Credenciais inválidas. Verifique seu e-mail e senha.';
-        } else if (authError?.message.includes('Email not confirmed')) {
-          errorMessage = 'Conta bloqueada ou não confirmada.';
-        }
+      const data = response.data;
+      if (data.sucesso) {
+        // Define a sessão no Supabase para requisições subsequentes
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
 
+        if (data.role === 'PROFESSOR') {
+          // É um professor! Salvar na sessionStorage
+          sessionStorage.setItem('school_teacher_session', JSON.stringify({
+            id: data.user.id,
+            name: data.user.name,
+            email: data.user.email,
+            role: 'PROFESSOR'
+          }));
+          return { success: true, role: 'PROFESSOR' };
+        } else {
+          // É um estudante! Salvar na localStorage
+          const user = {
+            id: data.user.id,
+            name: data.user.name,
+            email: data.user.email,
+          };
+          setStudentUser(user);
+          return { success: true, role: 'STUDENT' };
+        }
+      } else {
+        const errorMsg = data.erro || 'Falha na autenticação. Verifique suas credenciais.';
         toast({
           title: 'Acesso negado',
-          description: errorMessage,
+          description: errorMsg,
           variant: 'destructive',
         });
-        return { success: false, error: errorMessage };
+        return { success: false, error: errorMsg };
       }
-
-      // 2. Consulta assíncrona na tabela estudantes após o login bem-sucedido
-      const { data: estudante, error: fetchError } = await supabase
-        .from('estudantes' as any)
-        .select('id, nome_completo')
-        .eq('email', emailLower)
-        .maybeSingle();
-
-      if (fetchError || !estudante) {
-        await supabase.auth.signOut();
-        toast({
-          title: 'Usuário não encontrado',
-          description: 'Sua conta não possui um perfil de estudante vinculado.',
-          variant: 'destructive',
-        });
-        return { success: false, error: 'Sua conta não possui um perfil de estudante vinculado.' };
-      }
-
-      // 3. Sucesso absoluto: armazenar sessão
-      const user: StudentUser = {
-        id: (estudante as any).id || authData.user.id,
-        name: (estudante as any).nome_completo || 'Aluno',
-      };
-      
-      setStudentUser(user);
-      
-      toast({
-        title: 'Sucesso',
-        description: 'Login realizado com sucesso!',
-      });
-      return { success: true };
-      
-    } catch (err) {
-      console.error('Erro ao autenticar aluno:', err);
+    } catch (err: any) {
+      console.error('Erro ao autenticar:', err);
+      const errorMsg = err.response?.data?.erro || 'Não foi possível conectar ao servidor de autenticação.';
       toast({
         title: 'Erro',
-        description: 'Não foi possível conectar ao servidor de autenticação.',
+        description: errorMsg,
         variant: 'destructive',
       });
-      return { success: false, error: 'Erro interno ou de conexão.' };
+      return { success: false, error: 'Erro de conexão ou credenciais inválidas.' };
     } finally {
       setIsLoading(false);
     }
