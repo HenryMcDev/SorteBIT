@@ -70,7 +70,10 @@ const StudentAuth = ({ isLoading, login, register, cpfValue, cpfError, handleCPF
     return () => clearTimeout(timer);
   }, [timeLeft]);
 
-  const handleLoginSubmit = async () => {
+  const handleLoginSubmit = async (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
     try {
       if (!loginEmail.trim() || !loginPassword.trim()) {
         return;
@@ -97,38 +100,31 @@ const StudentAuth = ({ isLoading, login, register, cpfValue, cpfError, handleCPF
     setForgotState('submitting');
     setForgotDebugError('');
     try {
-      const { data } = await supabase.from('estudantes' as any).select('email').eq('cpf', forgotIdentifier.replace(/\D/g, '')).maybeSingle();
-      if (!data) {
-        toast({ title: 'CPF não encontrado', description: 'Não localizamos um cadastro com este CPF.', variant: 'destructive' });
+      const response = await axios.post(`${getBackendUrl()}/api/auth/recover-password`, {
+        cpf: forgotIdentifier
+      });
+
+      if (response.data?.sucesso) {
+        const email = response.data.email || '';
+        let maskedEmail = 'seu e-mail cadastrado';
+        if (email && email.includes('@')) {
+          const [username, domain] = email.split('@');
+          maskedEmail = `${username.charAt(0)}***@${domain}`;
+        }
+        setForgotEmailMasked(maskedEmail);
+        setForgotEmail(email);
+        setForgotPhase(2);
+        setTimeLeft(60);
         setForgotState('idle');
-        return;
+        toast({ title: 'Código enviado!', description: `Enviamos o código para ${maskedEmail}.` });
+      } else {
+        throw new Error(response.data?.erro || 'Erro ao processar recuperação.');
       }
-      const email = (data as any).email || '';
-      let maskedEmail = 'seu e-mail cadastrado';
-      if (email && email.includes('@')) {
-        const [username, domain] = email.split('@');
-        maskedEmail = `${username.charAt(0)}***@${domain}`;
-      }
-      setForgotEmailMasked(maskedEmail);
-      setForgotEmail(email);
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email);
-      if (resetError) {
-        const errorText = JSON.stringify(resetError, Object.getOwnPropertyNames(resetError), 2);
-        console.error('Erro ao enviar email de reset:', resetError);
-        alert(`Erro no Supabase Auth:\nMensagem: ${resetError.message}\nStatus: ${resetError.status}\n\nObjeto Completo:\n${errorText}`);
-        setForgotDebugError(errorText);
-        toast({ title: 'Erro', description: 'Ocorreu um erro ao enviar o e-mail de recuperação.', variant: 'destructive' });
-        setForgotState('idle');
-        return;
-      }
-      setForgotPhase(2);
-      setTimeLeft(60);
+    } catch (err: any) {
+      console.error('Erro na recuperação de senha por CPF:', err);
+      const errorMsg = err.response?.data?.erro || err.message || 'Não localizamos um cadastro com este CPF.';
+      toast({ title: 'Erro', description: errorMsg, variant: 'destructive' });
       setForgotState('idle');
-      toast({ title: 'Código enviado!', description: `Enviamos o código para ${maskedEmail}.` });
-    } catch (err) {
-      console.error(err);
-      setForgotState('idle');
-      toast({ title: 'Erro de conexão', description: 'Não foi possível enviar a solicitação.', variant: 'destructive' });
     }
   };
 
@@ -303,7 +299,7 @@ const StudentAuth = ({ isLoading, login, register, cpfValue, cpfError, handleCPF
         <div className="p-6 md:p-8">
           {/* ── LOGIN FORM ── */}
           {authMode === 'login' && (
-            <div className="space-y-6">
+            <form onSubmit={handleLoginSubmit} className="space-y-6">
               <div className="text-center mb-6">
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-school-blue-50 dark:bg-blue-600/20 border border-school-blue-100 dark:border-blue-500/30 mb-3">
                   <Lock className="w-6 h-6 text-school-blue-600 dark:text-blue-400" />
@@ -347,7 +343,6 @@ const StudentAuth = ({ isLoading, login, register, cpfValue, cpfError, handleCPF
                     value={loginPassword}
                     onChange={(e) => { setLoginPassword(e.target.value || ''); setLoginError(''); }}
                     disabled={isLoading}
-                    onKeyDown={(e) => e.key === 'Enter' && handleLoginSubmit()}
                     className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 px-4 pr-12 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-school-blue-500/50 focus:border-school-blue-500 disabled:opacity-50"
                   />
                   <button type="button" onClick={() => setShowLoginPassword(v => !v)} disabled={isLoading} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors">
@@ -357,14 +352,14 @@ const StudentAuth = ({ isLoading, login, register, cpfValue, cpfError, handleCPF
               </div>
 
               <button
-                onClick={handleLoginSubmit}
+                type="submit"
                 disabled={isLoading || !loginEmail.trim() || !loginPassword.trim()}
                 className="w-full h-12 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed hover:opacity-90 active:scale-[0.98] bg-school-blue-600 notranslate"
                 style={{ boxShadow: '0 4px 14px 0 rgba(37, 99, 235, 0.39)' }}
               >
                 {isLoading ? (<><Loader2 className="w-4 h-4 animate-spin" /> Carregando...</>) : (<><Key className="w-4 h-4" /> Entrar</>)}
               </button>
-            </div>
+            </form>
           )}
 
           {/* ── REGISTER FORM ── */}

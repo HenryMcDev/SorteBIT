@@ -80,9 +80,6 @@ const AppRoutes = () => {
             navigate('/admin/participantes');
             setRenderKey(prev => prev + 1);
           }
-        } else {
-          // Se não tinha storedAdmin no localStorage, força remount para carregar painel
-          setRenderKey(prev => prev + 1);
         }
       }
     });

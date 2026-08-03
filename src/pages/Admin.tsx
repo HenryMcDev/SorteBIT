@@ -126,7 +126,17 @@ const Admin = () => {
     setForgotState('submitting');
     setForgotDebugError('');
     try {
-      const { data } = await supabase.from('admin_user' as any).select('email').eq('cpf', forgotIdentifier.replace(/\D/g, '')).maybeSingle();
+      const cpfClean = forgotIdentifier.replace(/\D/g, '');
+      let query = supabase.from('admin_user' as any).select('email');
+      
+      if (cpfClean.length === 11) {
+        const cpfMasked = `${cpfClean.slice(0, 3)}.${cpfClean.slice(3, 6)}.${cpfClean.slice(6, 9)}-${cpfClean.slice(9, 11)}`;
+        query = query.or(`cpf.eq.${cpfClean},cpf.eq.${cpfMasked}`);
+      } else {
+        query = query.eq('cpf', cpfClean);
+      }
+
+      const { data } = await query.maybeSingle();
       if (!data) {
         toast({ title: 'CPF não encontrado', description: 'Não localizamos um administrador com este CPF.', variant: 'destructive' });
         setForgotState('idle');
@@ -200,7 +210,10 @@ const Admin = () => {
 
   const WEBHOOK_URL = 'https://bitn8n.infinityflowapp.com/webhook/admin-sortebit';
 
-  const handleLoginSubmit = async () => {
+  const handleLoginSubmit = async (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
     if (!loginUsername.trim() || !loginPassword.trim()) {
       return;
     }
@@ -327,10 +340,10 @@ const Admin = () => {
             <div className="p-8">
               {/* ── LOGIN FORM ── */}
               {authMode === 'login' && (
-                <div className="space-y-6">
+                <form onSubmit={handleLoginSubmit} className="space-y-6">
                   <div className="text-center mb-6">
                     <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-school-blue-50 dark:bg-blue-600/20 border border-school-blue-100 dark:border-blue-500/30 mb-3">
-                      <Lock className="w-6 h-6 text-school-blue-600 dark:text-blue-400" />
+                       <Lock className="w-6 h-6 text-school-blue-600 dark:text-blue-400" />
                     </div>
                     <h1 className="text-2xl font-bold text-school-blue-800 dark:text-white tracking-tight">Acesso Administrativo</h1>
                     <p className="mt-1 text-sm text-school-blue-600 dark:text-zinc-400">Entre com suas credenciais de administrador.</p>
@@ -371,7 +384,6 @@ const Admin = () => {
                         value={loginPassword}
                         onChange={(e) => { setLoginPassword(e.target.value); setLoginError(''); }}
                         disabled={isLoading}
-                        onKeyDown={(e) => e.key === 'Enter' && handleLoginSubmit()}
                         className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 px-4 pr-12 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 disabled:opacity-50"
                       />
                       <button type="button" onClick={() => setShowLoginPassword(v => !v)} disabled={isLoading} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-200 transition-colors">
@@ -381,7 +393,7 @@ const Admin = () => {
                   </div>
 
                   <button
-                    onClick={handleLoginSubmit}
+                    type="submit"
                     disabled={isLoading || !loginUsername.trim() || !loginPassword.trim()}
                     className="w-full h-12 rounded-xl font-semibold text-sm text-white flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed hover:opacity-90 active:scale-[0.98]"
                     style={{ background: 'linear-gradient(135deg, #2563eb, #4f46e5)', boxShadow: '0 4px 14px 0 rgba(37, 99, 235, 0.39)' }}
@@ -392,7 +404,7 @@ const Admin = () => {
                   <p className="text-center text-xs text-zinc-500 pt-1">
                     <Link to="/" className="text-school-blue-600 dark:text-blue-400 hover:text-school-blue-700 dark:hover:text-blue-300 underline underline-offset-2 transition-colors">Voltar para o site</Link>
                   </p>
-                </div>
+                </form>
               )}
 
               {/* ── REGISTER FORM ── */}

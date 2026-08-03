@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { RefreshCw, Users, AlertCircle, Coins, ChevronDown, Calendar, Image as ImageIcon, Tag, Search } from 'lucide-react';
+import { RefreshCw, Users, AlertCircle, Coins, ChevronDown, Calendar, Image as ImageIcon, Tag, Search, Download, Mail } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
+import { getBackendUrl } from '@/utils/backendUrl';
+import axios from 'axios';
 
 interface Coupon {
   id: string;
@@ -32,7 +35,9 @@ const sanitizarNomePasta = (name: string): string => {
 const Participantes = () => {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const { toast } = useToast();
 
   // Estados de controle para busca e filtros de saldo CashBIT
   const [searchTerm, setSearchTerm] = useState('');
@@ -47,8 +52,219 @@ const Participantes = () => {
   const [selectedPhotoBlob, setSelectedPhotoBlob] = useState<string | null>(null);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
 
+  // Estados para edição de e-mail de alunos e confirmação de segurança
+  const [editingEmails, setEditingEmails] = useState<Record<string, string>>({});
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [targetStudentId, setTargetStudentId] = useState<string | null>(null);
+  const [targetOldEmail, setTargetOldEmail] = useState('');
+  const [targetNewEmail, setTargetNewEmail] = useState('');
+  const [isSavingEmail, setIsSavingEmail] = useState(false);
+
   // Referência para guardar todas as Object URLs (blobs) criadas por estudante
   const activeBlobsRef = useRef<Record<string, string[]>>({});
+
+  const handleOpenConfirmModal = (studentId: string, oldEmail: string, newEmail: string) => {
+    if (!newEmail.trim() || !newEmail.includes('@')) {
+      toast({
+        title: "E-mail inválido",
+        description: "Por favor, digite um e-mail válido para o aluno.",
+        variant: "destructive"
+      });
+      return;
+    }
+    if (oldEmail.toLowerCase() === newEmail.trim().toLowerCase()) {
+      toast({
+        title: "Nenhuma alteração",
+        description: "O novo e-mail é idêntico ao e-mail atual do aluno.",
+        variant: "destructive"
+      });
+      return;
+    }
+    setTargetStudentId(studentId);
+    setTargetOldEmail(oldEmail);
+    setTargetNewEmail(newEmail.trim());
+    setAdminPassword('');
+    setIsConfirmModalOpen(true);
+  };
+
+  const handleConfirmEmailChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminPassword) {
+      toast({
+        title: "Senha obrigatória",
+        description: "Por favor, insira a sua senha de administrador.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSavingEmail(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        throw new Error('Sessão expirada. Faça login novamente.');
+      }
+
+      const response = await axios.post(`${getBackendUrl()}/api/admin/update-student-email`, {
+        studentId: Number(targetStudentId),
+        newEmail: targetNewEmail,
+        adminPassword: adminPassword
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (response.data?.sucesso) {
+        toast({
+          title: "E-mail atualizado!",
+          description: "O e-mail do aluno foi alterado com sucesso.",
+        });
+
+        setIsConfirmModalOpen(false);
+
+        // Atualiza a lista local de participantes com o novo e-mail
+        setParticipants(prev => prev.map(p => {
+          if (p.id === targetStudentId) {
+            return { ...p, email: targetNewEmail };
+          }
+          return p;
+        }));
+      } else {
+        throw new Error(response.data?.erro || 'Erro ao atualizar e-mail.');
+      }
+    } catch (err: any) {
+      console.error('Erro ao atualizar e-mail:', err);
+      toast({
+        title: "Erro na alteração",
+        description: err.response?.data?.erro || err.message || "Não foi possível alterar o e-mail.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSavingEmail(false);
+    }
+  };
+
+  const handleExportCSV = async () => {
+    setIsExporting(true);
+    try {
+      let records: { name: string; participation_date: string }[] = [];
+
+      // 1. Tenta buscar do backend seguro
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+
+        if (!token) {
+          throw new Error('Sessão expirada. Faça login novamente.');
+        }
+
+        const response = await axios.get(`${getBackendUrl()}/api/admin/export-participantes`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        if (response.data?.sucesso) {
+          records = response.data.participations || [];
+        } else {
+          throw new Error(response.data?.erro || 'Erro retornado pela API.');
+        }
+      } catch (backendErr: any) {
+        console.warn('Falha ao obter dados do backend. Tentando consulta direta via Supabase client...', backendErr);
+        
+        // 2. Fallback: Consulta direta via cliente Supabase
+        const now = new Date();
+        let prevMonthYear = now.getFullYear();
+        let prevMonth = now.getMonth() - 1;
+        if (prevMonth < 0) {
+          prevMonth = 11;
+          prevMonthYear -= 1;
+        }
+
+        const startDate = new Date(prevMonthYear, prevMonth, 1, 0, 0, 0, 0);
+        const endDate = new Date(prevMonthYear, prevMonth + 1, 0, 23, 59, 59, 999);
+
+        const { data, error } = await supabase
+          .from('lottery_participations')
+          .select('name, participation_date')
+          .gte('participation_date', startDate.toISOString())
+          .lte('participation_date', endDate.toISOString())
+          .order('participation_date', { ascending: true });
+
+        if (error) {
+          throw error;
+        }
+
+        records = (data || []).map((row: any) => ({
+          name: row.name || 'Aluno Desconhecido',
+          participation_date: row.participation_date || row.created_at
+        }));
+      }
+
+      // 3. Valida se existem registros
+      if (records.length === 0) {
+        toast({
+          title: "Nenhum registro encontrado",
+          description: "Não foram encontradas participações confirmadas no mês anterior.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // 4. Formata as colunas do CSV
+      const csvHeader = 'Nome do Aluno,Data da Participação';
+      const csvRows = records.map(row => {
+        // Escapa aspas duplas duplicando-as e envolve o nome em aspas
+        const escapedName = `"${row.name.replace(/"/g, '""')}"`;
+        
+        // Formata data em pt-BR (DD/MM/AAAA HH:mm:ss)
+        const d = new Date(row.participation_date);
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        const seconds = String(d.getSeconds()).padStart(2, '0');
+        const formattedDate = `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+
+        return `${escapedName},${formattedDate}`;
+      });
+
+      // 5. Injeta o caractere UTF-8 BOM (\uFEFF)
+      const csvContent = '\uFEFF' + [csvHeader, ...csvRows].join('\n');
+      
+      // 6. Define o MIME type e aciona o download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'participantes_mes_anterior_sortebit.csv');
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Sucesso!",
+        description: `Exportação concluída com ${records.length} registros.`,
+      });
+
+    } catch (err: any) {
+      console.error('Erro na exportação de participantes:', err);
+      toast({
+        title: "Erro na exportação",
+        description: err.message || "Ocorreu um erro ao gerar o arquivo CSV.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const fetchParticipants = async () => {
     setIsLoading(true);
@@ -281,14 +497,29 @@ const Participantes = () => {
           </div>
         </div>
 
-        <Button
-          onClick={fetchParticipants}
-          disabled={isLoading}
-          className="bg-school-blue-600 hover:bg-school-blue-700 text-white shadow-md transition-all duration-200 rounded-xl px-6 h-12 w-full sm:w-auto active:scale-[0.98] border-0"
-        >
-          <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-          Atualizar Lista
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Button
+            onClick={handleExportCSV}
+            disabled={isExporting || isLoading}
+            className="bg-emerald-600 hover:bg-emerald-750 text-white shadow-md transition-all duration-200 rounded-xl px-6 h-12 w-full sm:w-auto active:scale-[0.98] border-0"
+          >
+            {isExporting ? (
+              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4 mr-2" />
+            )}
+            Exportar CSV Mês Anterior
+          </Button>
+
+          <Button
+            onClick={fetchParticipants}
+            disabled={isLoading}
+            className="bg-school-blue-600 hover:bg-school-blue-700 text-white shadow-md transition-all duration-200 rounded-xl px-6 h-12 w-full sm:w-auto active:scale-[0.98] border-0"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Atualizar Lista
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -442,6 +673,31 @@ const Participantes = () => {
                           )}
                         </div>
 
+                        {/* Box 3: Alterar E-mail do Aluno */}
+                        <div className="p-4 rounded-xl border border-zinc-200/50 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 shadow-sm space-y-3 col-span-1 md:col-span-2">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 flex items-center gap-1.5">
+                            <Mail className="w-3.5 h-3.5 text-blue-500" />
+                            Alterar E-mail do Aluno
+                          </h4>
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                            <input
+                              type="email"
+                              value={editingEmails[p.id] !== undefined ? editingEmails[p.id] : p.email}
+                              onChange={(e) => setEditingEmails(prev => ({ ...prev, [p.id]: e.target.value }))}
+                              placeholder="novo-email@aluno.com"
+                              className="flex-1 px-3 py-2 text-sm rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#1a1c1e] text-zinc-900 dark:text-white placeholder-zinc-450 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                            />
+                            <Button
+                              type="button"
+                              onClick={() => handleOpenConfirmModal(p.id, p.email, editingEmails[p.id] !== undefined ? editingEmails[p.id] : p.email)}
+                              disabled={isSavingEmail && targetStudentId === p.id}
+                              className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 py-2 h-9 rounded-lg font-semibold active:scale-[0.98] border-0"
+                            >
+                              Salvar E-mail
+                            </Button>
+                          </div>
+                        </div>
+
                       </div>
 
                       {/* Box 3: Galeria de Fotos */}
@@ -540,6 +796,61 @@ const Participantes = () => {
               </div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Confirmação de Segurança para Alteração de E-mail */}
+      <Dialog open={isConfirmModalOpen} onOpenChange={(open) => { if (!open) setIsConfirmModalOpen(false); }}>
+        <DialogContent className="max-w-md bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white rounded-2xl p-6 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-zinc-800 dark:text-zinc-100">
+              Confirmar Alteração de E-mail
+            </DialogTitle>
+            <DialogDescription className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">
+              Você está alterando o e-mail do aluno de <strong className="text-zinc-700 dark:text-zinc-300">{targetOldEmail}</strong> para <strong className="text-zinc-700 dark:text-zinc-200">{targetNewEmail}</strong>.
+              Esta operação atualiza o cadastro principal e a autenticação.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleConfirmEmailChange} className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <label htmlFor="confirmAdminPass" className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                Senha Atual do Administrador
+              </label>
+              <input
+                id="confirmAdminPass"
+                type="password"
+                required
+                placeholder="Digite sua senha de admin"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                disabled={isSavingEmail}
+                className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 dark:border-zinc-850/80 bg-white dark:bg-[#1a1c1e] text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              />
+            </div>
+
+            <div className="flex gap-3 justify-end pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsConfirmModalOpen(false)}
+                disabled={isSavingEmail}
+                className="rounded-lg text-xs font-semibold px-4 py-2 border border-zinc-200 dark:border-zinc-800 bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-900"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSavingEmail || !adminPassword}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-lg active:scale-[0.98] border-0 flex items-center"
+              >
+                {isSavingEmail ? (
+                  <RefreshCw className="w-3.5 h-3.5 mr-2 animate-spin" />
+                ) : null}
+                Confirmar Alteração de E-mail
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </Card>
