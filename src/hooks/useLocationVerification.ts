@@ -223,12 +223,14 @@ export const useLocationVerification = (skipVerification: boolean = false) => {
           error: null
         }));
       } else {
+        const data = await response.json().catch(() => ({}));
+        const detectedIp = data?.clientIp ? ` (IP lido: ${data.clientIp})` : '';
         // Erro na validação de IP: exiba a mensagem pedindo para conectar ao Wi-Fi oficial
         setLocationState(prev => ({
           ...prev,
           isLoading: false,
           isWithinRange: false,
-          error: 'Por favor, conecte-se à rede Wi-Fi oficial dos Laboratórios da BIT para liberar sua participação.'
+          error: `Por favor, conecte-se à rede Wi-Fi oficial dos Laboratórios da BIT para liberar sua participação.${detectedIp}`
         }));
       }
     } catch (err) {
