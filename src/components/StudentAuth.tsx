@@ -159,7 +159,10 @@ const StudentAuth = ({ isLoading, login, register, cpfValue, cpfError, handleCPF
       console.error(err);
       setForgotState('idle');
       
-      const errorMessage = err?.message || 'Não foi possível atualizar a senha.';
+      let errorMessage = err?.message || 'Não foi possível atualizar a senha.';
+      if (typeof errorMessage === 'string' && errorMessage.includes('Password should contain at least one character of each')) {
+        errorMessage = 'Sua nova senha deve conter pelo menos uma letra maiúscula, uma minúscula, um número e um caractere especial.';
+      }
       toast({ title: 'Erro ao atualizar', description: errorMessage, variant: 'destructive' });
     }
   };
@@ -561,12 +564,27 @@ const StudentAuth = ({ isLoading, login, register, cpfValue, cpfError, handleCPF
                           disabled={forgotState === 'submitting'}
                           className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 px-4 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-school-blue-500/50 focus:border-school-blue-500 disabled:opacity-50"
                         />
+                        {/* Indicador de força de senha para recuperação */}
+                        {forgotNewPassword.length > 0 && (() => {
+                          const { valid, errors } = validatePasswordStrength(forgotNewPassword);
+                          return (
+                            <div className={`text-xs rounded-lg px-3 py-2 mt-1 flex flex-col gap-1 ${valid ? 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800' : 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800'}` }>
+                              {valid ? (
+                                <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium"><CheckCircle2 className="w-3.5 h-3.5" /> Senha forte</span>
+                              ) : (
+                                errors.map((err, i) => (
+                                  <span key={i} className="flex items-center gap-1 text-amber-700 dark:text-amber-400"><AlertCircle className="w-3.5 h-3.5 shrink-0" /> {err}</span>
+                                ))
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </>
                   )}
                   <button
                     type="submit"
-                    disabled={forgotState === 'submitting' || (forgotPhase === 1 ? !forgotIdentifier.trim() : (forgotCode.length !== 8 || forgotNewPassword.length < 8))}
+                    disabled={forgotState === 'submitting' || (forgotPhase === 1 ? !forgotIdentifier.trim() : (forgotCode.length !== 8 || forgotNewPassword.length < 8 || !validatePasswordStrength(forgotNewPassword).valid))}
                     className="w-full h-12 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed hover:opacity-90 active:scale-[0.98] bg-school-blue-600"
                   >
                     {forgotState === 'submitting' ? (<><Loader2 className="w-4 h-4 animate-spin" /> {forgotPhase === 1 ? 'Processando...' : 'Verificando...'}</>) : (forgotPhase === 1 ? 'Recuperar Acesso' : 'Confirmar e Redefinir Senha')}
