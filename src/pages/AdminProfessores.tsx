@@ -21,24 +21,47 @@ interface Professor {
   created_at: string;
 }
 
+interface TurmaItem {
+  id?: string;
+  code?: string;
+  codigo_turma?: string;
+  nome?: string;
+  ativo?: boolean;
+  created_at?: string;
+  criado_em?: string;
+}
+
 export default function AdminProfessores() {
   const [professores, setProfessores] = useState<Professor[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  // State para Gestão de Turmas
-  const [turmasList, setTurmasList] = useState<{ id?: string; code: string }[]>([
-    { code: 'TCG01' },
-    { code: 'TCG02' },
-    { code: 'TCG03' }
-  ]);
+  // State para Gestão de Turmas do Supabase
+  const [turmasList, setTurmasList] = useState<TurmaItem[]>([]);
   const [newTurmaCode, setNewTurmaCode] = useState('');
   const [isLoadingTurmas, setIsLoadingTurmas] = useState(false);
   const [isRegisteringTurma, setIsRegisteringTurma] = useState(false);
 
+  // Buscar turmas no Supabase (com fallback via API backend)
   const fetchTurmasAdmin = async () => {
     setIsLoadingTurmas(true);
+    try {
+      // 1. Tentar consultar diretamente o Supabase
+      const { data, error } = await supabase
+        .from('turmas' as any)
+        .select('*');
+
+      if (!error && Array.isArray(data)) {
+        setTurmasList(data as any as TurmaItem[]);
+        setIsLoadingTurmas(false);
+        return;
+      }
+    } catch (err) {
+      console.warn('Erro ao buscar turmas no Supabase, tentando backend API:', err);
+    }
+
+    // 2. Fallback via backend API
     try {
       const response = await axios.get(`${getBackendUrl()}/api/turmas`);
       if (response.data?.sucesso && Array.isArray(response.data.turmas)) {
@@ -56,8 +79,34 @@ export default function AdminProfessores() {
     if (!newTurmaCode.trim()) return;
 
     setIsRegisteringTurma(true);
+    const formatted = newTurmaCode.trim().toUpperCase();
     try {
-      const formatted = newTurmaCode.trim().toUpperCase();
+      // 1. Tentar inserção direta no Supabase
+      const { data, error } = await supabase
+        .from('turmas' as any)
+        .insert({
+          code: formatted,
+          codigo_turma: formatted,
+          ativo: true
+        })
+        .select()
+        .maybeSingle();
+
+      if (!error) {
+        toast({
+          title: 'Turma criada!',
+          description: `A turma "${formatted}" foi cadastrada com sucesso no Supabase.`,
+        });
+        setNewTurmaCode('');
+        await fetchTurmasAdmin();
+        return;
+      }
+    } catch (err) {
+      console.warn('Erro ao inserir diretamente no Supabase, usando API:', err);
+    }
+
+    // 2. Fallback via backend API
+    try {
       const response = await axios.post(`${getBackendUrl()}/api/turmas`, { code: formatted });
       if (response.data?.sucesso) {
         toast({
@@ -65,7 +114,7 @@ export default function AdminProfessores() {
           description: `A turma "${formatted}" foi cadastrada com sucesso.`,
         });
         setNewTurmaCode('');
-        fetchTurmasAdmin();
+        await fetchTurmasAdmin();
       } else {
         toast({
           title: 'Erro',
@@ -178,14 +227,22 @@ export default function AdminProfessores() {
 
           {/* List of Registered Turmas */}
           <div className="flex flex-wrap gap-2 pt-1">
-            {turmasList.map((t) => (
-              <span
-                key={t.id || t.code}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50"
-              >
-                Turma: {t.code}
-              </span>
-            ))}
+            {turmasList.map((t, idx) => {
+              const codeDisplay = t.codigo_turma || t.code || `Turma ${idx + 1}`;
+              const dateDisplay = (t.created_at || t.criado_em) 
+                ? new Date(t.created_at || t.criado_em!).toLocaleDateString('pt-BR') 
+                : null;
+              return (
+                <span
+                  key={t.id || codeDisplay + idx}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50 shadow-sm"
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>Turma: {codeDisplay}</span>
+                  {dateDisplay && <span className="text-[10px] opacity-75 font-normal">({dateDisplay})</span>}
+                </span>
+              );
+            })}
           </div>
         </Card>
       </div>

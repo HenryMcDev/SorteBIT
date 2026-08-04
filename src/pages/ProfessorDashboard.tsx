@@ -18,7 +18,9 @@ import {
   ArrowRight, 
   Sparkles,
   UserCheck2,
-  AlertCircle
+  AlertCircle,
+  ChevronDown,
+  GraduationCap
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -41,9 +43,10 @@ export default function ProfessorDashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // State para turmas
-  const [turmas, setTurmas] = useState<string[]>(['TCG01', 'TCG02', 'TCG03']);
+  // State para turmas dinâmicas do Supabase
+  const [turmas, setTurmas] = useState<{ id: string; code: string; codigo_turma?: string }[]>([]);
   const [selectedTurma, setSelectedTurma] = useState<string>('');
+  const [isCodeRevealed, setIsCodeRevealed] = useState<boolean>(false);
   const [newTurmaInput, setNewTurmaInput] = useState<string>('');
   const [isAddingTurma, setIsAddingTurma] = useState<boolean>(false);
   const [showAddTurma, setShowAddTurma] = useState<boolean>(false);
@@ -66,18 +69,52 @@ export default function ProfessorDashboard() {
     }
   }, [navigate]);
 
-  // Fetch list of turmas
+  // Fetch list of active turmas dynamically from Supabase / Backend
   const fetchTurmas = async () => {
+    // 1. Tentar consultar a API do backend primeiro (que usa chave service_role do Supabase)
     try {
       const response = await axios.get(getBackendUrl() + '/api/turmas');
       if (response.data?.sucesso && Array.isArray(response.data.turmas)) {
-        const codeList = response.data.turmas.map((t: { code: string }) => t.code);
-        if (codeList.length > 0) {
-          setTurmas(codeList);
+        const activeList = response.data.turmas
+          .filter((t: any) => t.ativo !== false)
+          .map((t: any) => {
+            const code = (t.code || t.codigo_turma || t.nome || t.id || '').toString().trim().toUpperCase();
+            return {
+              id: t.id || code,
+              code: code,
+              codigo_turma: code
+            };
+          });
+        if (activeList.length > 0) {
+          setTurmas(activeList);
+          return;
         }
       }
     } catch (err) {
-      console.error('Erro ao buscar lista de turmas:', err);
+      console.warn('Busca de turmas via backend API falhou, tentando Supabase direto:', err);
+    }
+
+    // 2. Consulta direta à tabela turmas do Supabase como fallback
+    try {
+      const { data, error } = await supabase
+        .from('turmas' as any)
+        .select('*');
+
+      if (!error && Array.isArray(data)) {
+        const activeList = data
+          .filter((t: any) => t.ativo !== false)
+          .map((t: any) => {
+            const code = (t.codigo_turma || t.code || t.nome || t.id || '').toString().trim().toUpperCase();
+            return {
+              id: t.id || code,
+              code: code,
+              codigo_turma: code
+            };
+          });
+        setTurmas(activeList);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar lista de turmas no Supabase:', err);
     }
   };
 
@@ -117,6 +154,9 @@ export default function ProfessorDashboard() {
     }
   };
 
+  const [isUnsafeWindow, setIsUnsafeWindow] = useState(false);
+  const [unsafeMessage, setUnsafeMessage] = useState<string | null>(null);
+
   // Fetch active code and check-ins
   const fetchActiveCodeData = async (silent = false) => {
     if (!silent) setIsLoading(true);
@@ -128,24 +168,59 @@ export default function ProfessorDashboard() {
         throw new Error('Sessão expirada');
       }
 
-      const response = await axios.get(getBackendUrl() + '/api/professor/active-code', {
-        headers: {
-          Authorization: `Bearer ${token}`
+      if (!selectedTurma) {
+        if (!silent) {
+          setActiveCode(null);
+          setActiveTurma(null);
+          setExpiresAt(null);
+          setTimeLeft(0);
+          setStudents([]);
         }
-      });
+        return;
+      }
+
+      let teacherId: string | null = null;
+      try {
+        const stored = sessionStorage.getItem('school_teacher_session');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          teacherId = parsed.id || null;
+        }
+      } catch (e) {}
+
+      if (!teacherId) {
+        throw new Error('Sessão do professor não encontrada');
+      }
+
+      const response = await axios.get(
+        `${getBackendUrl()}/api/professor/active-code?turma=${selectedTurma}&professorId=${teacherId}`, 
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
 
       if (response.data?.sucesso) {
         if (response.data.activeCode) {
-          setActiveCode(response.data.activeCode.code);
-          setActiveTurma(response.data.activeCode.turma || null);
-          if (response.data.activeCode.turma) {
-            setSelectedTurma(response.data.activeCode.turma);
+          if (response.data.seguro === false) {
+            setIsUnsafeWindow(true);
+            setActiveCode(null);
+            setUnsafeMessage(response.data.mensagem || 'O código atual expira em menos de 2 minutos. Por favor, aguarde a renovação automática para repassar aos alunos.');
+          } else {
+            setIsUnsafeWindow(false);
+            setUnsafeMessage(null);
+            setActiveCode(response.data.activeCode.code);
           }
+
           setExpiresAt(response.data.activeCode.expires_at);
-          
           const exp = new Date(response.data.activeCode.expires_at).getTime();
           const diff = Math.max(0, Math.floor((exp - Date.now()) / 1000));
           setTimeLeft(diff);
+
+          if (response.data.activeCode.turma) {
+            setActiveTurma(response.data.activeCode.turma);
+          }
         } else {
           setActiveCode(null);
           setActiveTurma(null);
@@ -161,12 +236,40 @@ export default function ProfessorDashboard() {
     }
   };
 
-  // Generate new code
-  const handleGenerateCode = async () => {
+  // Inativar código na tabela class_codes quando o temporizador atingir 00:00
+  const inactivateClassCode = async (turmaName: string, codeToInactivate?: string | null) => {
+    if (!turmaName) return;
+    try {
+      let query = supabase
+        .from('class_codes' as any)
+        .update({ is_active: false })
+        .eq('turma', turmaName);
+
+      if (codeToInactivate) {
+        query = query.eq('code', codeToInactivate);
+      } else {
+        query = query.eq('is_active', true);
+      }
+
+      await query;
+    } catch (err) {
+      console.warn('Erro ao inativar class_codes no Supabase:', err);
+    }
+
+    try {
+      await axios.post(getBackendUrl() + '/api/codigo/inativar', {
+        turma: turmaName,
+        code: codeToInactivate
+      });
+    } catch (err) {}
+  };
+
+  // Mostrar Código e Vincular à Turma Selecionada na tabela class_codes
+  const handleShowCode = async () => {
     if (!selectedTurma) {
       toast({
         title: 'Selecione uma turma',
-        description: 'Você precisa selecionar obrigatoriamente a turma antes de gerar o código diário da aula.',
+        description: 'Você precisa selecionar obrigatoriamente a turma antes de exibir o código da aula.',
         variant: 'destructive'
       });
       return;
@@ -187,8 +290,64 @@ export default function ProfessorDashboard() {
         return;
       }
 
-      const response = await axios.post(getBackendUrl() + '/api/professor/generate-code', {
-        turma: selectedTurma
+      // Recuperar dados do professor da sessão
+      let teacherId: string | null = null;
+      let teacherName = professorName;
+      try {
+        const stored = sessionStorage.getItem('school_teacher_session');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          teacherId = parsed.id || null;
+          teacherName = parsed.name || professorName;
+        }
+      } catch (e) {}
+
+      // 1. Tentar consultar código ativo existente para a turma em class_codes no Supabase
+      const agoraMs = Date.now();
+      const agoraIso = new Date(agoraMs).toISOString();
+
+      try {
+        const { data: activeClassCode, error: fetchErr } = await (supabase
+          .from('class_codes' as any) as any)
+          .select('*')
+          .eq('turma', selectedTurma)
+          .eq('professor_id', teacherId)
+          .eq('is_active', true)
+          .gt('expires_at', agoraIso)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (!fetchErr && activeClassCode && activeClassCode.code) {
+          const expTime = new Date(activeClassCode.expires_at).getTime();
+          const remainingSecs = Math.max(0, Math.floor((expTime - agoraMs) / 1000));
+
+          if (remainingSecs > 0) {
+            setIsUnsafeWindow(false);
+            setUnsafeMessage(null);
+            setActiveCode(activeClassCode.code);
+            setActiveTurma(selectedTurma);
+            setExpiresAt(activeClassCode.expires_at);
+            setTimeLeft(remainingSecs);
+            setIsCodeRevealed(true);
+
+            toast({
+              title: 'Código Ativo Carregado!',
+              description: `Código ${activeClassCode.code} ativo para a turma ${selectedTurma}.`,
+            });
+            setIsGenerating(false);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Consulta direta a class_codes falhou, prosseguindo via API:', err);
+      }
+
+      // 2. Chamar endpoint backend de vinculação e geração sob demanda para class_codes
+      const response = await axios.post(getBackendUrl() + '/api/codigo/vincular-turma', {
+        turmaId: selectedTurma,
+        professorId: teacherId,
+        professorName: teacherName
       }, {
         headers: {
           Authorization: `Bearer ${token}`
@@ -196,31 +355,42 @@ export default function ProfessorDashboard() {
       });
 
       if (response.data?.sucesso) {
-        const code = response.data.code;
-        const turmaRes = response.data.turma || selectedTurma;
-        const expires = response.data.expires_at;
-        setActiveCode(code);
-        setActiveTurma(turmaRes);
-        setExpiresAt(expires);
-        
-        const exp = new Date(expires).getTime();
-        const diff = Math.max(0, Math.floor((exp - Date.now()) / 1000));
-        setTimeLeft(diff);
-        setStudents([]); // Reset student checkins for the new code
+        const { seguro, codigo, validoAte, tempoRestanteSegundos, mensagem } = response.data;
 
-        toast({
-          title: 'Código Gerado!',
-          description: `O código para a turma ${turmaRes} é ${code}. Válido por 10 minutos.`,
-        });
+        if (seguro === false) {
+          setIsUnsafeWindow(true);
+          setActiveCode(null);
+          setUnsafeMessage(mensagem || 'O código atual expira em menos de 2 minutos. Por favor, aguarde a renovação automática para repassar aos alunos.');
+          setTimeLeft(tempoRestanteSegundos || 0);
+
+          toast({
+            title: 'Aviso de Segurança',
+            description: mensagem || 'Código prestes a expirar. Aguarde o novo ciclo de 10 minutos.',
+            variant: 'destructive'
+          });
+        } else {
+          setIsUnsafeWindow(false);
+          setUnsafeMessage(null);
+          setActiveCode(codigo);
+          setActiveTurma(selectedTurma);
+          setExpiresAt(validoAte);
+          setTimeLeft(tempoRestanteSegundos || 600);
+          setIsCodeRevealed(true);
+
+          toast({
+            title: 'Código Gerado com Sucesso!',
+            description: `Código ${codigo} criado para a turma ${selectedTurma} (válido por 10 minutos).`,
+          });
+        }
       } else {
         toast({
           title: 'Erro',
-          description: response.data?.erro || 'Não foi possível gerar o código.',
+          description: response.data?.erro || 'Não foi possível buscar o código.',
           variant: 'destructive'
         });
       }
     } catch (error: any) {
-      console.error('Erro ao gerar código da aula:', error);
+      console.error('Erro ao vincular e mostrar código:', error);
       toast({
         title: 'Erro de conexão',
         description: error.response?.data?.erro || 'Falha ao conectar com o servidor.',
@@ -231,22 +401,21 @@ export default function ProfessorDashboard() {
     }
   };
 
-  // Fetch data on mount
+  // Fetch turmas on mount
   useEffect(() => {
     fetchTurmas();
-    fetchActiveCodeData();
   }, []);
 
   // Poll for student check-ins every 5 seconds
   useEffect(() => {
-    if (!activeCode) return;
+    if (!activeCode || !selectedTurma) return;
 
     const interval = setInterval(() => {
       fetchActiveCodeData(true);
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [activeCode]);
+  }, [activeCode, selectedTurma]);
 
   // Realtime subscription for lottery_participations
   useEffect(() => {
@@ -279,16 +448,30 @@ export default function ProfessorDashboard() {
     };
   }, [activeCode, toast]);
 
-  // Countdown timer logic
+  // Countdown timer logic com inativação de is_active = FALSE em 00:00
   useEffect(() => {
-    if (timeLeft <= 0) {
+    if (!expiresAt) {
+      setTimeLeft(0);
+      return;
+    }
+
+    const calculateRemaining = () => {
+      const exp = new Date(expiresAt).getTime();
+      return Math.max(0, Math.floor((exp - Date.now()) / 1000));
+    };
+
+    const initialDiff = calculateRemaining();
+    setTimeLeft(initialDiff);
+
+    if (initialDiff <= 0) {
       if (activeCode) {
-        // Code just expired
+        inactivateClassCode(selectedTurma || activeTurma || '', activeCode);
         setActiveCode(null);
         setExpiresAt(null);
+        setIsCodeRevealed(false);
         toast({
           title: 'Código Expirado',
-          description: 'O código de 10 minutos expirou. Gere um novo código para novos check-ins.',
+          description: 'O código de 10 minutos para a turma expirou (is_active = false).',
           variant: 'destructive'
         });
       }
@@ -296,11 +479,25 @@ export default function ProfessorDashboard() {
     }
 
     const timer = setInterval(() => {
-      setTimeLeft(prev => prev - 1);
+      const remaining = calculateRemaining();
+      setTimeLeft(remaining);
+
+      if (remaining <= 0) {
+        clearInterval(timer);
+        inactivateClassCode(selectedTurma || activeTurma || '', activeCode);
+        setActiveCode(null);
+        setExpiresAt(null);
+        setIsCodeRevealed(false);
+        toast({
+          title: 'Código Expirado',
+          description: 'O código de 10 minutos para a turma expirou (is_active = false).',
+          variant: 'destructive'
+        });
+      }
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeLeft, activeCode, toast]);
+  }, [expiresAt, activeCode, selectedTurma, activeTurma, toast]);
 
   const handleCopy = () => {
     if (!activeCode) return;
@@ -374,33 +571,49 @@ export default function ProfessorDashboard() {
               <p className="text-zinc-500 dark:text-zinc-400 text-xs px-4">Selecione a turma e gere o código de 6 dígitos para o check-in dos alunos.</p>
             </div>
 
-            {/* Selector de Turma */}
+            {/* Selector de Turma Customizado */}
             <div className="w-full max-w-xs space-y-2 text-left">
               <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 flex items-center justify-between">
-                <span>SELECIONE A TURMA <span className="text-red-500">*</span></span>
+                <span className="flex items-center gap-1.5">
+                  <GraduationCap className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  SELECIONE A TURMA <span className="text-red-500">*</span>
+                </span>
                 <button
                   type="button"
                   onClick={() => setShowAddTurma(!showAddTurma)}
-                  className="text-blue-600 dark:text-blue-400 hover:underline font-normal text-[11px] flex items-center gap-1"
+                  className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline font-semibold text-[11px] flex items-center gap-1 transition-colors"
                 >
                   + Nova Turma
                 </button>
               </label>
-              <div className="relative">
+
+              {/* Styled Controlled Select */}
+              <div className="relative group">
                 <select
                   value={selectedTurma}
-                  onChange={(e) => setSelectedTurma(e.target.value)}
-                  className="w-full h-12 px-4 pr-10 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-white font-semibold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none shadow-sm cursor-pointer"
+                  onChange={(e) => {
+                    setSelectedTurma(e.target.value);
+                    setIsCodeRevealed(false);
+                    setActiveCode(null);
+                    setActiveTurma(null);
+                    setExpiresAt(null);
+                    setTimeLeft(0);
+                    setStudents([]);
+                    setIsUnsafeWindow(false);
+                    setUnsafeMessage(null);
+                  }}
+                  className="w-full h-12 pl-4 pr-10 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700/80 rounded-xl text-zinc-900 dark:text-white font-bold text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 hover:border-zinc-400 dark:hover:border-zinc-600 appearance-none shadow-sm cursor-pointer"
                 >
-                  <option value="" disabled>-- Escolha a Turma --</option>
+                  <option value="" disabled className="text-zinc-400 bg-white dark:bg-zinc-950 font-normal">-- Escolha a Turma --</option>
                   {turmas.map((t) => (
-                    <option key={t} value={t}>
-                      Turma {t}
+                    <option key={t.id || t.code} value={t.code} className="py-2 text-zinc-900 dark:text-white bg-white dark:bg-zinc-900 font-semibold">
+                      Turma {t.codigo_turma || t.code}
                     </option>
                   ))}
                 </select>
-                <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-400">
-                  <ArrowRight className="w-4 h-4 rotate-90" />
+
+                <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-400 dark:text-zinc-500 group-hover:text-blue-500 transition-colors">
+                  <ChevronDown className="w-4 h-4 stroke-[2.5]" />
                 </div>
               </div>
 
@@ -412,20 +625,51 @@ export default function ProfessorDashboard() {
                     placeholder="Ex: TCG04"
                     value={newTurmaInput}
                     onChange={(e) => setNewTurmaInput(e.target.value)}
-                    className="flex-1 h-9 px-3 text-xs bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-white uppercase tracking-wider"
+                    className="flex-1 h-9 px-3 text-xs bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-white uppercase tracking-wider font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                   />
-                  <Button type="submit" size="sm" disabled={isAddingTurma || !newTurmaInput.trim()} className="h-9 px-3 bg-blue-600 text-white font-bold text-xs rounded-lg">
+                  <Button type="submit" size="sm" disabled={isAddingTurma || !newTurmaInput.trim()} className="h-9 px-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg shadow-sm">
                     {isAddingTurma ? 'Criando...' : 'Salvar'}
                   </Button>
                 </form>
               )}
             </div>
 
-            {activeCode ? (
-              <div className="w-full space-y-4">
-                {activeTurma && (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                    Turma: {activeTurma}
+            {!selectedTurma || !isCodeRevealed ? (
+              <div className="w-full space-y-3 py-2 flex flex-col items-center animate-in fade-in">
+                {selectedTurma && (
+                  <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-black bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                    Turma: {selectedTurma}
+                  </div>
+                )}
+                <div className="inline-flex items-center justify-center gap-4 bg-zinc-100/60 dark:bg-zinc-950/60 border border-dashed border-zinc-300 dark:border-zinc-800 py-5 px-8 rounded-2xl select-none w-full max-w-sm">
+                  <span className="text-5xl font-mono font-black tracking-widest text-zinc-300 dark:text-zinc-700">
+                    ------
+                  </span>
+                </div>
+                <p className="text-zinc-400 dark:text-zinc-500 text-xs italic">
+                  Selecione uma turma e clique em "Mostrar Código" para revelar a aula
+                </p>
+              </div>
+            ) : isUnsafeWindow ? (
+              <div className="w-full max-w-sm p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-center space-y-2 animate-in fade-in">
+                <div className="flex items-center justify-center gap-2 font-bold text-sm">
+                  <AlertCircle className="w-5 h-5 text-amber-500" />
+                  <span>Código Próximo de Expirar</span>
+                </div>
+                <p className="text-xs text-amber-800 dark:text-amber-200">
+                  {unsafeMessage || 'O código atual expira em menos de 2 minutos. Por favor, aguarde a renovação automática para repassar aos alunos.'}
+                </p>
+                <div className="text-xs font-mono font-bold text-amber-600 dark:text-amber-400 pt-1">
+                  Renovando ciclo em: {formatTime(timeLeft)}
+                </div>
+              </div>
+            ) : activeCode ? (
+              <div className="w-full space-y-4 animate-in fade-in">
+                {(selectedTurma || activeTurma) && (
+                  <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-black bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Turma: {selectedTurma || activeTurma}
                   </div>
                 )}
                 <div 
@@ -443,30 +687,32 @@ export default function ProfessorDashboard() {
               </div>
             ) : (
               <div className="py-4 text-zinc-400 dark:text-zinc-500 italic text-sm">
-                Nenhum código ativo no momento
+                Selecione uma turma e clique em "Mostrar Código"
               </div>
             )}
 
+            {/* Redesigned Mostrar Código Button */}
             <Button
-              onClick={handleGenerateCode}
+              onClick={handleShowCode}
               disabled={isGenerating || !selectedTurma}
-              className={`w-full max-w-xs h-14 font-bold text-base rounded-xl shadow-lg transition-all ${
+              className={`w-full max-w-xs h-14 font-extrabold text-base tracking-wide rounded-xl shadow-lg transition-all duration-200 border-0 ${
                 selectedTurma 
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-blue-600/20 hover:scale-[1.02] active:scale-[0.98]' 
-                  : 'bg-zinc-300 dark:bg-zinc-800 text-zinc-500 cursor-not-allowed opacity-60'
+                  ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:via-indigo-500 hover:to-blue-600 text-white shadow-blue-600/30 hover:shadow-blue-600/50 hover:scale-[1.02] active:scale-[0.98]' 
+                  : 'bg-zinc-200 dark:bg-zinc-800/80 text-zinc-400 dark:text-zinc-500 cursor-not-allowed opacity-70 border border-zinc-300 dark:border-zinc-700/50 shadow-none'
               }`}
             >
               {isGenerating ? (
                 <span className="flex items-center justify-center gap-2">
                   <RefreshCw className="w-5 h-5 animate-spin" />
-                  Gerando Código...
+                  Buscando Código...
                 </span>
               ) : !selectedTurma ? (
-                'Selecione uma Turma para Gerar'
-              ) : activeCode ? (
-                'Gerar Novo Código'
+                'Selecione uma Turma para Mostrar Código'
               ) : (
-                'Gerar Código da Aula'
+                <span className="flex items-center justify-center gap-2">
+                  <Sparkles className="w-5 h-5" />
+                  Mostrar Código
+                </span>
               )}
             </Button>
           </Card>
