@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 interface ClassCode {
   id: string;
   code: string;
+  turma?: string;
   created_at: string;
   expires_at: string;
   is_active: boolean;
@@ -171,6 +172,7 @@ const ClassCodeManager = () => {
             <thead>
               <tr className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800/80 text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 select-none">
                 <th className="py-3.5 px-4 font-bold">Código</th>
+                <th className="py-3.5 px-4 font-bold">Turma</th>
                 <th className="py-3.5 px-4 font-bold">Professor</th>
                 <th className="py-3.5 px-4 font-bold">Gerado em</th>
                 <th className="py-3.5 px-4 font-bold text-center">Uso</th>
@@ -182,6 +184,11 @@ const ClassCodeManager = () => {
                 <tr key={item.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/10 transition-colors">
                   <td className="py-4 px-4 font-mono font-black text-blue-600 dark:text-blue-400 tracking-wider text-base">
                     {item.code}
+                  </td>
+                  <td className="py-4 px-4 font-semibold text-zinc-900 dark:text-zinc-150">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-blue-500/10 text-blue-500 border border-blue-500/15">
+                      {item.turma || 'TCG01'}
+                    </span>
                   </td>
                   <td className="py-4 px-4 font-semibold text-zinc-900 dark:text-zinc-150">
                     <div className="flex items-center gap-2.5">

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
-import { MapPin, MapPinOff, AlertCircle, Camera, RefreshCw, X, AlertTriangle, Clock, HelpCircle } from 'lucide-react';
+import { MapPin, MapPinOff, AlertCircle, Camera, RefreshCw, X, AlertTriangle, Clock, HelpCircle, Ticket, Key, Lock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useLocationVerification } from '@/hooks/useLocationVerification';
 import { PushNotificationModal } from './PushNotificationModal';
@@ -58,6 +58,7 @@ const LotteryForm = ({ studentUser, onSuccessPhotoValidated }: LotteryFormProps)
   const [photoValidationError, setPhotoValidationError] = useState<string | null>(null);
   const [tentativasRestantes, setTentativasRestantes] = useState(3);
   const [tentativasCodigo, setTentativasCodigo] = useState(3);
+  const [codeCooldownSeconds, setCodeCooldownSeconds] = useState(0);
   const [generatedTicket, setGeneratedTicket] = useState<string | null>(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [zoom, setZoom] = useState(1.0);
@@ -158,6 +159,31 @@ const LotteryForm = ({ studentUser, onSuccessPhotoValidated }: LotteryFormProps)
         }
       }
     }
+
+    // Verificar se existe um bloqueio temporizado de código de aula salvo
+    const savedCodeCooldown = localStorage.getItem('bit_code_cooldown_until');
+    const savedTentativas = localStorage.getItem('bit_tentativas_codigo');
+
+    if (savedTentativas !== null) {
+      const parsedTentativas = parseInt(savedTentativas, 10);
+      if (!isNaN(parsedTentativas)) {
+        setTentativasCodigo(parsedTentativas);
+      }
+    }
+
+    if (savedCodeCooldown) {
+      const cooldownUntil = parseInt(savedCodeCooldown, 10);
+      const remainingMs = cooldownUntil - Date.now();
+      if (remainingMs > 0) {
+        const remainingSecs = Math.ceil(remainingMs / 1000);
+        setCodeCooldownSeconds(remainingSecs);
+        setTentativasCodigo(0);
+      } else {
+        localStorage.removeItem('bit_code_cooldown_until');
+        localStorage.removeItem('bit_tentativas_codigo');
+        setTentativasCodigo(3);
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -166,6 +192,25 @@ const LotteryForm = ({ studentUser, onSuccessPhotoValidated }: LotteryFormProps)
     }, 10000);
     return () => clearTimeout(timer);
   }, []);
+
+  // Timer de 60s para bloqueio temporizado após 3 tentativas inválidas de código
+  useEffect(() => {
+    if (codeCooldownSeconds <= 0) return;
+
+    const interval = setInterval(() => {
+      setCodeCooldownSeconds((prev) => {
+        if (prev <= 1) {
+          localStorage.removeItem('bit_code_cooldown_until');
+          localStorage.removeItem('bit_tentativas_codigo');
+          setTentativasCodigo(3);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [codeCooldownSeconds]);
 
   useEffect(() => {
     if (!alreadyParticipated || terminoFixo === null) {
@@ -292,6 +337,32 @@ const LotteryForm = ({ studentUser, onSuccessPhotoValidated }: LotteryFormProps)
           const serverErrorType = responseData.tipoErro || null;
           setErrorType(serverErrorType);
 
+          // Dispara Toast de alerta/erro exibindo a mensagem contida no campo 'erro' da resposta
+          toast({
+            title: "Atenção",
+            description: erroMensagem,
+            variant: "destructive",
+          });
+
+          // Incrementar contador de tentativas malsucedidas do código se for erroCode ou falha no código
+          if (serverErrorType === 'erroCode' || !serverErrorType) {
+            setTentativasCodigo(prev => {
+              const novaContagem = prev > 0 ? prev - 1 : 0;
+              localStorage.setItem('bit_tentativas_codigo', novaContagem.toString());
+              if (novaContagem === 0) {
+                const cooldownUntil = Date.now() + 60000;
+                localStorage.setItem('bit_code_cooldown_until', cooldownUntil.toString());
+                setCodeCooldownSeconds(60);
+                toast({
+                  title: "Limite de Tentativas Atingido (3/3)",
+                  description: "Você atingiu o limite de 3 tentativas. Aguarde 60 segundos ou confira o código com o professor.",
+                  variant: "destructive",
+                });
+              }
+              return novaContagem;
+            });
+          }
+
           // Mantém a compatibilidade com a trava diária do sistema
           if (serverErrorType === 'erroParticipacao') {
             const tempoRestanteSegundos = responseData.tempoRestante;
@@ -319,7 +390,6 @@ const LotteryForm = ({ studentUser, onSuccessPhotoValidated }: LotteryFormProps)
             setTentativasRestantes(prev => prev > 0 ? prev - 1 : 0);
             setAnalysisError(erroMensagem);
           } else if (serverErrorType === 'erroCode') {
-            setTentativasCodigo(prev => prev > 0 ? prev - 1 : 0);
             setAnalysisError(erroMensagem);
           } else if (serverErrorType === 'erroSeguranca') {
             setAnalysisError(erroMensagem);
@@ -335,6 +405,32 @@ const LotteryForm = ({ studentUser, onSuccessPhotoValidated }: LotteryFormProps)
 
           const serverErrorType = responseData.tipoErro || null;
           setErrorType(serverErrorType);
+
+          // Dispara Toast de alerta/erro exibindo a mensagem contida no campo 'erro' da resposta
+          toast({
+            title: "Atenção",
+            description: String(erroGenerico),
+            variant: "destructive",
+          });
+
+          // Incrementar contador de tentativas malsucedidas do código se for erroCode ou falha no código
+          if (serverErrorType === 'erroCode' || !serverErrorType) {
+            setTentativasCodigo(prev => {
+              const novaContagem = prev > 0 ? prev - 1 : 0;
+              localStorage.setItem('bit_tentativas_codigo', novaContagem.toString());
+              if (novaContagem === 0) {
+                const cooldownUntil = Date.now() + 60000;
+                localStorage.setItem('bit_code_cooldown_until', cooldownUntil.toString());
+                setCodeCooldownSeconds(60);
+                toast({
+                  title: "Limite de Tentativas Atingido (3/3)",
+                  description: "Você atingiu o limite de 3 tentativas. Aguarde 60 segundos ou confira o código com o professor.",
+                  variant: "destructive",
+                });
+              }
+              return novaContagem;
+            });
+          }
 
           if (serverErrorType === 'erroParticipacao') {
             const tempoRestanteSegundos = responseData.tempoRestante;
@@ -362,7 +458,6 @@ const LotteryForm = ({ studentUser, onSuccessPhotoValidated }: LotteryFormProps)
             setTentativasRestantes(prev => prev > 0 ? prev - 1 : 0);
             setAnalysisError(String(erroGenerico));
           } else if (serverErrorType === 'erroCode') {
-            setTentativasCodigo(prev => prev > 0 ? prev - 1 : 0);
             setAnalysisError(String(erroGenerico));
           } else if (serverErrorType === 'erroSeguranca') {
             setAnalysisError(String(erroGenerico));
@@ -397,6 +492,97 @@ const LotteryForm = ({ studentUser, onSuccessPhotoValidated }: LotteryFormProps)
     }
   };
 
+
+  // Show error UI if code validation fails (Cenário B: Erro de Código de Participação)
+  if (analysisError && errorType === 'erroCode') {
+    return (
+      <div className="max-w-lg mx-auto px-4">
+        <Card className="p-6 md:p-8 shadow-xl border-0 dark:border dark:border-zinc-800 bg-white dark:bg-zinc-950 rounded-2xl">
+          <div className="text-center space-y-6">
+            <div className="mx-auto w-24 h-24 bg-blue-50 dark:bg-blue-950/30 rounded-full flex items-center justify-center">
+              <Ticket className="w-12 h-12 text-blue-600 dark:text-blue-400" />
+            </div>
+
+            <div className="flex flex-col items-center justify-center gap-3">
+              <div className="flex items-center justify-center gap-2">
+                <AlertTriangle className="w-6 h-6 text-amber-500 fill-current" />
+                <h2 className="text-xl md:text-2xl font-bold text-school-blue-700 dark:text-white">
+                  {codeCooldownSeconds > 0 ? 'Aguarde o Temporizador' : 'O código digitado precisa de um ajuste'}
+                </h2>
+              </div>
+              <span className="text-sm font-bold px-4 py-1.5 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 rounded-full border border-red-200 dark:border-red-800/50">
+                {codeCooldownSeconds > 0 
+                  ? `Bloqueado por 60s (${codeCooldownSeconds}s restantes)`
+                  : `Você tem mais ${tentativasCodigo} tentativa${tentativasCodigo !== 1 ? 's' : ''} de 3`
+                }
+              </span>
+            </div>
+
+            <p className="text-gray-600 dark:text-zinc-400 px-2">
+              {codeCooldownSeconds > 0
+                ? 'Você excedeu as 3 tentativas. Aguarde o tempo ou verifique o código correto com seu professor.'
+                : 'A validação do código falhou. Verifique as informações abaixo antes de tentar novamente.'
+              }
+            </p>
+
+            <div className="bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 rounded-lg p-4 max-w-sm mx-auto">
+              <p className="text-sm font-medium text-red-600 dark:text-red-400">{analysisError}</p>
+            </div>
+
+            <ul className="text-left text-sm md:text-base text-gray-500 dark:text-zinc-400 space-y-2 max-w-sm mx-auto list-disc pl-5">
+              <li>Verifique se você digitou o código corretamente</li>
+              <li>Confirme se o código ainda está dentro do horário de validade</li>
+              <li>Certifique-se de que o código pertence à sua turma</li>
+            </ul>
+
+            <div className="border-2 border-blue-200 dark:border-blue-800/50 rounded-2xl p-4 md:p-6 my-6 max-w-sm mx-auto">
+              <Button
+                disabled={codeCooldownSeconds > 0}
+                onClick={() => {
+                  setAnalysisError(null);
+                  setErrorType(null);
+                  setSubmissionState('idle');
+                  setTimeout(() => {
+                    document.getElementById('codigo-aula')?.focus();
+                  }, 100);
+                }}
+                className={`w-full h-14 md:h-16 text-base md:text-lg font-bold rounded-xl shadow-sm transition-all duration-300 flex items-center justify-center gap-2 ${
+                  codeCooldownSeconds > 0
+                    ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white transform hover:scale-105'
+                }`}
+              >
+                {codeCooldownSeconds > 0 ? (
+                  <span className="flex items-center gap-2">
+                    <Clock className="w-5 h-5 animate-spin" />
+                    Aguarde 00:{codeCooldownSeconds.toString().padStart(2, '0')} para tentar novamente
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <Key className="w-5 h-5 md:w-6 md:h-6" />
+                    Corrigir Código de Aula
+                  </span>
+                )}
+              </Button>
+            </div>
+
+            <div className="text-center pt-4 border-t border-gray-100 dark:border-slate-800 mt-6">
+              <img
+                src="/img/logo.png"
+                alt="Logo da Escola"
+                className="mx-auto h-12 md:h-16 w-auto object-contain block dark:hidden"
+              />
+              <img
+                src="/img/logo_branca.png"
+                alt="Logo da Escola"
+                className="mx-auto h-12 md:h-16 w-auto object-contain hidden dark:block"
+              />
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   // Show error UI if photo validation fails
   if (analysisError && errorType === 'erroUniforme') {
@@ -733,7 +919,15 @@ const LotteryForm = ({ studentUser, onSuccessPhotoValidated }: LotteryFormProps)
                       maxLength={6}
                       placeholder="Ex.: 123456"
                       value={studentCode}
-                      onChange={(e) => setStudentCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      onChange={(e) => {
+                        setStudentCode(e.target.value.replace(/\D/g, '').slice(0, 6));
+                        if (tentativasCodigo === 0 || codeCooldownSeconds > 0) {
+                          localStorage.removeItem('bit_code_cooldown_until');
+                          localStorage.removeItem('bit_tentativas_codigo');
+                          setCodeCooldownSeconds(0);
+                          setTentativasCodigo(3);
+                        }
+                      }}
                       className="h-14 text-xl border-2 border-zinc-300 bg-white text-zinc-900 placeholder-zinc-400 focus:border-school-blue-500 focus:ring-school-blue-500/20 dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-white dark:placeholder-zinc-500 rounded-xl text-center font-mono font-bold tracking-widest"
                     />
                   </div>
@@ -788,22 +982,45 @@ const LotteryForm = ({ studentUser, onSuccessPhotoValidated }: LotteryFormProps)
                       )}
                     </Button>
                   ) : (
-                    <Button
-                      type="submit"
-                      disabled={submissionState === 'enviando' || submissionState === 'processando' || !photo || photoValidationError !== null || tentativasCodigo === 0}
-                      className="w-full h-auto py-5 text-base md:text-lg font-bold rounded-2xl shadow-sm bg-school-blue-600 hover:bg-school-blue-700 text-white animate-pulse-subtle disabled:opacity-70 disabled:animate-none hover:shadow-md transition-all duration-300"
-                    >
-                      {(submissionState === 'enviando' || submissionState === 'processando') ? (
-                        <div className="flex items-center justify-center">
-                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                          {submissionState === 'processando' ? 'Analisando foto, aguarde...' : 'Processando...'}
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center">
-                          Participar do sorteio
+                    <>
+                      {tentativasCodigo === 0 && (
+                        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-600 dark:text-red-400 text-xs font-semibold text-center flex items-center justify-center gap-2">
+                          <AlertCircle className="w-4 h-4 shrink-0" />
+                          <span>
+                            {codeCooldownSeconds > 0 
+                              ? `Limite de 3 tentativas atingido. Aguarde 00:${codeCooldownSeconds.toString().padStart(2, '0')} ou edite o código.`
+                              : `Limite de 3 tentativas atingido. Verifique o código com o professor e edite o campo para tentar novamente.`
+                            }
+                          </span>
                         </div>
                       )}
-                    </Button>
+                      <Button
+                        type="submit"
+                        disabled={submissionState === 'enviando' || submissionState === 'processando' || !photo || photoValidationError !== null || tentativasCodigo === 0 || codeCooldownSeconds > 0}
+                        className="w-full h-auto py-5 text-base md:text-lg font-bold rounded-2xl shadow-sm bg-school-blue-600 hover:bg-school-blue-700 text-white animate-pulse-subtle disabled:opacity-70 disabled:animate-none hover:shadow-md transition-all duration-300"
+                      >
+                        {(submissionState === 'enviando' || submissionState === 'processando') ? (
+                          <div className="flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                            {submissionState === 'processando' ? 'Analisando foto, aguarde...' : 'Processando...'}
+                          </div>
+                        ) : (tentativasCodigo === 0 || codeCooldownSeconds > 0) ? (
+                          <div className="flex items-center justify-center gap-2 text-red-300">
+                            <Clock className="w-5 h-5 animate-spin" />
+                            <span>
+                              {codeCooldownSeconds > 0 
+                                ? `Aguarde 00:${codeCooldownSeconds.toString().padStart(2, '0')} para tentar novamente` 
+                                : 'Bloqueado (Limite Atingido)'
+                              }
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center">
+                            Participar do sorteio
+                          </div>
+                        )}
+                      </Button>
+                    </>
                   )}
                 </form>
                 </>

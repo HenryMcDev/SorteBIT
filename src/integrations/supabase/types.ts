@@ -73,6 +73,27 @@ export type Database = {
           code: string
           created_at: string
           id: string
+          turma: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          turma: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          turma?: string
+        }
+        Relationships: []
+      }
+      turmas: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
         }
         Insert: {
           code: string

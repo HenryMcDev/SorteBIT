@@ -178,16 +178,18 @@ export const DailyCheckinModal = ({
 
   const isWeekendPause = checkWeekendPause();
 
-  // Verifica se o aluno já fez check-in hoje
-  const alreadyCheckedInToday = isCampaignActive
-    ? checkins.some(c => c.dia_checkin === todayCampaignDay)
-    : false;
+  // Verifica se o aluno já fez check-in do Dia 1
+  const hasClaimedDay1 = checkins.some(c => c.dia_checkin === 1);
 
-  // Determinar o dia atual do check-in a ser resgatado
-  const totalCompleted = checkins.length;
-  const currentCheckinDay = isCampaignActive
-    ? todayCampaignDay
-    : (isBeforeCampaign ? 1 : 7);
+  // Determinar o dia atual do check-in a ser resgatado:
+  // Se o aluno ainda NÃO resgatou o DIA 1 (03/08), força o resgate do DIA 1 primeiro!
+  // Se o aluno JÁ resgatou o DIA 1, avança para o DIA 2 (04/08) ou dia atual da campanha.
+  const currentCheckinDay = !hasClaimedDay1
+    ? 1
+    : (isCampaignActive ? todayCampaignDay! : (isBeforeCampaign ? 1 : 7));
+
+  // Verifica se o aluno já fez check-in referente ao dia ativo atual
+  const alreadyCheckedInToday = checkins.some(c => c.dia_checkin === currentCheckinDay);
 
   // Verificar se a sequência está quebrada/interrompida para o Dia 7
   const checkSequenceInterrupted = () => {
@@ -210,10 +212,13 @@ export const DailyCheckinModal = ({
   };
 
   const isInterrupted = isCampaignActive
-    ? Array.from({ length: Math.max(0, todayCampaignDay - 1) }, (_, i) => i + 1)
+    ? Array.from({ length: Math.max(0, (todayCampaignDay || 1) - 1) }, (_, i) => i + 1)
         .some(day => !checkins.some(c => c.dia_checkin === day))
     : checkSequenceInterrupted();
   
+  // Total de check-ins concluídos pelo usuário
+  const totalCompleted = checkins.length;
+
   // No Dia 7, a caixa misteriosa é desabilitada se houver falhas/gaps nos dias anteriores
   // ou se não concluiu os dias de 1 a 6
   const isMysteryBlocked = isInterrupted || (currentCheckinDay === 7 && totalCompleted < 6);
@@ -231,7 +236,7 @@ export const DailyCheckinModal = ({
     if (alreadyCheckedInToday) {
       toast({
         title: "Check-in já realizado",
-        description: "Você já garantiu seu bônus de hoje! Volte amanhã.",
+        description: `Você já garantiu seu bônus do Dia ${currentCheckinDay}!`,
       });
       return;
     }
@@ -316,24 +321,20 @@ export const DailyCheckinModal = ({
               const claimedRecord = checkins.find(c => c.dia_checkin === item.dia);
               const isClaimed = !!claimedRecord;
               
-              const isCurrent = isCampaignActive
-                ? item.dia === todayCampaignDay
-                : false;
+              const isCurrent = item.dia === currentCheckinDay;
                 
-              const isFuture = isCampaignActive
-                ? item.dia > todayCampaignDay
-                : isBeforeCampaign;
+              const isFuture = item.dia > currentCheckinDay;
                 
               const isMissed = isCampaignActive
-                ? (item.dia < todayCampaignDay && !isClaimed)
+                ? (item.dia < currentCheckinDay && !isClaimed)
                 : isAfterCampaign && !isClaimed;
 
               let cardStyle = "";
               let coinStyle = "";
 
               if (isClaimed) {
-                cardStyle = "border-amber-400 dark:border-amber-500 bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/20 dark:to-amber-900/10 text-amber-800 dark:text-amber-400 shadow-sm";
-                coinStyle = "text-amber-600 bg-amber-200/50 dark:bg-amber-900/50";
+                cardStyle = "border-emerald-400 dark:border-emerald-500 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/20 dark:to-emerald-900/10 text-emerald-800 dark:text-emerald-400 shadow-sm";
+                coinStyle = "text-emerald-600 bg-emerald-200/50 dark:bg-emerald-900/50";
               } else if (isCurrent) {
                 cardStyle = "border-school-blue-500 dark:border-school-blue-400 bg-white dark:bg-zinc-900 text-school-blue-700 dark:text-white shadow-md ring-2 ring-school-blue-400/30 animate-pulse";
                 coinStyle = "text-school-blue-600 bg-school-blue-50 dark:bg-school-blue-950/50";
@@ -458,21 +459,28 @@ export const DailyCheckinModal = ({
                 <>
                   <p className="font-bold text-zinc-800 dark:text-zinc-200">Uniforme pendente de validação</p>
                   <p className="text-zinc-500 dark:text-zinc-400 leading-normal">
-                    Para habilitar o resgate do check-in de hoje, você precisa primeiro enviar e obter sucesso na validação da foto do uniforme.
+                    Para habilitar o resgate do check-in do Dia {currentCheckinDay}, você precisa primeiro enviar e obter sucesso na validação da foto do uniforme.
                   </p>
                 </>
               ) : alreadyCheckedInToday ? (
                 <>
-                  <p className="font-bold text-emerald-600 dark:text-emerald-400">Tudo pronto por hoje! ✅</p>
+                  <p className="font-bold text-emerald-600 dark:text-emerald-400">Recompensa do Dia {currentCheckinDay} Concluída! ✅</p>
                   <p className="text-zinc-500 dark:text-zinc-400 leading-normal">
-                    Você já resgatou o bônus do seu uniforme hoje. Volte amanhã para liberar o check-in do próximo dia!
+                    Você já resgatou seu bônus do Dia {currentCheckinDay}.
+                  </p>
+                </>
+              ) : !hasClaimedDay1 ? (
+                <>
+                  <p className="font-bold text-school-blue-600 dark:text-school-blue-400">Resgate Retroativo do Dia 1 (03/08) Liberado! 🎉</p>
+                  <p className="text-zinc-500 dark:text-zinc-400 leading-normal">
+                    Você tem o bônus pendente do Dia 1 (03/08). Clique no botão abaixo para garantir os **+5 CashBITs** antes de prosseguir!
                   </p>
                 </>
               ) : (
                 <>
-                  <p className="font-bold text-school-blue-600 dark:text-school-blue-400">Check-in Liberado! 🎉</p>
+                  <p className="font-bold text-school-blue-600 dark:text-school-blue-400">Check-in do Dia {currentCheckinDay} Liberado! 🎉</p>
                   <p className="text-zinc-500 dark:text-zinc-400 leading-normal">
-                    Você já validou seu uniforme hoje! Clique no botão abaixo para garantir o bônus do **Dia {currentCheckinDay}**.
+                    Você já validou seu uniforme! Clique no botão abaixo para resgatar o bônus do **Dia {currentCheckinDay}**.
                   </p>
                 </>
               )}
@@ -533,7 +541,7 @@ export const DailyCheckinModal = ({
               {isClaiming ? "Processando..." : (
                 <>
                   <Sparkles className="w-5 h-5" /> 
-                  Resgatar Recompensa
+                  {!hasClaimedDay1 ? "Resgatar Dia 1 (03/08) +5 CashBIT" : `Resgatar Dia ${currentCheckinDay}`}
                 </>
               )}
             </Button>

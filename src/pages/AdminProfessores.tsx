@@ -27,6 +27,63 @@ export default function AdminProfessores() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
+  // State para Gestão de Turmas
+  const [turmasList, setTurmasList] = useState<{ id?: string; code: string }[]>([
+    { code: 'TCG01' },
+    { code: 'TCG02' },
+    { code: 'TCG03' }
+  ]);
+  const [newTurmaCode, setNewTurmaCode] = useState('');
+  const [isLoadingTurmas, setIsLoadingTurmas] = useState(false);
+  const [isRegisteringTurma, setIsRegisteringTurma] = useState(false);
+
+  const fetchTurmasAdmin = async () => {
+    setIsLoadingTurmas(true);
+    try {
+      const response = await axios.get(`${getBackendUrl()}/api/turmas`);
+      if (response.data?.sucesso && Array.isArray(response.data.turmas)) {
+        setTurmasList(response.data.turmas);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar turmas:', err);
+    } finally {
+      setIsLoadingTurmas(false);
+    }
+  };
+
+  const handleRegisterTurma = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTurmaCode.trim()) return;
+
+    setIsRegisteringTurma(true);
+    try {
+      const formatted = newTurmaCode.trim().toUpperCase();
+      const response = await axios.post(`${getBackendUrl()}/api/turmas`, { code: formatted });
+      if (response.data?.sucesso) {
+        toast({
+          title: 'Turma criada!',
+          description: `A turma "${formatted}" foi cadastrada com sucesso.`,
+        });
+        setNewTurmaCode('');
+        fetchTurmasAdmin();
+      } else {
+        toast({
+          title: 'Erro',
+          description: response.data?.erro || 'Erro ao cadastrar turma.',
+          variant: 'destructive'
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: error.response?.data?.erro || 'Erro ao comunicar com o servidor.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsRegisteringTurma(false);
+    }
+  };
+
   const fetchProfessores = async (silent = false) => {
     if (!silent) setIsLoading(true);
     try {
@@ -62,6 +119,7 @@ export default function AdminProfessores() {
 
   useEffect(() => {
     fetchProfessores();
+    fetchTurmasAdmin();
   }, []);
 
   const filteredProfessores = professores.filter(prof => 
@@ -71,7 +129,7 @@ export default function AdminProfessores() {
 
   return (
     <div className="space-y-6">
-      {/* Overview Cards */}
+      {/* Overview & Management Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="p-6 bg-white dark:bg-[#131517] border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-sm">
           <div className="space-y-2">
@@ -80,6 +138,54 @@ export default function AdminProfessores() {
           </div>
           <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-inner">
             <GraduationCap className="w-6 h-6" />
+          </div>
+        </Card>
+
+        {/* Cadastro e Gestão de Turmas */}
+        <Card className="p-6 md:col-span-2 bg-white dark:bg-[#131517] border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div>
+              <h4 className="font-bold text-slate-900 dark:text-white text-base">Gestão de Turmas (Daily Codes)</h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Cadastre novas turmas para utilização na geração de códigos diários.</p>
+            </div>
+            <Button
+              onClick={fetchTurmasAdmin}
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs border-slate-200 dark:border-slate-800"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 mr-1 ${isLoadingTurmas ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
+          </div>
+
+          <form onSubmit={handleRegisterTurma} className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Digite o código da turma (ex: TCG04)"
+              value={newTurmaCode}
+              onChange={(e) => setNewTurmaCode(e.target.value)}
+              className="flex-1 h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-zinc-900/50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 uppercase font-semibold tracking-wider text-slate-900 dark:text-white"
+            />
+            <Button
+              type="submit"
+              disabled={isRegisteringTurma || !newTurmaCode.trim()}
+              className="h-10 px-5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm rounded-xl"
+            >
+              {isRegisteringTurma ? 'Cadastrando...' : '+ Cadastrar Turma'}
+            </Button>
+          </form>
+
+          {/* List of Registered Turmas */}
+          <div className="flex flex-wrap gap-2 pt-1">
+            {turmasList.map((t) => (
+              <span
+                key={t.id || t.code}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50"
+              >
+                Turma: {t.code}
+              </span>
+            ))}
           </div>
         </Card>
       </div>
