@@ -100,29 +100,53 @@ const StudentAuth = ({ isLoading, login, register, cpfValue, cpfError, handleCPF
     setForgotState('submitting');
     setForgotDebugError('');
     try {
-      const response = await axios.post(`${getBackendUrl()}/api/auth/recover-password`, {
-        cpf: forgotIdentifier
-      });
+      // 1. Sanitizar o CPF (remover caracteres não numéricos)
+      const cpfLimpo = forgotIdentifier.replace(/\D/g, '');
+      const cpfFormatado = formatCPF(forgotIdentifier);
 
-      if (response.data?.sucesso) {
-        const email = response.data.email || '';
-        let maskedEmail = 'seu e-mail cadastrado';
-        if (email && email.includes('@')) {
-          const [username, domain] = email.split('@');
-          maskedEmail = `${username.charAt(0)}***@${domain}`;
-        }
-        setForgotEmailMasked(maskedEmail);
-        setForgotEmail(email);
-        setForgotPhase(2);
-        setTimeLeft(60);
-        setForgotState('idle');
-        toast({ title: 'Código enviado!', description: `Enviamos o código para ${maskedEmail}.` });
-      } else {
-        throw new Error(response.data?.erro || 'Erro ao processar recuperação.');
+      if (!cpfLimpo || cpfLimpo.length !== 11) {
+        throw new Error('Por favor, informe um CPF válido com 11 dígitos.');
       }
+
+      // 2. Buscar no Supabase por CPF limpo ou mascarado
+      const { data: participante, error } = await (supabase as any)
+        .from('estudantes')
+        .select('*')
+        .or(`cpf.eq.${cpfLimpo},cpf.eq.${cpfFormatado}`)
+        .maybeSingle();
+
+      if (error) {
+        console.error('[Supabase Error]:', error);
+        throw new Error('Erro ao consultar o banco de dados. Tente novamente.');
+      }
+
+      if (!participante) {
+        throw new Error('CPF não encontrado. Não localizamos um cadastro com este CPF.');
+      }
+
+      // 3. Disparar redefinição de senha via Supabase Auth
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(participante.email);
+
+      if (resetError) {
+        console.error('[Supabase Auth Error]:', resetError);
+        throw new Error(`Erro ao disparar e-mail de recuperação: ${resetError.message}`);
+      }
+
+      const email = participante.email || '';
+      let maskedEmail = 'seu e-mail cadastrado';
+      if (email && email.includes('@')) {
+        const [username, domain] = email.split('@');
+        maskedEmail = `${username.charAt(0)}***@${domain}`;
+      }
+      setForgotEmailMasked(maskedEmail);
+      setForgotEmail(email);
+      setForgotPhase(2);
+      setTimeLeft(60);
+      setForgotState('idle');
+      toast({ title: 'Código enviado!', description: `Enviamos o código para ${maskedEmail}.` });
     } catch (err: any) {
       console.error('Erro na recuperação de senha por CPF:', err);
-      const errorMsg = err.response?.data?.erro || err.message || 'Não localizamos um cadastro com este CPF.';
+      const errorMsg = err.message || 'Não localizamos um cadastro com este CPF.';
       toast({ title: 'Erro', description: errorMsg, variant: 'destructive' });
       setForgotState('idle');
     }
