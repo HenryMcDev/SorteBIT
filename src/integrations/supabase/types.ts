@@ -91,16 +91,19 @@ export type Database = {
       }
       turmas: {
         Row: {
+          ativo: boolean | null
           code: string
           created_at: string
           id: string
         }
         Insert: {
+          ativo?: boolean | null
           code: string
           created_at?: string
           id?: string
         }
         Update: {
+          ativo?: boolean | null
           code?: string
           created_at?: string
           id?: string

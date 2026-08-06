@@ -21,7 +21,8 @@ import {
   GraduationCap,
   Copy,
   Trash2,
-  Power
+  Power,
+  Play
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -55,6 +56,7 @@ export default function AdminProfessores() {
   const [isRegisteringTurma, setIsRegisteringTurma] = useState(false);
   const [turmaSearchTerm, setTurmaSearchTerm] = useState('');
   const [turmaToDelete, setTurmaToDelete] = useState<{ id: string; code: string } | null>(null);
+  const [turmaToToggle, setTurmaToToggle] = useState<{ id: string; code: string; currentAtivo: boolean } | null>(null);
 
   const handleCopyTurmaCode = (code: string) => {
     navigator.clipboard.writeText(code);
@@ -327,7 +329,7 @@ export default function AdminProfessores() {
               >
                 <div className="space-y-0.5 truncate mr-2">
                   <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full shrink-0 bg-emerald-500 animate-pulse" />
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${t.ativo !== false ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
                     <span className="font-bold text-sm text-slate-900 dark:text-white tracking-wide truncate">{codeDisplay}</span>
                   </div>
                   {dateDisplay && <p className="text-[10px] text-slate-400">Criada em: {dateDisplay}</p>}
@@ -345,11 +347,15 @@ export default function AdminProfessores() {
                   <Button
                     size="icon"
                     variant="ghost"
-                    className={`h-8 w-8 ${t.ativo ? 'text-emerald-500 hover:text-emerald-600' : 'text-slate-400 hover:text-emerald-500'}`}
-                    title={t.ativo ? 'Desativar Turma' : 'Ativar Turma'}
-                    onClick={() => handleToggleTurmaStatus(t.id!, !!t.ativo, codeDisplay)}
+                    className="h-8 w-8 text-slate-400"
+                    title={t.ativo !== false ? 'Desativar Turma' : 'Ativar Turma'}
+                    onClick={() => setTurmaToToggle({ id: t.id!, code: codeDisplay, currentAtivo: t.ativo !== false })}
                   >
-                    <Power className="w-3.5 h-3.5" />
+                    {t.ativo !== false ? (
+                      <Power className="w-3.5 h-3.5 text-slate-400 hover:text-red-500 dark:hover:text-red-405" />
+                    ) : (
+                      <Play className="w-3.5 h-3.5 text-emerald-600 hover:text-emerald-700 fill-emerald-600/20" />
+                    )}
                   </Button>
                   <Button
                     size="icon"
@@ -482,6 +488,46 @@ export default function AdminProfessores() {
               className="text-xs bg-rose-600 hover:bg-rose-500 text-white rounded-xl"
             >
               Excluir Turma
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Confirmação de Desativação / Reativação */}
+      <Dialog open={!!turmaToToggle} onOpenChange={(open) => { if (!open) setTurmaToToggle(null); }}>
+        <DialogContent className="w-[calc(100%-2rem)] max-w-sm mx-auto rounded-2xl p-5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 shadow-xl">
+          <DialogHeader className="text-left space-y-2">
+            <DialogTitle className="text-base font-bold text-slate-900 dark:text-white">
+              {turmaToToggle?.currentAtivo ? 'Desativar Turma' : 'Ativar Turma'}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
+              Tem certeza que deseja {turmaToToggle?.currentAtivo ? 'desativar' : 'ativar'} a turma <strong className="text-slate-900 dark:text-white">"{turmaToToggle?.code}"</strong>?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4 flex gap-2 justify-end">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setTurmaToToggle(null)}
+              className="text-xs rounded-xl border-slate-200 dark:border-slate-800"
+            >
+              Cancelar
+            </Button>
+            <Button 
+              size="sm"
+              onClick={async () => {
+                if (turmaToToggle) {
+                  await handleToggleTurmaStatus(turmaToToggle.id, turmaToToggle.currentAtivo, turmaToToggle.code);
+                  setTurmaToToggle(null);
+                }
+              }}
+              className={`text-xs text-white rounded-xl ${
+                turmaToToggle?.currentAtivo 
+                  ? 'bg-rose-600 hover:bg-rose-500' 
+                  : 'bg-emerald-600 hover:bg-emerald-500'
+              }`}
+            >
+              {turmaToToggle?.currentAtivo ? 'Desativar' : 'Ativar'}
             </Button>
           </DialogFooter>
         </DialogContent>
