@@ -14,6 +14,84 @@ export type Database = {
   }
   public: {
     Tables: {
+      codigos_recuperacao: {
+        Row: {
+          codigo: string
+          cpf: string
+          criado_em: string
+          email: string
+          expira_em: string
+          id: number
+          usado: boolean
+        }
+        Insert: {
+          codigo: string
+          cpf: string
+          criado_em?: string
+          email: string
+          expira_em: string
+          id?: number
+          usado?: boolean
+        }
+        Update: {
+          codigo?: string
+          cpf?: string
+          criado_em?: string
+          email?: string
+          expira_em?: string
+          id?: number
+          usado?: boolean
+        }
+        Relationships: []
+      }
+      estudantes: {
+        Row: {
+          atualizado_em: string | null
+          bitcash: number
+          cpf: string
+          criado_em: string | null
+          email: string
+          id: number
+          mfa_dispositivo_expira: string | null
+          mfa_dispositivo_token: string | null
+          mfa_lembrar_dispositivo: boolean | null
+          nome_completo: string
+          senha_hash: string | null
+          termos_aceitos: boolean | null
+          user_id: string | null
+        }
+        Insert: {
+          atualizado_em?: string | null
+          bitcash?: number
+          cpf: string
+          criado_em?: string | null
+          email: string
+          id?: number
+          mfa_dispositivo_expira?: string | null
+          mfa_dispositivo_token?: string | null
+          mfa_lembrar_dispositivo?: boolean | null
+          nome_completo: string
+          senha_hash?: string | null
+          termos_aceitos?: boolean | null
+          user_id?: string | null
+        }
+        Update: {
+          atualizado_em?: string | null
+          bitcash?: number
+          cpf?: string
+          criado_em?: string | null
+          email?: string
+          id?: number
+          mfa_dispositivo_expira?: string | null
+          mfa_dispositivo_token?: string | null
+          mfa_lembrar_dispositivo?: boolean | null
+          nome_completo?: string
+          senha_hash?: string | null
+          termos_aceitos?: boolean | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           id: string

@@ -109,7 +109,7 @@ const StudentAuth = ({ isLoading, login, register, cpfValue, cpfError, handleCPF
       }
 
       // 2. Buscar no Supabase por CPF limpo ou mascarado
-      const { data: participante, error } = await (supabase as any)
+      const { data: participante, error } = await supabase
         .from('estudantes')
         .select('*')
         .or(`cpf.eq.${cpfLimpo},cpf.eq.${cpfFormatado}`)
@@ -124,12 +124,33 @@ const StudentAuth = ({ isLoading, login, register, cpfValue, cpfError, handleCPF
         throw new Error('CPF não encontrado. Não localizamos um cadastro com este CPF.');
       }
 
-      // 3. Disparar redefinição de senha via Supabase Auth
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(participante.email);
+      // 3. Gerar código numérico de 6 dígitos
+      const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-      if (resetError) {
-        console.error('[Supabase Auth Error]:', resetError);
-        throw new Error(`Erro ao disparar e-mail de recuperação: ${resetError.message}`);
+      // 4. Salvar o código temporário no banco na tabela codigos_recuperacao com expiração de 15 min
+      const { error: insertError } = await supabase
+        .from('codigos_recuperacao')
+        .insert({
+          cpf: cpfLimpo,
+          email: participante.email,
+          codigo: resetCode,
+          expira_em: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+          usado: false
+        });
+
+      if (insertError) {
+        console.error('[Database Error]:', insertError);
+        throw new Error('Erro ao registrar código de recuperação no banco.');
+      }
+
+      // 5. Disparar a Edge Function de e-mail personalizada
+      const { data: functionData, error: functionError } = await supabase.functions.invoke('send-reset-password-code', {
+        body: { email: participante.email, code: resetCode },
+      });
+
+      if (functionError) {
+        console.error('[Edge Function Error]:', functionError);
+        throw new Error('Erro ao disparar o e-mail de recuperação.');
       }
 
       const email = participante.email || '';
@@ -154,8 +175,8 @@ const StudentAuth = ({ isLoading, login, register, cpfValue, cpfError, handleCPF
 
   const handlePhase2Submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (forgotCode.length !== 8) {
-      toast({ title: 'Código inválido', description: 'Digite o código de 8 dígitos.', variant: 'destructive' });
+    if (forgotCode.trim().length !== 6) {
+      toast({ title: 'Código inválido', description: 'Digite o código de 6 dígitos.', variant: 'destructive' });
       return;
     }
     if (forgotNewPassword.length < 8) {
@@ -164,26 +185,23 @@ const StudentAuth = ({ isLoading, login, register, cpfValue, cpfError, handleCPF
     }
     setForgotState('submitting');
     try {
-      const { error: verifyError } = await supabase.auth.verifyOtp({
+      // Chamar a API do backend para validar o código e atualizar a senha
+      const response = await axios.post(`${getBackendUrl()}/api/auth/reset-password`, {
         email: forgotEmail,
-        token: forgotCode,
-        type: 'recovery'
+        code: forgotCode.trim(),
+        newPassword: forgotNewPassword
       });
-      if (verifyError) {
-        toast({ title: 'Código incorreto ou expirado', description: 'O código inserido é inválido ou já expirou.', variant: 'destructive' });
-        setForgotState('idle');
-        return;
+
+      if (response.data?.sucesso) {
+        setForgotState('success');
+      } else {
+        throw new Error(response.data?.erro || 'Erro ao redefinir a senha.');
       }
-      const { error: updateError } = await supabase.auth.updateUser({ password: forgotNewPassword });
-      
-      if (updateError) throw updateError;
-      
-      setForgotState('success');
     } catch (err: any) {
       console.error(err);
       setForgotState('idle');
       
-      let errorMessage = err?.message || 'Não foi possível atualizar a senha.';
+      let errorMessage = err.response?.data?.erro || err.message || 'Não foi possível atualizar a senha.';
       if (typeof errorMessage === 'string' && errorMessage.includes('Password should contain at least one character of each')) {
         errorMessage = 'Sua nova senha deve conter pelo menos uma letra maiúscula, uma minúscula, um número e um caractere especial.';
       }
@@ -569,11 +587,11 @@ const StudentAuth = ({ isLoading, login, register, cpfValue, cpfError, handleCPF
                           id="forgotCode"
                           type="text"
                           inputMode="numeric"
-                          placeholder="00000000"
+                          placeholder="000000"
                           value={forgotCode}
-                          onChange={(e) => setForgotCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                          onChange={(e) => setForgotCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                           disabled={forgotState === 'submitting'}
-                          maxLength={8}
+                          maxLength={6}
                           className="w-full h-12 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 px-4 text-center text-xl tracking-widest font-mono text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-school-blue-500/50 focus:border-school-blue-500 disabled:opacity-50"
                         />
                       </div>
@@ -608,7 +626,7 @@ const StudentAuth = ({ isLoading, login, register, cpfValue, cpfError, handleCPF
                   )}
                   <button
                     type="submit"
-                    disabled={forgotState === 'submitting' || (forgotPhase === 1 ? !forgotIdentifier.trim() : (forgotCode.length !== 8 || forgotNewPassword.length < 8 || !validatePasswordStrength(forgotNewPassword).valid))}
+                    disabled={forgotState === 'submitting' || (forgotPhase === 1 ? !forgotIdentifier.trim() : (forgotCode.trim().length !== 6 || forgotNewPassword.length < 8 || !validatePasswordStrength(forgotNewPassword).valid))}
                     className="w-full h-12 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed hover:opacity-90 active:scale-[0.98] bg-school-blue-600"
                   >
                     {forgotState === 'submitting' ? (<><Loader2 className="w-4 h-4 animate-spin" /> {forgotPhase === 1 ? 'Processando...' : 'Verificando...'}</>) : (forgotPhase === 1 ? 'Recuperar Acesso' : 'Confirmar e Redefinir Senha')}

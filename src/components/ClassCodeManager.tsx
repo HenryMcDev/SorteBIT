@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Clock, RefreshCw, Search, Users, Shield, User, AlertCircle } from 'lucide-react';
+import { Clock, RefreshCw, Search, Users, Shield, User, AlertCircle, X } from 'lucide-react';
 import axios from 'axios';
 import { getBackendUrl } from '@/utils/backendUrl';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ const ClassCodeManager = () => {
   const [classCodes, setClassCodes] = useState<ClassCode[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedDate, setSelectedDate] = useState('');
   const [currentTime, setCurrentTime] = useState(Date.now());
   const { toast } = useToast();
 
@@ -117,11 +118,13 @@ const ClassCodeManager = () => {
     return () => clearInterval(timeInterval);
   }, []);
 
-  // Format creation time to HH:mm:ss
-  const formatTime = (dateString: string) => {
+  // Format creation date and time to DD/MM/YYYY - HH:mm:ss
+  const formatDateTime = (dateString: string) => {
     try {
       const date = new Date(dateString);
-      return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const formattedDate = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const formattedTime = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      return `${formattedDate} - ${formattedTime}`;
     } catch {
       return dateString;
     }
@@ -152,13 +155,24 @@ const ClassCodeManager = () => {
     );
   };
 
-  const filteredCodes = classCodes.filter((item) => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      item.code.toLowerCase().includes(searchLower) ||
-      item.professor_name.toLowerCase().includes(searchLower)
-    );
-  });
+  const filteredCodes = useMemo(() => {
+    const filtered = classCodes.filter((item) => {
+      const term = searchTerm.toLowerCase();
+
+      const matchesCode = item.code?.toLowerCase().includes(term);
+      const matchesProfessor = item.professor_name?.toLowerCase().includes(term);
+      const matchesTurma = item.turma?.toLowerCase().includes(term);
+
+      const matchesSearch = matchesCode || matchesProfessor || matchesTurma;
+
+      const itemDate = item.created_at ? item.created_at.split('T')[0] : '';
+      const matchesDate = selectedDate ? itemDate === selectedDate : true;
+
+      return matchesSearch && matchesDate;
+    });
+
+    return filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [classCodes, searchTerm, selectedDate]);
 
   return (
     <Card className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm space-y-6">
@@ -184,16 +198,44 @@ const ClassCodeManager = () => {
         </Button>
       </div>
 
-      {/* Filter and Search */}
-      <div className="relative">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
-        <input
-          type="text"
-          placeholder="Pesquisar por professor ou código..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full h-11 pl-10 pr-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-        />
+      {/* Filter and Search Toolbar */}
+      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+        {/* Campo de Busca por Texto (Professor, Código ou Turma) */}
+        <div className="relative w-full sm:flex-1">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Pesquisar por professor, código ou turma (ex: TCG01)..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full h-11 pl-10 pr-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+          />
+        </div>
+
+        {/* Filtro por Data (Dia/Mês/Ano) */}
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-48">
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-full h-11 px-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-white text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+            />
+          </div>
+
+          {selectedDate && (
+            <Button
+              onClick={() => setSelectedDate('')}
+              size="sm"
+              variant="ghost"
+              className="text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white h-11 rounded-xl px-3 border border-dashed border-zinc-200 dark:border-zinc-800 flex items-center gap-1.5"
+              title="Limpar filtro de data"
+            >
+              <X className="h-4 w-4" />
+              Limpar Data
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Table Section */}
@@ -235,7 +277,7 @@ const ClassCodeManager = () => {
                     </div>
                   </td>
                   <td className="py-4 px-4 text-zinc-500 dark:text-zinc-400 font-mono">
-                    {formatTime(item.created_at)}
+                    {formatDateTime(item.created_at)}
                   </td>
                   <td className="py-4 px-4 text-center">
                     <div className="inline-flex items-center justify-center gap-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-2.5 py-1 rounded-lg text-xs font-semibold border border-zinc-200/50 dark:border-zinc-700/50">
@@ -259,8 +301,8 @@ const ClassCodeManager = () => {
           <div className="space-y-1">
             <h4 className="font-bold text-zinc-800 dark:text-zinc-200 text-sm">Nenhum código encontrado</h4>
             <p className="text-xs text-zinc-500 dark:text-zinc-450 max-w-xs mx-auto">
-              {searchTerm 
-                ? "Nenhum resultado corresponde à sua pesquisa. Tente buscar por outros termos." 
+              {(searchTerm || selectedDate) 
+                ? "Nenhum resultado corresponde à sua pesquisa ou filtro de data. Tente buscar por outros termos ou limpar a data." 
                 : "Nenhum código de aula foi gerado por professores recentemente."}
             </p>
           </div>
