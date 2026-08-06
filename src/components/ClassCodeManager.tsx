@@ -29,24 +29,60 @@ const ClassCodeManager = () => {
   const fetchClassCodes = async (silent = false) => {
     if (!silent) setIsLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
+      const { data: classCodesData, error: classCodesError } = await supabase
+        .from('class_codes' as any)
+        .select(`
+          id,
+          code,
+          turma,
+          created_at,
+          expires_at,
+          is_active,
+          professor_id,
+          professores (
+            nome
+          )
+        `)
+        .order('created_at', { ascending: false });
 
-      if (!token) {
-        throw new Error('Sessão expirada');
+      if (classCodesError) {
+        throw classCodesError;
       }
 
-      const response = await axios.get(getBackendUrl() + '/api/admin/class-codes', {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+      const { data: participationsData, error: partError } = await supabase
+        .from('lottery_participations' as any)
+        .select('daily_code, created_at');
+
+      if (partError) {
+        console.error('Erro ao buscar participações:', partError);
+      }
+
+      const mappedCodes = (classCodesData || []).map((cc: any) => {
+        const codeCreated = new Date(cc.created_at).getTime();
+        const codeExpires = new Date(cc.expires_at).getTime();
+        
+        const matches = (participationsData || []).filter((p: any) => {
+          if (p.daily_code !== cc.code) return false;
+          const partTime = new Date(p.created_at).getTime();
+          return partTime >= codeCreated && partTime <= codeExpires;
+        });
+
+        const isExpired = Date.now() > codeExpires || !cc.is_active;
+
+        return {
+          id: cc.id,
+          code: cc.code,
+          turma: cc.turma,
+          created_at: cc.created_at,
+          expires_at: cc.expires_at,
+          is_active: cc.is_active,
+          is_expired: isExpired,
+          professor_name: cc.professores?.nome || 'Desconhecido',
+          use_count: matches.length
+        };
       });
 
-      if (response.data?.sucesso) {
-        setClassCodes(response.data.classCodes || []);
-      } else {
-        throw new Error(response.data?.erro || 'Erro ao carregar códigos de aula.');
-      }
+      setClassCodes(mappedCodes);
     } catch (error: any) {
       console.error('Erro ao buscar códigos de aula:', error);
       if (!silent) {
@@ -167,10 +203,10 @@ const ClassCodeManager = () => {
           <p className="text-sm font-semibold tracking-wide">Carregando códigos de aula...</p>
         </div>
       ) : filteredCodes.length > 0 ? (
-        <div className="overflow-x-auto border border-zinc-200 dark:border-zinc-800/80 rounded-xl">
+        <div className="overflow-x-auto overflow-y-auto max-h-[450px] border border-zinc-200 dark:border-zinc-800/80 rounded-xl relative">
           <table className="w-full border-collapse text-left">
-            <thead>
-              <tr className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800/80 text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 select-none">
+            <thead className="sticky top-0 z-10 bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800/80">
+              <tr className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 select-none">
                 <th className="py-3.5 px-4 font-bold">Código</th>
                 <th className="py-3.5 px-4 font-bold">Turma</th>
                 <th className="py-3.5 px-4 font-bold">Professor</th>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { RefreshCw, Users, AlertCircle, Coins, ChevronDown, Calendar, Image as ImageIcon, Tag, Search, Download, Mail } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -39,9 +39,9 @@ const Participantes = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Estados de controle para busca e filtros de saldo CashBIT
+  // Estados de controle para busca e filtros de saldo CashBIT e cupons
   const [searchTerm, setSearchTerm] = useState('');
-  const [cashBitFilter, setCashBitFilter] = useState<'todos' | 'com_saldo' | 'sem_saldo'>('todos');
+  const [cashBitFilter, setCashBitFilter] = useState<'todos' | 'com_saldo' | 'sem_saldo' | 'com_cupons'>('todos');
 
   // Estados de controle para expandir linhas e carregar fotos sob demanda
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -466,19 +466,28 @@ const Participantes = () => {
     });
   };
 
-  // Filtragem dinâmica de participantes em memória
-  const filteredParticipants = participants.filter((p) => {
-    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    let matchesFilter = true;
-    if (cashBitFilter === 'com_saldo') {
-      matchesFilter = p.bitcash > 0;
-    } else if (cashBitFilter === 'sem_saldo') {
-      matchesFilter = p.bitcash === 0;
-    }
+  // Cálculo do total acumulado de cupons ativos no sistema
+  const totalActiveCoupons = useMemo(() => {
+    return participants.reduce((sum, p) => sum + (p.coupons?.length || 0), 0);
+  }, [participants]);
 
-    return matchesSearch && matchesFilter;
-  });
+  // Filtragem dinâmica de participantes em memória usando useMemo
+  const filteredParticipants = useMemo(() => {
+    return participants.filter((p) => {
+      const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      let matchesFilter = true;
+      if (cashBitFilter === 'com_saldo') {
+        matchesFilter = p.bitcash > 0;
+      } else if (cashBitFilter === 'sem_saldo') {
+        matchesFilter = p.bitcash === 0;
+      } else if (cashBitFilter === 'com_cupons') {
+        matchesFilter = (p.coupons?.length || 0) > 0;
+      }
+
+      return matchesSearch && matchesFilter;
+    });
+  }, [participants, searchTerm, cashBitFilter]);
 
   return (
     <Card className="p-6 md:p-8 shadow-2xl border border-zinc-200/50 dark:border-zinc-800/50 bg-white/85 dark:bg-[#131517]/85 backdrop-blur-xl rounded-2xl w-full max-w-5xl mx-auto transition-colors duration-200">
@@ -488,8 +497,11 @@ const Participantes = () => {
             <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
           </div>
           <div>
-            <h2 className="text-xl md:text-2xl font-bold tracking-tight text-zinc-800 dark:text-white">
+            <h2 className="text-xl md:text-2xl font-bold tracking-tight text-zinc-800 dark:text-white flex items-center gap-2">
               Lista de Participantes
+              <span className="text-xs font-semibold px-2.5 py-0.5 bg-blue-100/80 dark:bg-blue-500/25 text-blue-700 dark:text-blue-400 rounded-full border border-blue-200/50 dark:border-blue-500/30">
+                {totalActiveCoupons} {totalActiveCoupons === 1 ? 'Cupom Ativo' : 'Cupons Ativos'}
+              </span>
             </h2>
             <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
               Alunos concorrendo no sorteio
@@ -538,9 +550,9 @@ const Participantes = () => {
             />
           </div>
 
-          {/* Seletor de Filtro de Saldo CashBIT */}
+          {/* Seletor de Filtro de Saldo CashBIT e Cupons */}
           <div className="flex bg-zinc-100 dark:bg-zinc-900/60 p-1 rounded-xl w-full md:w-auto border border-zinc-200/10">
-            {(['todos', 'com_saldo', 'sem_saldo'] as const).map((filter) => (
+            {(['todos', 'com_saldo', 'sem_saldo', 'com_cupons'] as const).map((filter) => (
               <button
                 key={filter}
                 type="button"
@@ -554,6 +566,7 @@ const Participantes = () => {
                 {filter === 'todos' && 'Todos'}
                 {filter === 'com_saldo' && 'Quem tem CashBIT'}
                 {filter === 'sem_saldo' && 'Quem não tem CashBIT'}
+                {filter === 'com_cupons' && 'Com Cupons Ativos'}
               </button>
             ))}
           </div>
@@ -582,7 +595,7 @@ const Participantes = () => {
           </div>
         ) : filteredParticipants.length > 0 ? (
           <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 overflow-y-auto max-h-[520px] divide-y divide-zinc-200 dark:divide-zinc-850/80 bg-white dark:bg-zinc-950/20 shadow-lg [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-zinc-900/20 [&::-webkit-scrollbar-thumb]:bg-zinc-700/60 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-zinc-600/85">
-            {filteredParticipants.map((p) => {
+            {filteredParticipants.map((p, index) => {
               const isExpanded = expandedId === p.id;
               const photos = studentPhotos[p.id] || [];
               const isLoadingPhotos = loadingPhotosId === p.id;
@@ -595,8 +608,11 @@ const Participantes = () => {
                     onClick={() => handleToggleExpand(p.id, p.name)}
                     className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-colors"
                   >
-                    <div className="flex items-center gap-3 w-1/3">
-                      <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-bold text-xs text-zinc-600 dark:text-zinc-300">
+                    <div className="flex items-center gap-2.5 w-1/3">
+                      <span className="text-xs font-extrabold text-zinc-400 dark:text-zinc-500 min-w-[20px] text-right shrink-0">
+                        {index + 1}.
+                      </span>
+                      <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-bold text-xs text-zinc-600 dark:text-zinc-300 shrink-0">
                         {p.name.substring(0, 2).toUpperCase()}
                       </div>
                       <div className="truncate">

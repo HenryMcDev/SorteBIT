@@ -41,6 +41,7 @@ export const DailyCheckinModal = ({
   onCheckinSuccess
 }: DailyCheckinModalProps) => {
   const [checkins, setCheckins] = useState<CheckinRecord[]>([]);
+  const [totalParticipacoes, setTotalParticipacoes] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isClaiming, setIsClaiming] = useState(false);
   const [alreadyParticipated, setAlreadyParticipated] = useState(propAlreadyParticipated);
@@ -60,29 +61,7 @@ export const DailyCheckinModal = ({
       
       const records = (data || []) as unknown as CheckinRecord[];
       
-      // Auto-reset: Se já completou o dia 7 em uma data anterior (não hoje), reinicia o ciclo deletando registros antigos
-      const temDia7 = records.find(r => r.dia_checkin === 7);
-      if (temDia7) {
-        const dataResgate = new Date(temDia7.data_resgate);
-        const hoje = new Date();
-        const eHoje = dataResgate.getDate() === hoje.getDate() &&
-                      dataResgate.getMonth() === hoje.getMonth() &&
-                      dataResgate.getFullYear() === hoje.getFullYear();
-        
-        if (!eHoje) {
-          // Deleta registros para começar novo ciclo
-          const { error: deleteError } = await supabase
-            .from('campanha_lancamento_checkin' as any)
-            .delete()
-            .eq('aluno_id', Number(studentId));
-          
-          if (!deleteError) {
-            setCheckins([]);
-            setIsLoading(false);
-            return;
-          }
-        }
-      }
+
 
       setCheckins(records);
     } catch (err) {
@@ -111,6 +90,9 @@ export const DailyCheckinModal = ({
         .select('id, participation_date')
         .eq('name', nomeEstudante);
 
+      const count = participations ? participations.length : 0;
+      setTotalParticipacoes(count);
+
       if (participations && participations.length > 0) {
         const today = new Date();
         const hasToday = participations.some(p => {
@@ -120,10 +102,10 @@ export const DailyCheckinModal = ({
                  pDate.getFullYear() === today.getFullYear();
         });
         
-        // Libera se houver hoje ou se houver qualquer registro recente (testes)
-        setAlreadyParticipated(hasToday || participations.length > 0);
+        // Libera se houver hoje no banco ou se o prop já indica participação hoje
+        setAlreadyParticipated(hasToday || propAlreadyParticipated);
       } else {
-        setAlreadyParticipated(false);
+        setAlreadyParticipated(propAlreadyParticipated);
       }
     } catch (err) {
       console.error("Erro ao verificar participações:", err);
@@ -161,7 +143,7 @@ export const DailyCheckinModal = ({
 
   const today = new Date();
   const campaignStart = new Date(2026, 7, 3); // 03/08/2026
-  const campaignEnd = new Date(2026, 7, 11, 23, 59, 59, 999); // 11/08/2026
+  const campaignEnd = new Date(2026, 7, 14, 23, 59, 59, 999); // 14/08/2026
   const isBeforeCampaign = today < campaignStart;
   const isAfterCampaign = today > campaignEnd;
 
@@ -178,50 +160,35 @@ export const DailyCheckinModal = ({
 
   const isWeekendPause = checkWeekendPause();
 
-  // Verifica se o aluno já fez check-in do Dia 1
-  const hasClaimedDay1 = checkins.some(c => c.dia_checkin === 1);
-
-  // Determinar o dia atual do check-in a ser resgatado:
-  // Se o aluno ainda NÃO resgatou o DIA 1 (03/08), força o resgate do DIA 1 primeiro!
-  // Se o aluno JÁ resgatou o DIA 1, avança para o DIA 2 (04/08) ou dia atual da campanha.
-  const currentCheckinDay = !hasClaimedDay1
-    ? 1
-    : (isCampaignActive ? todayCampaignDay! : (isBeforeCampaign ? 1 : 7));
-
-  // Verifica se o aluno já fez check-in referente ao dia ativo atual
-  const alreadyCheckedInToday = checkins.some(c => c.dia_checkin === currentCheckinDay);
-
-  // Verificar se a sequência está quebrada/interrompida para o Dia 7
-  const checkSequenceInterrupted = () => {
-    if (checkins.length < 1) return false;
-    for (let i = 1; i < checkins.length; i++) {
-      const prevDate = new Date(checkins[i-1].data_resgate);
-      const currDate = new Date(checkins[i].data_resgate);
-      
-      const prevMidnight = new Date(prevDate.getFullYear(), prevDate.getMonth(), prevDate.getDate());
-      const currMidnight = new Date(currDate.getFullYear(), currDate.getMonth(), currDate.getDate());
-      
-      const diffTime = currMidnight.getTime() - prevMidnight.getTime();
-      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-      
-      if (diffDays > 1) {
-        return true; // Houve interrupção!
-      }
-    }
-    return false;
-  };
-
-  const isInterrupted = isCampaignActive
-    ? Array.from({ length: Math.max(0, (todayCampaignDay || 1) - 1) }, (_, i) => i + 1)
-        .some(day => !checkins.some(c => c.dia_checkin === day))
-    : checkSequenceInterrupted();
-  
   // Total de check-ins concluídos pelo usuário
   const totalCompleted = checkins.length;
 
-  // No Dia 7, a caixa misteriosa é desabilitada se houver falhas/gaps nos dias anteriores
-  // ou se não concluiu os dias de 1 a 6
-  const isMysteryBlocked = isInterrupted || (currentCheckinDay === 7 && totalCompleted < 6);
+  // Lógica de resgate acumulado baseada nas participações validadas (check-ins)
+  const diasPendentes = CHECKIN_VALUES
+    .filter((item) => item.dia <= totalParticipacoes && !checkins.some((c) => c.dia_checkin === item.dia))
+    .map((item) => item.dia);
+
+  const totalCashbitJaResgatadoNaCampanha = checkins.reduce((sum, c) => sum + (c.cashbit_ganho || 0), 0);
+
+  const saldoPendente = CHECKIN_VALUES
+    .filter((item) => diasPendentes.includes(item.dia))
+    .reduce((sum, item) => sum + item.valor, 0);
+
+  const saldoDisponivelComTeto = Math.max(
+    0,
+    Math.min(saldoPendente, 150 - totalCashbitJaResgatadoNaCampanha)
+  );
+
+  // Indica se já atingiu o teto da campanha
+  const limiteAtingido = totalCashbitJaResgatadoNaCampanha >= 150;
+
+  // Indica se hoje já realizou participação de foto e check-in (para estados informativos)
+  const alreadyCheckedInToday = checkins.some((c) => {
+    const cDate = new Date(c.data_resgate);
+    return cDate.getDate() === today.getDate() &&
+           cDate.getMonth() === today.getMonth() &&
+           cDate.getFullYear() === today.getFullYear();
+  });
 
   const handleClaim = async () => {
     if (!studentId) return;
@@ -233,42 +200,33 @@ export const DailyCheckinModal = ({
       });
       return;
     }
-    if (alreadyCheckedInToday) {
+    if (diasPendentes.length === 0) {
       toast({
-        title: "Check-in já realizado",
-        description: `Você já garantiu seu bônus do Dia ${currentCheckinDay}!`,
-      });
-      return;
-    }
-
-    if (currentCheckinDay === 7 && isMysteryBlocked) {
-      toast({
-        title: "Caixa Misteriosa Bloqueada 🔒",
-        description: "Você não participou de todos os dias anteriores sem interrupção.",
-        variant: "destructive"
+        title: "Nenhuma Recompensa Pendente",
+        description: "Você já resgatou todas as suas recompensas liberadas!",
       });
       return;
     }
 
     setIsClaiming(true);
-    const rewardInfo = CHECKIN_VALUES.find(c => c.dia === currentCheckinDay);
-    const rewardValue = rewardInfo ? rewardInfo.valor : 10;
-
     try {
-      // Chama a função atômica no banco de dados via RPC do Supabase com travas de segurança
-      const { data, error } = await (supabase as any).rpc('resgatar_cashbit_diario', {
-        p_aluno_id: Number(studentId),
-        p_dia_checkin: currentCheckinDay
-      });
+      let novoSaldo = currentBalance;
+      // Loop sequencial para resgatar todos os dias pendentes
+      for (const dia of diasPendentes) {
+        const { data, error } = await (supabase as any).rpc('resgatar_cashbit_diario', {
+          p_aluno_id: Number(studentId),
+          p_dia_checkin: dia
+        });
 
-      if (error) throw error;
+        if (error) throw error;
+        novoSaldo = Number(data);
+      }
 
-      const novoSaldo = Number(data);
       setSaldo(novoSaldo);
       
       toast({
-        title: `Dia ${currentCheckinDay} Concluído! 🎉`,
-        description: `Você resgatou +${rewardValue} CashBITs com sucesso!`,
+        title: `Bônus Resgatado! 🎉`,
+        description: `Você resgatou +${saldoDisponivelComTeto} CashBITs acumulados com sucesso!`,
       });
 
       // Atualiza caches locais para consistência de dados
@@ -318,16 +276,9 @@ export const DailyCheckinModal = ({
           {/* Timeline/Trilha de 7 dias */}
           <div className="flex overflow-x-auto gap-2 pb-2 px-1 scroll-smooth snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {CHECKIN_VALUES.map((item) => {
-              const claimedRecord = checkins.find(c => c.dia_checkin === item.dia);
-              const isClaimed = !!claimedRecord;
-              
-              const isCurrent = item.dia === currentCheckinDay;
-                
-              const isFuture = item.dia > currentCheckinDay;
-                
-              const isMissed = isCampaignActive
-                ? (item.dia < currentCheckinDay && !isClaimed)
-                : isAfterCampaign && !isClaimed;
+              const isClaimed = checkins.some(c => c.dia_checkin === item.dia);
+              const isEligible = item.dia <= totalParticipacoes && !isClaimed;
+              const isLocked = item.dia > totalParticipacoes;
 
               let cardStyle = "";
               let coinStyle = "";
@@ -335,14 +286,11 @@ export const DailyCheckinModal = ({
               if (isClaimed) {
                 cardStyle = "border-emerald-400 dark:border-emerald-500 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/20 dark:to-emerald-900/10 text-emerald-800 dark:text-emerald-400 shadow-sm";
                 coinStyle = "text-emerald-600 bg-emerald-200/50 dark:bg-emerald-900/50";
-              } else if (isCurrent) {
+              } else if (isEligible) {
                 cardStyle = "border-school-blue-500 dark:border-school-blue-400 bg-white dark:bg-zinc-900 text-school-blue-700 dark:text-white shadow-md ring-2 ring-school-blue-400/30 animate-pulse";
                 coinStyle = "text-school-blue-600 bg-school-blue-50 dark:bg-school-blue-950/50";
-              } else if (isMissed) {
-                cardStyle = "border-red-200 dark:border-red-950/40 bg-red-50/20 dark:bg-red-950/5 text-red-500 dark:text-red-400/70 opacity-70";
-                coinStyle = "text-red-400 dark:text-red-400/70 bg-red-100/20 dark:bg-red-950/20";
               } else {
-                cardStyle = "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 text-zinc-400";
+                cardStyle = "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 text-zinc-400 opacity-75";
                 coinStyle = "text-zinc-400 bg-zinc-100 dark:bg-zinc-800";
               }
 
@@ -365,8 +313,8 @@ export const DailyCheckinModal = ({
                           <Check className="w-5 h-5 sm:w-6 sm:h-6 stroke-[3px]" />
                         </div>
                       ) : (
-                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${isCurrent && !isMysteryBlocked ? 'bg-amber-500 text-white animate-bounce' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'}`}>
-                          {isMysteryBlocked ? <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-red-500/80" /> : <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />}
+                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${isEligible ? 'bg-amber-500 text-white animate-bounce' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'}`}>
+                          {isLocked ? <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-400" /> : <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />}
                         </div>
                       )}
                     </div>
@@ -404,83 +352,69 @@ export const DailyCheckinModal = ({
             </div>
           </div>
 
-          {/* Alerta de quebra de sequência se o Dia 7 estiver bloqueado por interrupção */}
-          {isInterrupted && (
-            <div className="mt-4 p-3 rounded-2xl bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 flex items-start gap-2.5 animate-in slide-in-from-top-3">
-              <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <h4 className="text-xs font-bold text-red-800 dark:text-red-400">Sequência Interrompida</h4>
-                <p className="text-[11px] text-red-700 dark:text-red-300 font-medium leading-normal mt-0.5">
-                  Você pulou dias da campanha. O prêmio misterioso do 7º dia está bloqueado para este ciclo.
-                </p>
-                <span className="inline-block mt-1 text-[10px] font-bold uppercase bg-red-100 dark:bg-red-900/50 px-2 py-0.5 rounded-full text-red-800 dark:text-red-300">
-                  não participou todos os dias
-                </span>
-              </div>
-            </div>
-          )}
-
           {/* Dicas/Estado */}
           <div className="mt-4 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800/80 rounded-2xl p-3.5 flex items-start gap-3">
             {isBeforeCampaign ? (
               <Calendar className="w-5 h-5 text-school-blue-500 shrink-0 mt-0.5" />
             ) : isAfterCampaign ? (
               <AlertCircle className="w-5 h-5 text-zinc-500 shrink-0 mt-0.5" />
-            ) : alreadyCheckedInToday ? (
-              <Check className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+            ) : limiteAtingido ? (
+              <Sparkles className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
             ) : !alreadyParticipated ? (
               <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-            ) : (
+            ) : diasPendentes.length > 0 ? (
               <Sparkles className="w-5 h-5 text-school-blue-500 shrink-0 mt-0.5" />
+            ) : (
+              <Check className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
             )}
             <div className="text-xs space-y-1 flex-1 min-w-0">
               {isBeforeCampaign ? (
                 <>
                   <p className="font-bold text-school-blue-600 dark:text-school-blue-400">Lançamento em 03/08 🚀</p>
-                  <p className="text-zinc-500 dark:text-zinc-400 leading-normal">
+                  <p className="text-zinc-550 dark:text-zinc-400 leading-normal">
                     A Campanha de Lançamento estará disponível a partir de 03/08/2026. Prepare seu uniforme!
                   </p>
                 </>
               ) : isAfterCampaign ? (
                 <>
-                  <p className="font-bold text-zinc-550 dark:text-zinc-400">Campanha Encerrada 🏁</p>
-                  <p className="text-zinc-550 dark:text-zinc-455 leading-normal">
-                    A Campanha de Lançamento encerrou-se em 11/08/2026. Agradecemos a participação de todos!
+                  <p className="font-bold text-zinc-500 dark:text-zinc-400">Campanha Encerrada 🏁</p>
+                  <p className="text-zinc-500 dark:text-zinc-400 leading-normal">
+                    A Campanha de Lançamento encerrou-se em 14/08/2026. Agradecemos a participação de todos!
+                  </p>
+                </>
+              ) : limiteAtingido ? (
+                <>
+                  <p className="font-bold text-amber-600 dark:text-amber-400">Limite de Bônus Atingido 🎉</p>
+                  <p className="text-zinc-500 dark:text-zinc-400 leading-normal">
+                    Você já resgatou o limite máximo de **150 CashBITs** nesta campanha! Muito obrigado pela participação!
                   </p>
                 </>
               ) : isWeekendPause ? (
                 <>
                   <p className="font-bold text-amber-600 dark:text-amber-400">Pausa de Fim de Semana 📅</p>
                   <p className="text-zinc-500 dark:text-zinc-400 leading-normal">
-                    A campanha de lançamento ocorre apenas em dias letivos (segunda a sexta). Nos vemos na segunda-feira para o Dia 6!
+                    A campanha de lançamento ocorre apenas em dias letivos (segunda a sexta). Nos vemos na segunda-feira!
                   </p>
                 </>
               ) : !alreadyParticipated ? (
                 <>
                   <p className="font-bold text-zinc-800 dark:text-zinc-200">Uniforme pendente de validação</p>
                   <p className="text-zinc-500 dark:text-zinc-400 leading-normal">
-                    Para habilitar o resgate do check-in do Dia {currentCheckinDay}, você precisa primeiro enviar e obter sucesso na validação da foto do uniforme.
+                    Você precisa enviar e obter sucesso na validação da foto do uniforme de hoje para liberar seus resgates pendentes.
                   </p>
                 </>
-              ) : alreadyCheckedInToday ? (
+              ) : diasPendentes.length > 0 ? (
                 <>
-                  <p className="font-bold text-emerald-600 dark:text-emerald-400">Recompensa do Dia {currentCheckinDay} Concluída! ✅</p>
+                  <p className="font-bold text-school-blue-600 dark:text-school-blue-400">Recompensas Acumuladas Disponíveis! 🎉</p>
                   <p className="text-zinc-500 dark:text-zinc-400 leading-normal">
-                    Você já resgatou seu bônus do Dia {currentCheckinDay}.
-                  </p>
-                </>
-              ) : !hasClaimedDay1 ? (
-                <>
-                  <p className="font-bold text-school-blue-600 dark:text-school-blue-400">Resgate Retroativo do Dia 1 (03/08) Liberado! 🎉</p>
-                  <p className="text-zinc-500 dark:text-zinc-400 leading-normal">
-                    Você tem o bônus pendente do Dia 1 (03/08). Clique no botão abaixo para garantir os **+5 CashBITs** antes de prosseguir!
+                    Você possui **{diasPendentes.length}** {diasPendentes.length === 1 ? 'nível pendente' : 'níveis pendentes'} para resgate. Clique abaixo para resgatar todos acumulados!
                   </p>
                 </>
               ) : (
                 <>
-                  <p className="font-bold text-school-blue-600 dark:text-school-blue-400">Check-in do Dia {currentCheckinDay} Liberado! 🎉</p>
+                  <p className="font-bold text-emerald-600 dark:text-emerald-400">Tudo resgatado! ✅</p>
                   <p className="text-zinc-500 dark:text-zinc-400 leading-normal">
-                    Você já validou seu uniforme! Clique no botão abaixo para resgatar o bônus do **Dia {currentCheckinDay}**.
+                    Você já resgatou todos os bônus liberados pelas suas {totalParticipacoes} participações. Envie mais fotos do uniforme nos próximos dias para liberar novos níveis!
                   </p>
                 </>
               )}
@@ -504,12 +438,19 @@ export const DailyCheckinModal = ({
             >
               Campanha Encerrada
             </Button>
+          ) : limiteAtingido ? (
+            <Button
+              disabled
+              className="w-full h-12 text-sm font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-xl cursor-not-allowed opacity-75"
+            >
+              Bônus Máximo Atingido (150 CashBITs)
+            </Button>
           ) : isWeekendPause ? (
             <Button
               disabled
               className="w-full h-12 text-sm font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-400 border border-zinc-200 dark:border-zinc-700/50 rounded-xl cursor-not-allowed flex items-center justify-center gap-2 opacity-75"
             >
-              Próximo check-in: Segunda-feira (10/08)
+              Próximo check-in: Segunda-feira
             </Button>
           ) : !alreadyParticipated ? (
             <Button
@@ -518,21 +459,7 @@ export const DailyCheckinModal = ({
             >
               Envie a foto do Uniforme primeiro
             </Button>
-          ) : alreadyCheckedInToday ? (
-            <Button
-              disabled
-              className="w-full h-12 text-sm font-bold bg-emerald-500/10 text-emerald-600 dark:emerald-400 border border-emerald-500/20 rounded-xl cursor-not-allowed opacity-75"
-            >
-              Recompensa Resgatada hoje
-            </Button>
-          ) : currentCheckinDay === 7 && isMysteryBlocked ? (
-            <Button
-              disabled
-              className="w-full h-12 text-sm font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-400 border border-zinc-200 dark:border-zinc-700/50 rounded-xl cursor-not-allowed flex items-center justify-center gap-2 opacity-60"
-            >
-              <Lock className="w-4 h-4" /> Caixa Misteriosa Bloqueada
-            </Button>
-          ) : (
+          ) : diasPendentes.length > 0 ? (
             <Button
               onClick={handleClaim}
               disabled={isClaiming}
@@ -541,9 +468,23 @@ export const DailyCheckinModal = ({
               {isClaiming ? "Processando..." : (
                 <>
                   <Sparkles className="w-5 h-5" /> 
-                  {!hasClaimedDay1 ? "Resgatar Dia 1 (03/08) +5 CashBIT" : `Resgatar Dia ${currentCheckinDay}`}
+                  Resgatar Bônus Acumulado (+{saldoDisponivelComTeto} CashBIT)
                 </>
               )}
+            </Button>
+          ) : alreadyCheckedInToday ? (
+            <Button
+              disabled
+              className="w-full h-12 text-sm font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-xl cursor-not-allowed opacity-75"
+            >
+              Recompensa Resgatada hoje
+            </Button>
+          ) : (
+            <Button
+              disabled
+              className="w-full h-12 text-sm font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-400 border border-zinc-200 dark:border-zinc-700/50 rounded-xl cursor-not-allowed opacity-75"
+            >
+              Nenhuma Recompensa Pendente
             </Button>
           )}
 
