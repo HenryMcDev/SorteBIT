@@ -22,6 +22,7 @@ interface Participant {
   bitcash: number;
   coupons: Coupon[];
   lastParticipation: string | null;
+  user_id?: string;
 }
 
 // Helper para sanitizar o nome completo removendo acentos/diacríticos e todos os espaços
@@ -57,6 +58,7 @@ const Participantes = () => {
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
   const [targetStudentId, setTargetStudentId] = useState<string | null>(null);
+  const [targetUserId, setTargetUserId] = useState<string | null>(null);
   const [targetOldEmail, setTargetOldEmail] = useState('');
   const [targetNewEmail, setTargetNewEmail] = useState('');
   const [isSavingEmail, setIsSavingEmail] = useState(false);
@@ -64,7 +66,7 @@ const Participantes = () => {
   // Referência para guardar todas as Object URLs (blobs) criadas por estudante
   const activeBlobsRef = useRef<Record<string, string[]>>({});
 
-  const handleOpenConfirmModal = (studentId: string, oldEmail: string, newEmail: string) => {
+  const handleOpenConfirmModal = (studentId: string, userId: string, oldEmail: string, newEmail: string) => {
     if (!newEmail.trim() || !newEmail.includes('@')) {
       toast({
         title: "E-mail inválido",
@@ -82,6 +84,7 @@ const Participantes = () => {
       return;
     }
     setTargetStudentId(studentId);
+    setTargetUserId(userId);
     setTargetOldEmail(oldEmail);
     setTargetNewEmail(newEmail.trim());
     setAdminPassword('');
@@ -110,6 +113,7 @@ const Participantes = () => {
 
       const response = await axios.post(`${getBackendUrl()}/api/admin/update-student-email`, {
         studentId: Number(targetStudentId),
+        userId: targetUserId,
         newEmail: targetNewEmail,
         adminPassword: adminPassword
       }, {
@@ -128,7 +132,7 @@ const Participantes = () => {
 
         // Atualiza a lista local de participantes com o novo e-mail
         setParticipants(prev => prev.map(p => {
-          if (p.id === targetStudentId) {
+          if (p.id === targetStudentId || (p.user_id && p.user_id === targetUserId)) {
             return { ...p, email: targetNewEmail };
           }
           return p;
@@ -272,7 +276,7 @@ const Participantes = () => {
     try {
       // Busca todos os estudantes cadastrados e as participações geradas de forma paralela
       const [estudantesRes, participationsRes] = await Promise.all([
-        supabase.from('estudantes' as any).select('id, nome_completo, bitcash, email'),
+        supabase.from('estudantes' as any).select('id, nome_completo, bitcash, email, user_id'),
         supabase.from('lottery_participations').select('id, name, created_at, daily_code, participation_date')
       ]);
 
@@ -319,7 +323,8 @@ const Participantes = () => {
           email: est.email || '',
           bitcash: est.bitcash || 0,
           coupons: studentParticipations,
-          lastParticipation
+          lastParticipation,
+          user_id: est.user_id || ''
         };
       });
 
@@ -705,7 +710,7 @@ const Participantes = () => {
                             />
                             <Button
                               type="button"
-                              onClick={() => handleOpenConfirmModal(p.id, p.email, editingEmails[p.id] !== undefined ? editingEmails[p.id] : p.email)}
+                              onClick={() => handleOpenConfirmModal(p.id, p.user_id || '', p.email, editingEmails[p.id] !== undefined ? editingEmails[p.id] : p.email)}
                               disabled={isSavingEmail && targetStudentId === p.id}
                               className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 py-2 h-9 rounded-lg font-semibold active:scale-[0.98] border-0"
                             >
