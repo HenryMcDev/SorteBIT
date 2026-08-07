@@ -6,6 +6,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui
 import { TermosCondicoes } from './TermosCondicoes';
 import { ThemeToggle } from './ThemeToggle';
 import { InstallPWAButton } from './InstallPWAButton';
+import { StudentProfileModal } from './StudentProfileModal';
 
 interface StudentNavbarProps {
   studentName: string;
@@ -28,6 +29,27 @@ const StudentNavbar = ({
 }: StudentNavbarProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [backendOnline, setBackendOnline] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [avatarUrl]);
+
+  useEffect(() => {
+    const fetchAvatar = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.user_metadata?.avatar_url) {
+          setAvatarUrl(session.user.user_metadata.avatar_url);
+        }
+      } catch (err) {
+        console.warn('Erro silencioso ao buscar avatar do estudante:', err);
+      }
+    };
+    fetchAvatar();
+  }, []);
 
   useEffect(() => {
     const verificarConexao = async () => {
@@ -98,10 +120,22 @@ const StudentNavbar = ({
           {/* === DESKTOP NAVBAR === */}
           <div className="hidden md:flex items-center justify-between w-full">
             {/* Lado Esquerdo: Avatar, Saudação e Nome */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-school-blue-500/20 border border-school-blue-500/30 flex items-center justify-center shrink-0">
-                <User className="w-5 h-5 text-school-blue-400" />
-              </div>
+            <button 
+              onClick={() => setIsProfileOpen(true)}
+              className="flex items-center gap-3 hover:opacity-85 transition-opacity text-left cursor-pointer"
+            >
+              {(avatarUrl && !imgError) ? (
+                <img 
+                  src={avatarUrl} 
+                  alt={studentName} 
+                  onError={() => setImgError(true)}
+                  className="w-10 h-10 rounded-full object-cover border border-school-blue-500/30 shrink-0 shadow-sm"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-school-blue-500/20 border border-school-blue-500/30 flex items-center justify-center shrink-0">
+                  <User className="w-5 h-5 text-school-blue-400" />
+                </div>
+              )}
               <div className="flex flex-col truncate">
                 <span className="text-[10px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-semibold">
                   Bem-vindo(a),
@@ -110,7 +144,7 @@ const StudentNavbar = ({
                   {firstName}
                 </span>
               </div>
-            </div>
+            </button>
             
             {/* Centro: Saldo de BITCash */}
             <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center">
@@ -204,10 +238,22 @@ const StudentNavbar = ({
 
           {/* === MOBILE NAVBAR === */}
           <div className="flex md:hidden items-center justify-between w-full">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-school-blue-500/20 border border-school-blue-500/30 flex items-center justify-center shrink-0">
-                <User className="w-5 h-5 text-school-blue-400" />
-              </div>
+            <button 
+              onClick={() => setIsProfileOpen(true)}
+              className="flex items-center gap-3 hover:opacity-85 transition-opacity text-left cursor-pointer"
+            >
+              {(avatarUrl && !imgError) ? (
+                <img 
+                  src={avatarUrl} 
+                  alt={studentName} 
+                  onError={() => setImgError(true)}
+                  className="w-10 h-10 rounded-full object-cover border border-school-blue-500/30 shrink-0 shadow-sm"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-school-blue-500/20 border border-school-blue-500/30 flex items-center justify-center shrink-0">
+                  <User className="w-5 h-5 text-school-blue-400" />
+                </div>
+              )}
               <div className="flex flex-col truncate">
                 <span className="text-[10px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-semibold">
                   Uniforme Premiado
@@ -216,7 +262,7 @@ const StudentNavbar = ({
                   Olá, {firstName}
                 </span>
               </div>
-            </div>
+            </button>
 
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild>
@@ -235,10 +281,25 @@ const StudentNavbar = ({
                     </SheetHeader>
 
                     {/* Cabeçalho Compacto do Usuário e Saldo no Menu Mobile */}
-                    <div className="flex items-center gap-3 mb-4 pb-3 border-b border-zinc-100 dark:border-zinc-800/50">
-                      <div className="w-11 h-11 rounded-full bg-school-blue-500/20 border border-school-blue-500/30 flex items-center justify-center shrink-0 shadow-sm">
-                        <User className="w-6 h-6 text-school-blue-500" />
-                      </div>
+                    <button 
+                      onClick={() => {
+                        setIsOpen(false);
+                        setIsProfileOpen(true);
+                      }}
+                      className="flex items-center gap-3 mb-4 pb-3 border-b border-zinc-100 dark:border-zinc-800/50 w-full text-left cursor-pointer hover:opacity-85 transition-opacity"
+                    >
+                      {(avatarUrl && !imgError) ? (
+                        <img 
+                          src={avatarUrl} 
+                          alt={studentName} 
+                          onError={() => setImgError(true)}
+                          className="w-11 h-11 rounded-full object-cover border border-school-blue-500/30 shrink-0 shadow-sm"
+                        />
+                      ) : (
+                        <div className="w-11 h-11 rounded-full bg-school-blue-500/20 border border-school-blue-500/30 flex items-center justify-center shrink-0 shadow-sm">
+                          <User className="w-6 h-6 text-school-blue-500" />
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <h3 className="text-sm font-bold text-zinc-900 dark:text-white truncate" title={studentName}>
                           {studentName}
@@ -251,10 +312,21 @@ const StudentNavbar = ({
                           <span>{bitcash} CashBIT</span>
                         </div>
                       </div>
-                    </div>
+                    </button>
 
                     {/* Ações de Navegação */}
                     <div className="flex flex-col gap-2 flex-1 overflow-y-auto pr-1">
+                      <button
+                        onClick={() => {
+                          setIsOpen(false);
+                          setIsProfileOpen(true);
+                        }}
+                        className="flex items-center gap-3 w-full h-11 py-2 px-3 rounded-lg bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-900/50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-medium transition-all duration-200 border border-zinc-200 dark:border-zinc-800/80 shadow-sm"
+                      >
+                        <User className="w-5 h-5 text-zinc-500 dark:text-zinc-400" />
+                        Meu Perfil
+                      </button>
+
                       <Link
                         to="/"
                         className="flex items-center gap-3 w-full h-11 py-2 px-3 rounded-lg bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-900/50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-medium transition-all duration-200 border border-zinc-200 dark:border-zinc-800/80 shadow-sm"
@@ -344,9 +416,16 @@ const StudentNavbar = ({
               </SheetContent>
             </Sheet>
           </div>
-
         </div>
       </div>
+
+      <StudentProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        avatarUrl={avatarUrl}
+        onAvatarChange={setAvatarUrl}
+        studentName={studentName}
+      />
     </>
   );
 };

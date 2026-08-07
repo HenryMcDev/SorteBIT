@@ -263,12 +263,12 @@ const ClassCodeManager = () => {
                   <td className="py-4 px-4 font-mono font-black text-blue-600 dark:text-blue-400 tracking-wider text-base">
                     {item.code}
                   </td>
-                  <td className="py-4 px-4 font-semibold text-zinc-900 dark:text-zinc-150">
+                  <td className="py-4 px-4 font-semibold text-zinc-900 dark:text-zinc-100">
                     <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-blue-500/10 text-blue-500 border border-blue-500/15">
                       {item.turma || 'TCG01'}
                     </span>
                   </td>
-                  <td className="py-4 px-4 font-semibold text-zinc-900 dark:text-zinc-150">
+                  <td className="py-4 px-4 font-semibold text-zinc-900 dark:text-zinc-100">
                     <div className="flex items-center gap-2.5">
                       <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center text-xs font-bold text-blue-500 border border-blue-500/10">
                         {item.professor_name.charAt(0).toUpperCase()}
