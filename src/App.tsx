@@ -23,6 +23,7 @@ import CookieBanner from "./components/CookieBanner";
 import BotaoFlutuanteWhatsapp from "./components/BotaoFlutuanteWhatsapp";
 import GerenciadorNotificacoes from "./components/GerenciadorNotificacoes";
 import AdminLogs from "./components/AdminLogs";
+import AdminN8N from "@/components/AdminN8N";
 import { supabase } from "@/integrations/supabase/client";
 import { ThemeProvider } from "./components/ThemeProvider";
 
@@ -107,6 +108,7 @@ const AppRoutes = () => {
         <Route path="ips" element={<GerenciarIps />} />
         <Route path="notificacoes" element={<GerenciadorNotificacoes />} />
         <Route path="logs" element={<AdminLogs />} />
+        <Route path="n8n" element={<AdminN8N />} />
       </Route>
       <Route path="/admin/registro" element={<AdminRegister />} />
       <Route path="/admin/jackpot" element={

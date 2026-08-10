@@ -78,24 +78,60 @@ export const useAdmAuth = () => {
     };
   }, []);
 
-  // Efeito para buscar o email se ele não estiver no localStorage (para compatibilidade/retrocompatibilidade)
+  // Efeito para buscar o email se ele não estiver no localStorage e validar ativamente se o usuário logado possui privilégios de administrador (SEC-08)
   useEffect(() => {
-    const fetchEmailIfMissing = async () => {
-      if (adminUser && !adminUser.email) {
+    let isMounted = true;
+
+    const validateAndFetchEmail = async () => {
+      if (adminUser) {
         try {
-          const { data } = await supabase.auth.getUser();
-          if (data?.user?.email) {
-            updateSession({
-              ...adminUser,
-              email: data.user.email.toLowerCase(),
-            });
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) {
+            if (isMounted) {
+              updateSession(null);
+            }
+            return;
+          }
+
+          // 1. Atualizar e-mail caso falte no localStorage
+          if (!adminUser.email && user.email) {
+            if (isMounted) {
+              updateSession({
+                ...adminUser,
+                email: user.email.toLowerCase(),
+              });
+            }
+          }
+
+          // 2. Validar privilégio administrativo na tabela admin_user (impede bypass via LocalStorage)
+          const { data: adminDb, error: adminErr } = await supabase
+            .from('admin_user' as any)
+            .select('role')
+            .eq('email', user.email?.toLowerCase())
+            .maybeSingle();
+
+          if (adminErr || !adminDb || (adminDb as any).role !== 'admin') {
+            console.warn('[Admin Security] Bypass detectado ou privilégio removido. Deslogando...');
+            if (isMounted) {
+              updateSession(null);
+              toast({
+                title: 'Acesso negado',
+                description: 'Sua conta não possui privilégios administrativos ativos.',
+                variant: 'destructive',
+              });
+            }
           }
         } catch (e) {
-          console.error('Erro ao buscar email do admin autenticado:', e);
+          console.error('[Admin Security] Erro ao validar privilégios:', e);
         }
       }
     };
-    fetchEmailIfMissing();
+
+    validateAndFetchEmail();
+
+    return () => {
+      isMounted = false;
+    };
   }, [adminUser]);
 
   const login = async (identifier: string, password: string): Promise<{ success: boolean; error?: string }> => {

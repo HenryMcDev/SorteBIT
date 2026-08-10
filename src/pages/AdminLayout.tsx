@@ -3,7 +3,7 @@ import { useLocation, NavLink, Link, useNavigate, Navigate } from 'react-router-
 import { useAdmAuth } from '@/hooks/useAdmAuth';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Outlet } from 'react-router-dom';
-import { Users, Key, ShieldCheck, Gift, Sliders, Bell, Crown, LogOut, Loader2, MessageSquareWarning, ShoppingBag, ClipboardList, GraduationCap } from 'lucide-react';
+import { Users, Key, ShieldCheck, Gift, Sliders, Bell, Crown, LogOut, Loader2, MessageSquareWarning, ShoppingBag, ClipboardList, GraduationCap, Activity } from 'lucide-react';
 import Admin from './Admin';
 import HeaderAdministrativo from '@/components/HeaderAdministrativo';
 import { supabase } from '@/integrations/supabase/client';
@@ -276,13 +276,14 @@ const AdminLayout = () => {
     if (path.endsWith('/notificacoes')) return 'Notificações';
     if (path.endsWith('/resgates')) return 'Gestão de Resgates';
     if (path.endsWith('/logs')) return 'Logs de Auditoria';
+    if (path.endsWith('/n8n')) return 'Monitoramento n8n';
     return 'Painel Master';
   };
 
   return (
     <div className="flex min-h-screen bg-gray-50 text-zinc-900 dark:bg-zinc-950 dark:text-white font-sans selection:bg-yellow-500/35">
       {/* Sidebar Esquerda Fixa */}
-      <aside className="w-64 h-screen flex flex-col justify-between bg-white dark:bg-[#131517] text-slate-500 dark:text-slate-400 p-4 border-r border-slate-200 dark:border-slate-800 shrink-0 transition-colors duration-200">
+      <aside className="w-64 h-screen sticky top-0 flex flex-col justify-between bg-white dark:bg-[#131517] text-slate-500 dark:text-slate-400 p-4 border-r border-slate-200 dark:border-slate-800 shrink-0 transition-colors duration-200">
         
         {/* Topo: Logo e Identificação do Painel */}
         <div>
@@ -307,6 +308,7 @@ const AdminLayout = () => {
               { id: 'resgates', nome: 'Gestão de Resgates', icone: ShoppingBag, path: '/admin/resgates' },
               { id: 'ips', nome: 'Gerenciar IPs', icone: Sliders, path: '/admin/ips' },
               { id: 'notificacoes', nome: 'Notificações', icone: Bell, path: '/admin/notificacoes' },
+              { id: 'n8n', nome: 'Monitoramento n8n', icone: Activity, path: '/admin/n8n' },
               { id: 'logs', nome: 'Logs de Auditoria', icone: ClipboardList, path: '/admin/logs' },
             ].filter((item) => {
               if (item.id === 'logs') {
