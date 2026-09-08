@@ -1,0 +1,484 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
+  public: {
+    Tables: {
+      codigos_recuperacao: {
+        Row: {
+          codigo: string
+          cpf: string
+          criado_em: string
+          email: string
+          expira_em: string
+          id: number
+          usado: boolean
+        }
+        Insert: {
+          codigo: string
+          cpf: string
+          criado_em?: string
+          email: string
+          expira_em: string
+          id?: number
+          usado?: boolean
+        }
+        Update: {
+          codigo?: string
+          cpf?: string
+          criado_em?: string
+          email?: string
+          expira_em?: string
+          id?: number
+          usado?: boolean
+        }
+        Relationships: []
+      }
+      estudantes: {
+        Row: {
+          atualizado_em: string | null
+          bitcash: number
+          cpf: string
+          criado_em: string | null
+          email: string
+          id: number
+          mfa_dispositivo_expira: string | null
+          mfa_dispositivo_token: string | null
+          mfa_lembrar_dispositivo: boolean | null
+          nome_completo: string
+          senha_hash: string | null
+          termos_aceitos: boolean | null
+          user_id: string | null
+        }
+        Insert: {
+          atualizado_em?: string | null
+          bitcash?: number
+          cpf: string
+          criado_em?: string | null
+          email: string
+          id?: number
+          mfa_dispositivo_expira?: string | null
+          mfa_dispositivo_token?: string | null
+          mfa_lembrar_dispositivo?: boolean | null
+          nome_completo: string
+          senha_hash?: string | null
+          termos_aceitos?: boolean | null
+          user_id?: string | null
+        }
+        Update: {
+          atualizado_em?: string | null
+          bitcash?: number
+          cpf?: string
+          criado_em?: string | null
+          email?: string
+          id?: number
+          mfa_dispositivo_expira?: string | null
+          mfa_dispositivo_token?: string | null
+          mfa_lembrar_dispositivo?: boolean | null
+          nome_completo?: string
+          senha_hash?: string | null
+          termos_aceitos?: boolean | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      audit_logs: {
+        Row: {
+          id: string
+          user_id: string | null
+          user_email: string | null
+          action: string
+          table_name: string
+          record_id: string
+          old_data: Json | null
+          new_data: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          user_email?: string | null
+          action: string
+          table_name: string
+          record_id: string
+          old_data?: Json | null
+          new_data?: Json | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          user_email?: string | null
+          action?: string
+          table_name?: string
+          record_id?: string
+          old_data?: Json | null
+          new_data?: Json | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      code_adm: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      daily_codes: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          turma: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          turma: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          turma?: string
+        }
+        Relationships: []
+      }
+      turmas: {
+        Row: {
+          ativo: boolean | null
+          code: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          code: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          ativo?: boolean | null
+          code?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      lottery_participations: {
+        Row: {
+          class_name: string
+          created_at: string
+          id: string
+          lucky_number: number
+          name: string
+          participation_date: string
+          phone: string
+          teacher_code: string
+        }
+        Insert: {
+          class_name: string
+          created_at?: string
+          id?: string
+          lucky_number: number
+          name: string
+          participation_date?: string
+          phone: string
+          teacher_code: string
+        }
+        Update: {
+          class_name?: string
+          created_at?: string
+          id?: string
+          lucky_number?: number
+          name?: string
+          participation_date?: string
+          phone?: string
+          teacher_code?: string
+        }
+        Relationships: []
+      }
+      premios: {
+        Row: {
+          descricao: string
+          estoque: number
+          foto: string
+          id: number
+          nome: string
+          valor: number
+        }
+        Insert: {
+          descricao?: string
+          estoque?: number
+          foto?: string
+          id?: number
+          nome: string
+          valor: number
+        }
+        Update: {
+          descricao?: string
+          estoque?: number
+          foto?: string
+          id?: number
+          nome?: string
+          valor?: number
+        }
+        Relationships: []
+      }
+      student_codes: {
+        Row: {
+          class_name: string
+          code: string
+          created_at: string
+          date: string
+          id: string
+          is_used: boolean
+          student_name: string
+          teacher_name: string
+          updated_at: string
+          used_at: string | null
+        }
+        Insert: {
+          class_name: string
+          code: string
+          created_at?: string
+          date?: string
+          id?: string
+          is_used?: boolean
+          student_name: string
+          teacher_name: string
+          updated_at?: string
+          used_at?: string | null
+        }
+        Update: {
+          class_name?: string
+          code?: string
+          created_at?: string
+          date?: string
+          id?: string
+          is_used?: boolean
+          student_name?: string
+          teacher_name?: string
+          updated_at?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
+      teachers: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          password_hash: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          password_hash: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          password_hash?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      mark_student_code_used: {
+        Args: { _code: string; _date: string }
+        Returns: boolean
+      }
+    }
+    Enums: {
+      app_role: "admin" | "teacher" | "user"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      app_role: ["admin", "teacher", "user"],
+    },
+  },
+} as const

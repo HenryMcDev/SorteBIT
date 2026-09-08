@@ -1,0 +1,54 @@
+# UI components usage map (2026-05-13)
+
+## Kept (referenced by app imports or transitive UI deps)
+- alert.tsx
+- button.tsx
+- card.tsx
+- input.tsx
+- label.tsx
+- select.tsx
+- sonner.tsx
+- toast.tsx
+- toaster.tsx
+- tooltip.tsx
+
+## Removed (no references from pages/business components and not required transitively)
+- accordion.tsx
+- alert-dialog.tsx
+- aspect-ratio.tsx
+- avatar.tsx
+- badge.tsx
+- breadcrumb.tsx
+- calendar.tsx
+- carousel.tsx
+- chart.tsx
+- checkbox.tsx
+- collapsible.tsx
+- command.tsx
+- context-menu.tsx
+- dialog.tsx
+- drawer.tsx
+- dropdown-menu.tsx
+- form.tsx
+- hover-card.tsx
+- input-otp.tsx
+- menubar.tsx
+- navigation-menu.tsx
+- pagination.tsx
+- popover.tsx
+- progress.tsx
+- radio-group.tsx
+- resizable.tsx
+- scroll-area.tsx
+- separator.tsx
+- sheet.tsx
+- sidebar.tsx
+- skeleton.tsx
+- slider.tsx
+- switch.tsx
+- table.tsx
+- tabs.tsx
+- textarea.tsx
+- toggle-group.tsx
+- toggle.tsx
+- use-toast.ts

@@ -1,0 +1,176 @@
+/* The switch - the box around the slider */
+.theme-toggle-button {
+  font-size: 10px;
+  position: relative;
+  display: inline-block;
+  width: 7em;
+  cursor: pointer;
+}
+
+/* Hide default HTML checkbox */
+.theme-toggle-input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.theme-toggle-container,
+.theme-toggle-patches,
+.theme-toggle-stars,
+.theme-toggle-button-circle,
+.theme-toggle-sun,
+.theme-toggle-moon,
+.theme-toggle-cloud {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 0.25s;
+}
+
+/* night sky background */
+.theme-toggle-input:checked + svg .theme-toggle-container {
+  fill: #2b4360;
+}
+
+/* move button to right when checked */
+.theme-toggle-input:checked + svg .theme-toggle-button-circle {
+  transform: translate(28px, 2.333px);
+}
+
+/* show/hide sun and moon based on checkbox state */
+.theme-toggle-sun {
+  opacity: 1;
+}
+
+.theme-toggle-input:checked + svg .theme-toggle-sun {
+  opacity: 0;
+}
+
+.theme-toggle-moon {
+  opacity: 0;
+}
+
+.theme-toggle-input:checked + svg .theme-toggle-moon {
+  opacity: 1;
+}
+
+/* show or hide background items on checkbox state */
+.theme-toggle-cloud {
+  opacity: 1;
+}
+
+.theme-toggle-input:checked + svg .theme-toggle-cloud {
+  opacity: 0;
+}
+
+.theme-toggle-stars {
+  opacity: 0;
+}
+
+.theme-toggle-input:checked + svg .theme-toggle-stars {
+  opacity: 1;
+}
+
+/* Card de Sucesso com Borda Giratória (Cores Azul e Amarela) */
+.success-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 30px;
+  background: white; /* fallback */
+  padding: 40px;
+  max-width: 90%;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  z-index: 1;
+  border: none !important; /* Sobrescreve borda padrão do index.css */
+}
+
+.success-card::before {
+  content: '';
+  position: absolute;
+  width: 150px;
+  background-image: linear-gradient(180deg, rgb(37, 99, 235), rgb(250, 204, 21));
+  height: 140%;
+  animation: rotBGimg 3s linear infinite;
+  transition: all 0.2s linear;
+  z-index: -2;
+}
+
+@keyframes rotBGimg {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.success-card::after {
+  content: '';
+  position: absolute;
+  background: white;
+  inset: 5px;
+  border-radius: 25px;
+  z-index: -1;
+  transition: background-color 0.3s;
+}
+
+.dark .success-card::after {
+  background: #09090b; /* zinc-955 / zinc-950 */
+}
+
+/* Noscript fallback screen styles */
+.noscript-body {
+  margin: 0;
+  padding: 0;
+  background-color: #09090b !important;
+  color: #f4f4f5 !important;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+.noscript-error-container {
+  max-width: 500px;
+  width: 90%;
+  padding: 2.5rem;
+  background-color: #131517;
+  border: 1px solid #27272a;
+  border-radius: 1rem;
+  text-align: center;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+.noscript-error-icon {
+  width: 4rem;
+  height: 4rem;
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem auto;
+}
+.noscript-error-icon svg {
+  color: #ef4444;
+  width: 2rem;
+  height: 2rem;
+}
+.noscript-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 0.75rem 0;
+  color: #ffffff;
+  letter-spacing: -0.025em;
+}
+.noscript-desc {
+  font-size: 0.875rem;
+  color: #a1a1aa;
+  line-height: 1.5;
+  margin: 0;
+}
