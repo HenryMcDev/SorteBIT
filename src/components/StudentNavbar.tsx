@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, User, Coins, Store, Home, Menu, FileText, Gift } from 'lucide-react';
+import { LogOut, User, Coins, Store, Home, Menu, FileText } from 'lucide-react';
 import { supabase } from '../integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
@@ -14,8 +14,6 @@ interface StudentNavbarProps {
   onLogout: () => void;
   studentId?: number | string;
   setSaldo?: (saldo: number) => void;
-  onOpenDailyCheckin?: () => void;
-  hasPendingCheckin?: boolean;
 }
 
 const StudentNavbar = ({ 
@@ -24,8 +22,6 @@ const StudentNavbar = ({
   onLogout, 
   studentId, 
   setSaldo,
-  onOpenDailyCheckin,
-  hasPendingCheckin = false
 }: StudentNavbarProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [backendOnline, setBackendOnline] = useState(false);
@@ -189,21 +185,6 @@ const StudentNavbar = ({
                 <Home className="w-5 h-5" />
               </Link>
 
-              {onOpenDailyCheckin && (
-                <button
-                  onClick={onOpenDailyCheckin}
-                  className="relative flex items-center justify-center w-10 h-10 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 active:scale-90 transition-all duration-200 shadow-sm shrink-0"
-                  title="Campanha de Check-in"
-                >
-                  <Gift className="w-5 h-5 text-amber-500" />
-                  {hasPendingCheckin && (
-                    <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white animate-pulse">
-                      !
-                    </span>
-                  )}
-                </button>
-              )}
-
               <Link
                 to="/vitrine"
                 className="flex items-center justify-center w-10 h-10 rounded-full bg-school-blue-500/10 border border-school-blue-500/20 text-school-blue-600 dark:text-school-blue-400 hover:bg-school-blue-500/20 active:scale-90 transition-all duration-200 shadow-sm shrink-0"
@@ -342,24 +323,6 @@ const StudentNavbar = ({
                         <Store className="w-5 h-5 text-school-blue-500 dark:text-school-blue-400" />
                         Loja de Prêmios
                       </Link>
-
-                      {onOpenDailyCheckin && (
-                        <button
-                          onClick={() => {
-                            setIsOpen(false);
-                            onOpenDailyCheckin();
-                          }}
-                          className="flex items-center gap-3 w-full h-11 py-2 px-3 rounded-lg bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-900/50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-medium transition-all duration-200 border border-zinc-200 dark:border-zinc-800/80 shadow-sm"
-                        >
-                          <div className="relative shrink-0">
-                            <Gift className="w-5 h-5 text-amber-500" />
-                            {hasPendingCheckin && (
-                              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse border border-white dark:border-zinc-900" />
-                            )}
-                          </div>
-                          <span>Recompensa Diária</span>
-                        </button>
-                      )}
 
                       <InstallPWAButton variant="navbar-mobile" />
 

@@ -9,7 +9,6 @@ import StudentAuth from '@/components/StudentAuth';
 import StudentNavbar from '@/components/StudentNavbar';
 import { useMobileDetection } from '@/hooks/useMobileDetection';
 import { useStudentAuth } from '@/hooks/useStudentAuth';
-import DailyCheckinModal from '@/components/DailyCheckinModal';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -24,8 +23,6 @@ const Index = () => {
   const isMobile = useMobileDetection();
   const { studentUser, isAuthenticated, isLoading, login, register, logout, cpfValue, cpfError, handleCPFChange, setCpfValue } = useStudentAuth();
   const [saldo, setSaldo] = useState(0);
-  const [isDailyCheckinOpen, setIsDailyCheckinOpen] = useState(false);
-  const [hasPendingCheckin, setHasPendingCheckin] = useState(false);
   const [alreadyParticipated, setAlreadyParticipated] = useState(false);
 
   const checkAlreadyParticipated = () => {
@@ -53,39 +50,12 @@ const Index = () => {
     }
   };
 
-  const verificarCheckinPendente = async () => {
-    if (!studentUser?.id) return;
-    try {
-      const { data, error } = await supabase
-        .from('campanha_lancamento_checkin' as any)
-        .select('data_resgate')
-        .eq('aluno_id', Number(studentUser.id))
-        .order('data_resgate', { ascending: false });
-      
-      const records = data as any[] | null;
-      if (records && records.length > 0) {
-        const lastResgate = new Date(records[0].data_resgate);
-        const hoje = new Date();
-        const eHoje = lastResgate.getDate() === hoje.getDate() &&
-                      lastResgate.getMonth() === hoje.getMonth() &&
-                      lastResgate.getFullYear() === hoje.getFullYear();
-        
-        setHasPendingCheckin(!eHoje);
-      } else {
-        setHasPendingCheckin(true); // Nunca fez check-in, então está pendente
-      }
-    } catch (err) {
-      console.error("Erro ao verificar checkin pendente:", err);
-    }
-  };
-
   useEffect(() => {
     if (studentUser?.id) {
       buscarSaldoInicial();
-      verificarCheckinPendente();
       setAlreadyParticipated(checkAlreadyParticipated());
     }
-  }, [studentUser?.id, isDailyCheckinOpen]);
+  }, [studentUser?.id]);
 
   if (!isMobile) {
     return <DesktopBlocker />;
@@ -102,8 +72,6 @@ const Index = () => {
           onLogout={logout} 
           studentId={studentUser.id} 
           setSaldo={setSaldo}
-          onOpenDailyCheckin={() => setIsDailyCheckinOpen(true)}
-          hasPendingCheckin={hasPendingCheckin}
         />
       )}
 
@@ -116,7 +84,6 @@ const Index = () => {
               studentUser={studentUser} 
               onSuccessPhotoValidated={() => {
                 setAlreadyParticipated(true);
-                setIsDailyCheckinOpen(true);
               }}
             />
           ) : (
@@ -134,18 +101,6 @@ const Index = () => {
 
         <Footer />
       </div>
-
-      {isAuthenticated && studentUser && (
-        <DailyCheckinModal
-          isOpen={isDailyCheckinOpen}
-          onClose={() => setIsDailyCheckinOpen(false)}
-          studentId={studentUser.id}
-          currentBalance={saldo}
-          setSaldo={setSaldo}
-          alreadyParticipated={alreadyParticipated}
-          onCheckinSuccess={() => verificarCheckinPendente()}
-        />
-      )}
     </div>
   );
 };
