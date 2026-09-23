@@ -59,10 +59,12 @@ const Vitrine = () => {
 
   const fetchServerDay = async (): Promise<number> => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/`, {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+      const response = await fetch(`${supabaseUrl}/rest/v1/`, {
         method: 'HEAD',
         headers: {
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          apikey: supabaseKey,
         }
       });
       const dateStr = response.headers.get('date');

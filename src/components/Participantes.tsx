@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { getBackendUrl } from '@/utils/backendUrl';
+import ResetParticipacao from '@/components/ResetParticipacao';
 import axios from 'axios';
 
 interface Coupon {
@@ -527,6 +528,11 @@ const Participantes = () => {
             )}
             Exportar CSV Mês Anterior
           </Button>
+
+          <ResetParticipacao
+            onResetConcluido={fetchParticipants}
+            disabled={isLoading}
+          />
 
           <Button
             onClick={fetchParticipants}
