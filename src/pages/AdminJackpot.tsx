@@ -5,17 +5,12 @@ import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
-  Crown,
   Trophy,
   Users,
   Dice5,
   Sparkles,
   RefreshCw,
-  Phone,
-  GraduationCap,
   Calendar,
-  Gift,
-  Hash,
   Volume2,
   Play,
   Pause
@@ -121,7 +116,7 @@ const Slot: React.FC<SlotProps> = ({ targetDigit, isSpinning, spinTrigger, spinD
           <div
             key={idx}
             className={`flex items-center justify-center text-4xl sm:text-5xl lg:text-5xl xl:text-6xl font-black font-mono select-none leading-none transition-colors duration-300 ${
-              isDark ? 'text-yellow-450 dark:text-yellow-400' : 'text-zinc-900'
+              isDark ? 'text-yellow-400 dark:text-yellow-400' : 'text-zinc-900'
             }`}
             style={{ height: `${DIGIT_HEIGHT}px` }}
           >
@@ -218,7 +213,6 @@ const AdminJackpot = () => {
   const vitoriaAudio = useRef<HTMLAudioElement | null>(null);
 
   const [activeAudioTrack, setActiveAudioTrack] = useState<string | null>(null);
-  const [currentAudioTime, setCurrentAudioTime] = useState(0);
   const [audioVolume, setAudioVolume] = useState(1.0);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
 
@@ -246,17 +240,6 @@ const AdminJackpot = () => {
     if (activeAudioTrack === 'vitoria') return vitoriaAudio.current;
     return null;
   };
-
-  // Temporizador para rastrear current time
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const audio = getActiveAudioInstance();
-      if (audio && !audio.paused) {
-        setCurrentAudioTime(audio.currentTime);
-      }
-    }, 200);
-    return () => clearInterval(interval);
-  }, [activeAudioTrack]);
 
   const handleTogglePlay = () => {
     const audio = getActiveAudioInstance();
@@ -360,20 +343,47 @@ const AdminJackpot = () => {
     });
   }, [participants, startDate, endDate, currentWinners]);
 
-  // Carrega participantes da Edge Function com token JWT
+  const fetchLotteryParticipations = async () => {
+    let { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      const refreshed = await supabase.auth.refreshSession();
+      session = refreshed.data.session;
+      sessionError = refreshed.error;
+    }
+    if (sessionError || !session?.access_token) {
+      throw new Error('Sessão expirada ou inválida. Por favor, faça login novamente.');
+    }
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+    const apiKey = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY) as string;
+    if (!supabaseUrl || !apiKey) {
+      throw new Error('Configuração do Supabase ausente no cliente.');
+    }
+
+    const response = await fetch(`${supabaseUrl}/functions/v1/lottery-participations`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        apikey: apiKey,
+      },
+    });
+
+    const payload = await response.json().catch(() => ({} as { error?: string; data?: unknown[] }));
+    if (!response.ok) {
+      throw new Error(
+        (payload as { error?: string }).error ||
+          `Não foi possível carregar a lista de participantes (${response.status}).`
+      );
+    }
+
+    return payload as { success?: boolean; data?: any[] };
+  };
+
   const loadParticipants = async () => {
     setIsLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const { data, error } = await supabase.functions.invoke('lottery-participations', {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${session?.access_token || ''}`,
-        }
-      });
-
-      if (error) throw error;
-      setParticipants(data?.data || []);
+      const payload = await fetchLotteryParticipations();
+      setParticipants(payload?.data || []);
     } catch (err: any) {
       console.error(err);
       toast({
@@ -387,7 +397,28 @@ const AdminJackpot = () => {
   };
 
   useEffect(() => {
-    loadParticipants();
+    let cancelled = false;
+
+    const bootstrap = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (cancelled) return;
+      if (session?.access_token) {
+        await loadParticipants();
+        return;
+      }
+      setIsLoading(false);
+      toast({
+        title: 'Erro de Autenticação',
+        description: 'Sessão expirada ou inválida. Por favor, faça login novamente.',
+        variant: 'destructive',
+      });
+    };
+
+    bootstrap();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Injetar biblioteca de confetes dinamicamente
@@ -458,24 +489,8 @@ const AdminJackpot = () => {
     setIsLoading(true);
 
     try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-      if (sessionError || !session?.access_token) {
-        throw new Error("Sessão expirada ou inválida. Por favor, faça login novamente.");
-      }
-
-      const { data, error: invokeError } = await supabase.functions.invoke('lottery-participations', {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        }
-      });
-
-      if (invokeError) {
-        throw invokeError;
-      }
-
-      const list = data?.data || [];
+      const payload = await fetchLotteryParticipations();
+      const list = payload?.data || [];
       if (list.length === 0) {
         throw new Error("Nenhum participante elegível encontrado para o sorteio no banco de dados.");
       }
@@ -511,8 +526,10 @@ const AdminJackpot = () => {
       setParticipants(list);
 
       // Conversão segura do ID para sequência de 5 dígitos do painel físico
-      const luckyNumber = isNaN(Number(chosenWinner.id)) ? 0 : Number(chosenWinner.id);
-      const luckyNumberStr = String(luckyNumber).slice(-5).padStart(5, '0');
+      const luckyNumberStr = String(chosenWinner.id ?? '')
+        .replace(/\D/g, '')
+        .slice(-5)
+        .padStart(5, '0');
       const digits = luckyNumberStr.split('').map(Number);
 
       setTargetDigits(digits);
@@ -665,21 +682,21 @@ const AdminJackpot = () => {
               </span>
               <h1 className="text-base sm:text-lg font-black tracking-tight uppercase text-zinc-800 dark:text-zinc-100">Uniforme Premiado</h1>
             </div>
-            <p className="text-xs text-zinc-500 dark:text-zinc-450 hidden sm:block">Ambiente Seguro & Autenticado</p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 hidden sm:block">Ambiente Seguro & Autenticado</p>
           </div>
         </div>
 
         <div className="flex items-center gap-4">
           <ThemeToggle />
           <div className="flex flex-col text-right items-end justify-center">
-            <span className="text-[10px] uppercase font-bold text-zinc-450 dark:text-zinc-500 leading-none">Logado como</span>
+            <span className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 leading-none">Logado como</span>
             <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 leading-tight">
               {adminUser?.name?.split(' ')[0] || 'Administrador'}
             </span>
           </div>
           <button
             onClick={logout}
-            className="text-xs font-bold text-red-655 dark:text-red-400 hover:text-red-500 dark:hover:text-red-300 hover:underline px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/5 hover:bg-red-100 dark:hover:bg-red-500/10 transition-colors"
+            className="text-xs font-bold text-red-600 dark:text-red-400 hover:text-red-500 dark:hover:text-red-300 hover:underline px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/5 hover:bg-red-100 dark:hover:bg-red-500/10 transition-colors"
           >
             Sair
           </button>
@@ -694,7 +711,7 @@ const AdminJackpot = () => {
           {/* LADO ESQUERDO: MÁQUINA DE SLOTS */}
           <section className="flex flex-col items-center w-full h-full justify-center min-h-[450px]">
             <div
-              className="w-full rounded-[2.5rem] bg-gradient-to-br from-white to-zinc-150 dark:from-[#1e1b15] dark:to-[#121214] border-2 border-zinc-200 dark:border-zinc-800 p-6 md:p-12 flex flex-col items-center relative z-10 shadow-lg dark:shadow-[0_0_80px_rgba(0,0,0,0.8)] transition-colors duration-300"
+              className="w-full rounded-[2.5rem] bg-gradient-to-br from-white to-zinc-100 dark:from-[#1e1b15] dark:to-[#121214] border-2 border-zinc-200 dark:border-zinc-800 p-6 md:p-12 flex flex-col items-center relative z-10 shadow-lg dark:shadow-[0_0_80px_rgba(0,0,0,0.8)] transition-colors duration-300"
             >
               <div className="absolute inset-x-8 top-4 h-1.5 bg-gradient-to-r from-transparent via-amber-500 dark:via-yellow-500 to-transparent blur-[1px] opacity-70 animate-pulse" />
 
@@ -705,7 +722,7 @@ const AdminJackpot = () => {
                     SORTEIO
                   </h3>
                 </div>
-                <p className="text-xs text-zinc-500 dark:text-zinc-455 font-mono tracking-widest uppercase">BIT Educação & Negócios</p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 font-mono tracking-widest uppercase">BIT Educação & Negócios</p>
               </div>
 
               {/* ÁREA DOS ROLES (SLOTS ROBUSTOS) */}
@@ -722,7 +739,7 @@ const AdminJackpot = () => {
               {/* INPUTS DE INTERVALO DE DATAS */}
               <div className="w-full mt-10 grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] uppercase font-bold text-zinc-550 dark:text-zinc-400 tracking-wider">Data Inicial</label>
+                  <label className="text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 tracking-wider">Data Inicial</label>
                   <div className="relative">
                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-500/80 dark:text-yellow-500/50" />
                     <input
@@ -735,7 +752,7 @@ const AdminJackpot = () => {
                   </div>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] uppercase font-bold text-zinc-550 dark:text-zinc-400 tracking-wider">Data Final</label>
+                  <label className="text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 tracking-wider">Data Final</label>
                   <div className="relative">
                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-500/80 dark:text-yellow-500/50" />
                     <input
@@ -764,7 +781,6 @@ const AdminJackpot = () => {
                       if (vitoriaAudio.current) { vitoriaAudio.current.pause(); vitoriaAudio.current.currentTime = 0; }
                       setIsMusicPlaying(false);
                       setActiveAudioTrack(null);
-                      setCurrentAudioTime(0);
                     }}
                     className="w-full max-w-md h-16 rounded-[1.25rem] font-black text-lg uppercase tracking-wider text-zinc-700 dark:text-zinc-300 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 border-2 border-zinc-300 dark:border-zinc-700 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
                   >
@@ -774,7 +790,7 @@ const AdminJackpot = () => {
                   <Button
                     onClick={handleDraw}
                     disabled={isSpinning || eligibleParticipants.length === 0 || isLoading}
-                    className="w-full max-w-md h-16 rounded-[1.25rem] font-black text-lg uppercase tracking-wider text-zinc-955 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 dark:from-yellow-400 dark:via-amber-400 dark:to-yellow-500 hover:from-amber-400 hover:to-yellow-400 dark:hover:from-yellow-300 dark:hover:to-amber-400 border-2 border-amber-300 dark:border-yellow-400 shadow-[0_0_30px_rgba(245,158,11,0.2)] dark:shadow-[0_0_30px_rgba(250,204,21,0.3)] hover:shadow-[0_0_40px_rgba(250,204,21,0.55)] transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98]"
+                    className="w-full max-w-md h-16 rounded-[1.25rem] font-black text-lg uppercase tracking-wider text-zinc-950 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 dark:from-yellow-400 dark:via-amber-400 dark:to-yellow-500 hover:from-amber-400 hover:to-yellow-400 dark:hover:from-yellow-300 dark:hover:to-amber-400 border-2 border-amber-300 dark:border-yellow-400 shadow-[0_0_30px_rgba(245,158,11,0.2)] dark:shadow-[0_0_30px_rgba(250,204,21,0.3)] hover:shadow-[0_0_40px_rgba(250,204,21,0.55)] transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98]"
                   >
                     {isSpinning ? (
                       <span className="flex items-center gap-3">
@@ -799,7 +815,7 @@ const AdminJackpot = () => {
               {/* Controle de Áudio Integrado (Mais destacado e intuitivo) */}
               <div className="w-full mt-6 pt-6 border-t border-zinc-200 dark:border-zinc-800/80 flex flex-col gap-4">
                 <div className="flex justify-between items-center px-1">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-zinc-550 dark:text-zinc-400">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                     Controle de Som {activeAudioTrack ? `| Faixa: ${activeAudioTrack === 'roleta' ? 'Roleta' : activeAudioTrack === 'ganhador1' ? '1º Ganhador' : 'Vitória'}` : ''}
                   </span>
                   <Volume2 className="w-4 h-4 text-amber-500 dark:text-yellow-500" />
@@ -812,7 +828,7 @@ const AdminJackpot = () => {
                     disabled={!activeAudioTrack}
                     className={`h-11 rounded-xl transition-all font-black text-[11px] uppercase tracking-wider ${
                       isMusicPlaying 
-                        ? 'bg-zinc-150 border-zinc-300 hover:bg-zinc-200 dark:bg-zinc-800 dark:border-zinc-700 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200' 
+                        ? 'bg-zinc-100 border-zinc-300 hover:bg-zinc-200 dark:bg-zinc-800 dark:border-zinc-700 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200' 
                         : 'bg-white border-zinc-200 hover:bg-zinc-50 dark:bg-zinc-900/60 dark:border-zinc-800 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
                     }`}
                   >
@@ -879,8 +895,8 @@ const AdminJackpot = () => {
                                     className="w-36 h-48 sm:w-44 sm:h-56 object-cover rounded-[13px] hover:scale-[1.02] transition-transform duration-300 bg-zinc-100 dark:bg-zinc-800"
                                   />
                                 ) : (
-                                  <div className="w-36 h-48 sm:w-44 sm:h-56 rounded-[13px] bg-zinc-100 dark:bg-zinc-800 flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-550">
-                                    <Users className="w-12 h-12 mb-2 text-zinc-350 dark:text-zinc-650" />
+                                  <div className="w-36 h-48 sm:w-44 sm:h-56 rounded-[13px] bg-zinc-100 dark:bg-zinc-800 flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-500">
+                                    <Users className="w-12 h-12 mb-2 text-zinc-300 dark:text-zinc-600" />
                                     <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-600">Sem Foto</span>
                                   </div>
                                 )}
@@ -910,8 +926,8 @@ const AdminJackpot = () => {
                                 </p>
                               )}
 
-                              <div className="pt-2 border-t border-zinc-150 dark:border-zinc-800/40 w-full mt-2 flex items-center justify-center gap-1.5 text-[10px] text-zinc-500 dark:text-zinc-400 font-bold uppercase">
-                                <Calendar className="w-3.5 h-3.5 text-zinc-450 dark:text-zinc-500" />
+                              <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/40 w-full mt-2 flex items-center justify-center gap-1.5 text-[10px] text-zinc-500 dark:text-zinc-400 font-bold uppercase">
+                                <Calendar className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500" />
                                 <span>Sorteado em {formatDateTime(win.participation_date || win.created_at)}</span>
                               </div>
                             </div>
@@ -934,11 +950,11 @@ const AdminJackpot = () => {
                 </Card>
               </div>
             ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center border-2 border-dashed border-zinc-200 dark:border-zinc-800/80 rounded-[2rem] bg-white dark:bg-zinc-900/20 text-zinc-400 dark:text-zinc-650 p-8 text-center animate-in fade-in duration-500 shadow-sm">
+              <div className="w-full h-full flex flex-col items-center justify-center border-2 border-dashed border-zinc-200 dark:border-zinc-800/80 rounded-[2rem] bg-white dark:bg-zinc-900/20 text-zinc-400 dark:text-zinc-600 p-8 text-center animate-in fade-in duration-500 shadow-sm">
                 <div className="w-16 h-16 rounded-full bg-zinc-100 dark:bg-zinc-900/85 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center mb-6">
                   <Dice5 className="w-8 h-8 text-zinc-400 dark:text-zinc-700 animate-pulse" />
                 </div>
-                <h4 className="text-lg font-black uppercase tracking-widest text-zinc-550 dark:text-zinc-550 mb-2">Aguardando Sorteio</h4>
+                <h4 className="text-lg font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-500 mb-2">Aguardando Sorteio</h4>
                 <p className="text-sm font-medium mt-2 max-w-xs leading-relaxed text-zinc-400 dark:text-zinc-600">
                   Defina o intervalo de datas e clique no botão para rolar as bobinas numéricas. O vencedor e sua foto de participação serão exibidos aqui.
                 </p>
@@ -970,7 +986,7 @@ const AdminJackpot = () => {
                           {drawHistory.length - idx}
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-zinc-850 dark:text-zinc-100">{winnerRow.name}</p>
+                          <p className="text-sm font-bold text-zinc-800 dark:text-zinc-100">{winnerRow.name}</p>
                           <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium">
                             {winnerRow.daily_code ? 'Código: ' + winnerRow.daily_code : ''}
                           </p>
@@ -1009,7 +1025,7 @@ const AdminJackpot = () => {
 
                 {/* Histórico sutil integrado na base do card */}
                 {drawHistory.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-zinc-150 dark:border-zinc-800/80">
+                  <div className="mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-800/80">
                     <span className="text-[10px] font-black uppercase text-zinc-950 dark:text-zinc-500 block mb-1">Último Ganhador Sorteado</span>
                     <p className="text-sm font-black text-zinc-950 dark:text-zinc-300 truncate">
                       {drawHistory[0].name} <span className="text-amber-600 dark:text-yellow-500 font-mono ml-1 font-bold">#{String(drawHistory[0].id).padStart(5, '0')}</span>
